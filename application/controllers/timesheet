@@ -1,0 +1,1375 @@
+<?php
+_auth();
+
+$ui->assign('_title', $_L['Dashboard'].'- '. $config['CompanyName']);
+$ui->assign('_st', $_L['Dashboard']);
+$user = User::_info();
+$ui->assign('user',$user);
+
+$action = route(1);
+
+if($action == ''){
+
+    if(isset($config['dashboard'])){
+        $action = $config['dashboard'];
+    }
+    else{
+        $action = 'canvas';
+    }
+
+}
+
+
+switch($action){
+
+        case 'timesheet':
+            
+            Event::trigger('dashboard/timesheet');
+            $ui->assign('_st', 'Timesheet');
+            $employees = ORM::for_table('crm_accounts')
+                ->select('id')
+                ->select('account') 
+                ->where('salery_type', 'per_hour')
+                ->find_many();  
+            $ui->assign('hourly_employee_name', $employees);
+            $ui->assign('xheader',Asset::css(array('modal')));
+            $ui->assign('xfooter',Asset::js(array('modal')));
+            $ui->assign('xfooter2',Asset::js(array('jquery.dataTables')));
+            // $ui->display('dashboard_timesheet.tpl');
+            $ui->display('dashboard_all_employee_timesheet.tpl');
+        break;
+        
+        
+    case 'holiday-timesheet-ajax-timesheet':
+        Event::trigger('dashboard/holiday-timesheet-ajax-timesheet');
+    
+        $employee_ids = isset($_POST['employee_id']) ? $_POST['employee_id'] : [];
+        $checkins = isset($_POST['checkin-holiday']) ? $_POST['checkin-holiday'] : [];
+        $checkouts = isset($_POST['checkout-holiday']) ? $_POST['checkout-holiday'] : [];
+        $remarks = isset($_POST['remarks']) ? $_POST['remarks'] : null;
+        $date = date('Y-m-d');
+        $createdAt = date('Y-m-d H:i:s');
+        $updatedAt = date('Y-m-d H:i:s');
+    
+        foreach ($employee_ids as $employee_id) {
+            $employees = ORM::for_table('crm_accounts')
+                ->select('id')
+                ->select('account')
+                ->select('salery_type')
+                ->select('salery_amt')
+                ->where('id', $employee_id)
+                ->find_many();
+            
+            $type = null;
+            $amount = null;
+            $qty = null;
+            
+            foreach ($employees as $employee) {
+                $type = $employee->salery_type;
+                $amount = $employee->salery_amt; // Fetching the salary amount
+            }
+      
+            if(!empty($checkins && $checkouts == 0)){  
+                var_dump($checkins);
+                var_dump($checkouts);
+                for ($i = 0; $i < count($checkins); $i++) {
+                // Check if a record exists for today's date and the given employee ID
+                $checkinDate = date('Y-m-d', strtotime($checkins[$i]));
+                $timesheet = ORM::for_table('crm_timesheet')
+                    ->where('employee_id', $employee_id)
+                    ->where_raw('DATE(`checkin`) = ?', [$checkinDate])
+                    ->find_one();
+                    // Loop through each pair of check-in and check-out times
+                    
+                    if ($timesheet) {
+                        // Update existing record
+                        $timesheet->checkin = date('Y-m-d H:i:s', strtotime($checkins[$i]));
+                        $timesheet->checkout = date('Y-m-d H:i:s', strtotime($checkouts[$i]));
+                        $timesheet->remarks = $remarks;
+            
+                        $checkIn = strtotime($timesheet->checkin);
+                        $checkOut = strtotime($timesheet->checkout);
+                        $seconds_diff = $checkOut - $checkIn;
+                        $hours = $seconds_diff / (60 * 60); // Convert seconds to hours
+                        $timesheet->amount = $amount; // Assigning the salary amount
+                        $timesheet->qty = ($type == 'per_hour') ? $hours : $qty;
+                        $timesheet->earn_amount = $timesheet->qty * $timesheet->amount;
+                        $timesheet->updated_at = $updatedAt;
+            
+                        $timesheet->save();
+                        _msglog('s', $_L['CheckOut_successfully!']);
+                        echo $timesheet->id();
+                        echo 'update successfully';
+                    } else {
+                        // Insert new record
+                        $insert = ORM::for_table('crm_timesheet')->create();
+                        $insert->employee_id = $employee_id;
+                        $insert->checkin = date('Y-m-d H:i:s', strtotime($checkins[$i]));
+                        $insert->checkout = date('Y-m-d H:i:s', strtotime($checkouts[$i]));
+                        $insert->remarks = $remarks;
+                        
+                        $checkIn = strtotime($insert->checkin);
+                        $checkOut = strtotime($insert->checkout);
+                        $seconds_diff = $checkOut - $checkIn;
+                        $hours = $seconds_diff / (60 * 60); // Convert seconds to hours
+            
+                        $insert->amount = $amount;
+                        $insert->date = $date;
+                        $insert->qty = ($type == 'per_hour') ? $hours : $qty;
+                        $insert->earn_amount = $insert->qty * $insert->amount;
+                        $insert->created_at = $createdAt;
+                        $insert->updated_at = $updatedAt;
+            
+                        $insert->save();
+                        _msglog('s', $_L['CheckIn_successfully!']);
+                        echo $insert->id();
+                        echo 'insert successfully';
+                    }
+                }
+            }
+        }
+    break;
+
+
+
+
+
+
+
+
+    case 'timesheet-list-ajax-timesheet':  
+    Event::trigger('dashboard/timesheet-list-ajax-timesheet');
+    $response = array();
+    
+    ## Read value
+    $draw = $_POST['draw'];
+    $start = $_POST['start'];
+    $rowperpage = $_POST['length'];
+    $columnIndex = $_POST['order'][0]['column'];
+    $columnName = $_POST['columns'][$columnIndex]['data'];
+    $columnSortOrder = $_POST['order'][0]['dir'];
+    
+    $employee_name = $_POST['display_employee_name'];
+    $salery_type = $_POST['salery_type'];
+    // var_dump($employee_name);
+    // echo($salery_type);
+    $employee_name =  isset($_POST['display_employee_name']) ? $_POST['display_employee_name'] : '';
+    $salery_type =  isset($_POST['salery_type']) ? $_POST['salery_type'] : '';
+    // echo($employee_name);
+    // echo($salery_type);
+    $employee_id =  isset($_POST['employee_id']) ? $_POST['employee_id'] : '';
+    $todate  = isset($_POST['todate']) ? $_POST['todate'] : '';
+    $fromdate  = isset($_POST['fromdate']) ? $_POST['fromdate'] : '';
+    
+    // Initialize the ORM query for counting total records
+    $totalRecordQuery = ORM::for_table('crm_timesheet')->select('id');
+    
+    // Apply filters based on inputs
+    if(!empty($employee_id)) {
+    $totalRecordQuery->where('employee_id', $employee_id);
+    } elseif (!empty($fromdate) && !empty($todate)) {
+    $totalRecordQuery->where_gte('date', $fromdate)
+    ->where_lte('date', $todate);
+    } elseif (!empty($employee_name)) {
+    $totalRecordQuery->left_outer_join(
+    'crm_accounts',
+    array('crm_timesheet.employee_id', '=', 'crm_accounts.id')
+    )->where_like('crm_accounts.account', "%$employee_name%");
+    }elseif (!empty($salery_type)) {
+    $totalRecordQuery->left_outer_join(
+    'crm_accounts',
+    array('crm_timesheet.employee_id', '=', 'crm_accounts.id')
+    )->where('crm_accounts.salery_type', $salery_type);
+    }
+    
+    // Count total records without pagination
+    $totalRecordCount = $totalRecordQuery->count();
+    
+    // Initialize the ORM query for fetching records
+    $recordQuery = ORM::for_table('crm_timesheet');
+    
+    // Apply filters based on inputs
+    if(!empty($employee_id)) {
+    $recordQuery->where('employee_id', $employee_id);
+    } elseif (!empty($fromdate) && !empty($todate)) {
+    $recordQuery->where_gte('date', $fromdate)
+    ->where_lte('date', $todate);
+    } elseif (!empty($employee_name)) {
+    $recordQuery->left_outer_join(
+    'crm_accounts',
+    array('crm_timesheet.employee_id', '=', 'crm_accounts.id')
+    )->where_like('crm_accounts.account', "%$employee_name%");
+    }elseif (!empty($salery_type)) {
+    $recordQuery->left_outer_join(
+    'crm_accounts',
+    array('crm_timesheet.employee_id', '=', 'crm_accounts.id')
+    )->where('crm_accounts.salery_type', $salery_type);
+    }
+    $Records = $recordQuery->find_many();
+    // Calculate earnAmountSum for displayed records
+    $earnAmountSumTotal = 0;
+    foreach ($Records as $record) {
+    $earnAmountSumTotal += $record->earn_amount;
+    }
+    
+    // Fetch records with pagination limits
+    $records = $recordQuery->offset($start)
+    ->limit($rowperpage)
+    ->find_many();
+    
+    // Calculate earnAmountSum for displayed records
+    $earnAmountSum = 0;
+    foreach ($records as $record) {
+    $earnAmountSum += $record->earn_amount;
+    }
+    
+    // Prepare data for DataTables
+    $data = array();
+    $sr = $start + 1;
+    foreach($records as $record){  
+    $employee = ORM::for_table('crm_accounts')->where('id', $record->employee_id)->find_one();
+    if ($employee) {
+    $employee_name = $employee->account;
+    $salery_type = $employee->salery_type;
+    }  else {
+        // If employee record is not found, set default values or handle the case as needed
+        $employee_name = '';
+        $salery_type = '';
+    }
+    $event1 = "edit_timesheet_modal('".$record->id."')";
+    $edit = '<a href="javascript:void(0);" class="btn btn-primary btn-xs" onclick="'.$event1.'"><i class="fa fa-edit"></i> edit</a>';  
+    
+    $data[] = array( 
+    "sr"                => $sr,
+    "salery_type"       => $salery_type,
+    "display_employee_name"     => $employee_name,
+    "employee_id"       => $record->employee_id,
+    "checkin"           => $record->checkin,
+    "checkout"          => $record->checkout,
+    "qty"               => $record->qty,
+    "amount"            => $record->amount,
+    "earn_amount"       => $record->earn_amount,
+    "earnAmountSum"     => $totalRecordCount < 10 ? $earnAmountSum : $earnAmountSumTotal,
+    "date"              => $record->date,
+    "action"            => $edit,
+    ); 
+    $sr++;	
+    }
+    
+    // Prepare response for DataTables
+    $response = array(
+    "draw" => intval($draw),
+    "iTotalRecords" => $totalRecordCount,
+    "iTotalDisplayRecords" => $totalRecordCount,
+    "aaData" => $data,
+    "earnAmountSum" => $totalRecordCount < 10 ? $earnAmountSum : $earnAmountSumTotal,
+    "salery_type"     => $salery_type,
+    "display_employee_name"     => $employee_name
+    );
+    
+    // Output response as JSON
+    echo json_encode($response);
+    $ui->assign('earnAmountSum', $totalRecordCount < 10 ? $earnAmountSum : $earnAmountSumTotal);
+    break;
+
+
+
+
+    case 'timesheet-edit-timesheet-modal': //in use
+            Event::trigger('dashboard/timesheet-edit-timesheet-modal');
+            $timesheet_id = $routes['2'];
+            $timesheet = ORM::for_table('crm_timesheet')->find_one($timesheet_id);
+            if ($timesheet) {
+                $employee_id = $timesheet->employee_id;
+                $employee = ORM::for_table('crm_accounts')->where('id', $employee_id)->find_one();
+                if ($employee) {
+                    $salery_type = $employee->salery_type;
+                    
+                } else {
+                    // Handle the case where employee record is not found
+                }
+            } else {
+                // Handle the case where timesheet record is not found
+            }
+             
+            $ui->assign('salery_type', $salery_type);
+            $ui->assign('timesheet', $timesheet);
+            $ui->display('timesheet/edit-timesheet-modal.tpl');
+        break;   
+        
+        case 'timesheet-edit-timesheet-post':
+            Event::trigger('dashboard/timesheet-edit-timesheet-post');
+            $record_id   = _post('timesheet_id');
+            $type        = _post('type');
+            $checkIn     = _post('checkin');
+            $checkOut    = _post('checkout');
+            $remarks = _post('remarks');
+            $qty         = _post('qty');
+            $date        = date('Y-m-d', strtotime(_post('checkout')));
+            $updatedAt   = date('Y-m-d H:i:s');
+            
+            $timesheet = ORM::for_table('crm_timesheet')->find_one($record_id);
+
+            if($timesheet){
+                
+                $timesheet->checkin = ($type == 'per_hour') ? date('Y-m-d H:i:s', strtotime(_post('checkin'))) : null ;
+                $timesheet->checkout = ($type == 'per_hour') ? date('Y-m-d H:i:s', strtotime(_post('checkout'))) : null ;
+                $checkIn  = strtotime($timesheet->checkin);
+                $checkOut = strtotime($timesheet->checkout);
+                $seconds_diff = $checkOut - $checkIn;
+                $hours = $seconds_diff / (60 * 60); // Convert seconds to hours
+                $timesheet->qty = ($type == 'per_hour') ? $hours : $qty;
+                $timesheet->earn_amount = $timesheet->qty * $timesheet->amount;
+                $timesheet->remarks = $remarks;
+                $timesheet->updated_at = $updatedAt;
+                
+                $timesheet->save();
+                _msglog('s',$_L['Timesheet_updated_successfully!']);
+                echo $timesheet->id();
+            }
+        break;   
+
+    
+        
+        // case 'set-salery-popup-form':
+        //     $id = $routes['2'];
+        //     $d = ORM::for_table('crm_accounts')->find_one($id);
+        //     $ui->assign('d',$d);
+        //     $ui->assign('_theme',$_theme);
+        //     $ui->display('timesheet/set-salery-popup-form.tpl');
+        // break;      
+        
+        // case 'set-salery-type-post':
+        //     $msg = '';
+        //     $id   = _post('id');
+        //     $salery_type = _post('salery_type');
+        //     $salery_amt = _post('salery_amt');
+            
+        //     if($salery_type == ''){
+        //         $msg .= 'Salery type is required <br>';
+        //     }
+        //     if($salery_amt == ''){
+        //         $msg .= 'Salery amount is required <br>';
+        //     }
+    
+        //     if($msg == ''){
+        //         $d = ORM::for_table('crm_accounts')->find_one($id);
+        //         if($d){
+        //             $d->salery_type = $salery_type;
+        //             $d->salery_amt = $salery_amt;
+        //             $d->save();
+        //             _msglog('s',$_L['Updated_successfully!']);
+        //             echo $d->id();
+        //         }
+        //     }
+        //     else{
+        //         echo $msg;
+        //     }
+        // break;
+        
+        case 'timesheet-popup-form':
+            Event::trigger('dashboard/timesheet-timesheet-popup-form');
+            
+            $id = $routes['2'];
+            $employee = ORM::for_table('crm_accounts')->find_one($id);
+            $employee_timesheet = ORM::for_table('crm_timesheet')->where('date', date('Y-m-d'))->where('employee_id', $id)->find_one();
+            $ui->assign('employee',$employee);
+            $ui->assign('timesheet',$employee_timesheet);
+            $ui->assign('_theme',$_theme);
+            $ui->display('timesheet/timesheet-popup-form.tpl');
+        break;   
+        
+        case 'timesheet-entry-post':
+            Event::trigger('dashboard/timesheet-timesheet-entry-post');
+            $record_id   = _post('record_id');
+            $type        = _post('type');
+            $remarks     = _post('remarks');
+            $employee_id = _post('employee_id');
+            $checkIn     = ($type == 'per_hour') ? date('Y-m-d H:i:s') : null;
+            $checkOut    = ($type == 'per_hour') ? date('Y-m-d H:i:s') : null;
+            $qty         = _post('qty');
+            $amount      = _post('amount');
+            $date        = date('Y-m-d');
+            $createdAt   = date('Y-m-d H:i:s');
+            $updatedAt   = date('Y-m-d H:i:s');
+
+ 
+            $timesheet = ORM::for_table('crm_timesheet')->find_one($record_id);
+      
+            if($timesheet){
+                //get hours between checkin & out
+                $checkIn  = strtotime($timesheet->checkin);
+                $checkOut = strtotime('Y-m-d H:i:s');
+                $seconds_diff = $checkOut - $checkIn;
+                $hours = $seconds_diff / (60 * 60); // Convert seconds to hours
+                $timesheet->checkout = date('Y-m-d H:i:s', $checkOut);
+                $timesheet->amount = $amount;
+                $timesheet->remarks = $remarks;
+                $timesheet->qty = ($type == 'per_hour') ? $hours : $qty;
+                $timesheet->earn_amount = $timesheet->qty * $timesheet->amount;
+                $timesheet->updated_at = $updatedAt;
+            
+                $timesheet->save();
+                _msglog('s',$_L['CheckOut_successfully!']);
+                echo $timesheet->id();
+            } else {
+                // If record doesn't exist, create a new one
+                $insert = ORM::for_table('crm_timesheet')->create();
+                $insert->employee_id = $employee_id;
+                $insert->checkin     = $checkIn;
+                $insert->amount      = $amount;
+                $insert->date        = $date;
+                $insert->remarks       = $remarks;
+                $insert->qty         = ($type == 'per_hour') ? 0 : $qty;
+                $insert->earn_amount = $insert->qty * $insert->amount;                
+                $insert->created_at  = $createdAt;
+                $insert->updated_at  = $updatedAt;
+            
+                $insert->save();
+                _msglog('s',$_L['CheckIn_successfully!']);
+                echo $insert->id();
+            }
+        break;         
+        /*end - timesheet*/
+        
+        
+    case 'dashboard_filter':
+
+
+        if(!has_access($user->roleid,'reports')){
+
+            $ui->display('welcome.tpl');
+            ib_close();
+
+        }
+
+        $xheader = Asset::css(array('dashboard/dashboard'));
+        $xfooter = Asset::js(array('dashboard/graph','chart/echarts.min','numeric','dashboard/dashboard'));
+        $xjq = '';
+        $dashboard_section_0 = '';
+
+        $jsvar = '
+
+        _L[\'Income\'] = \''.$_L['Income'].'\';
+        _L[\'Expense\'] = \''.$_L['Expense'].'\';
+        _L[\'Income n Expense\'] = \''.$_L['Income n Expense'].'\';
+        _L[\'Income vs Expense\'] = \''.$_L['Income vs Expense'].'\';
+        _L[\'Cash Flow\'] = \''.$_L['Cash Flow'].'\';
+        _L[\'Jan\'] = \''.$_L['Jan'].'\';
+        _L[\'Feb\'] = \''.$_L['Feb'].'\';
+        _L[\'Mar\'] = \''.$_L['Mar'].'\';
+        _L[\'Apr\'] = \''.$_L['Apr'].'\';
+        _L[\'May\'] = \''.$_L['May'].'\';
+        _L[\'Jun\'] = \''.$_L['Jun'].'\';
+        _L[\'Jul\'] = \''.$_L['Jul'].'\';
+        _L[\'Aug\'] = \''.$_L['Aug'].'\';
+        _L[\'Sep\'] = \''.$_L['Sep'].'\';
+        _L[\'Oct\'] = \''.$_L['Oct'].'\';
+        _L[\'Nov\'] = \''.$_L['Nov'].'\';
+        _L[\'Dec\'] = \''.$_L['Dec'].'\';
+        _L[\'Last 12 Months\'] = \''.$_L['Last 12 Months'].'\';
+        _L[\'Data View\'] = \''.$_L['Data View'].'\';
+        _L[\'Refresh\'] = \''.$_L['Refresh'].'\';
+        _L[\'Reset\'] = \''.$_L['Reset'].'\';
+        _L[\'Cancel\'] = \''.$_L['Cancel'].'\';
+        _L[\'Save as Image\'] = \''.$_L['Save as Image'].'\';
+        _L[\'Click to Save\'] = \''.$_L['Click to Save'].'\';
+        _L[\'Average\'] = \''.$_L['Average'].'\';
+        _L[\'Line\'] = \''.$_L['Line'].'\';
+        _L[\'Bar\'] = \''.$_L['Bar'].'\';
+
+        var c_month = \''.ib_lan_get_line(date('F')).'\';
+        var c_year = \''.date('Y').'\';
+        
+        var ib_graph_primary_color = \'#2196f3\';
+        var ib_graph_secondary_color = \'#eb3c00\';
+
+
+
+
+        ';
+
+
+        Event::trigger('dashboard/',array($action));
+//        $ui->assign('_st', $_L['Dashboard'].' <div class="pull-right" style="padding-right: 6px;">
+//  <ul id="ib_theme_color" class="ib_theme_color">
+//
+//                <li><a href="'.U.'settings/set_color/light/"><span class="light"></span></a></li>
+//                <li><a href="'.U.'settings/set_color/blue/"><span class="blue"></span></a></li>
+//                <li><a href="'.U.'settings/set_color/dark/"><span class="dark"></span></a></li>
+//            </ul>
+//
+//</div>');
+
+
+
+
+        $ui->assign('xheader', $xheader);
+        $ui->assign('xfooter', $xfooter);
+
+        $ui->assign('dashboard_section_0',$dashboard_section_0);
+
+        // top middle
+
+$company=_post('company');
+        $d = ORM::for_table('sys_accounts')->where('id',$company)->find_one();
+        $tbal = ORM::for_table('sys_accounts')->sum('balance');
+        $tbal = number_format($tbal,'2','.','');
+        $ui->assign('d',$d);
+        $ui->assign('tbal',$tbal);
+
+        $net_worth = ORM::for_table('sys_accounts')->where('id',$company)->sum('balance');
+        if($net_worth == ''){
+            $net_worth = 0;
+        }
+        $ui->assign('net_worth',$net_worth);
+        $goal = $config['networth_goal'];
+        $v_goal = number_format($goal,2,$config['dec_point'],$config['thousands_sep']);
+        if($goal != '' AND $goal != '0'){
+            $division = $net_worth / $goal;
+            $pg = $division * 100;
+            $pg = number_format($pg, 2,'.','');
+        }
+        else{
+            $pg = '0';
+        }
+        $ui->assign('pg',$pg);
+        if($pg <= 100){
+            $pgb = $pg;
+        }
+        else{
+            $pgb = '100';
+        }
+        $ui->assign('pgb',$pgb);
+        if($pgb < 49){
+            $ui->assign('pgc','danger');
+        }
+        elseif($pgb < 69){
+            $ui->assign('pgc','warning');
+        }
+        else{
+            $ui->assign('pgc','success');
+        }
+
+
+        // top middle end
+
+        //
+$account_name = get_type_by_id('sys_accounts', 'id', $company, 'account');
+ $ui->assign('account_name',$account_name);
+        $first_day_month = date('Y-m-01');
+        $mdate = date('Y-m-d');
+
+        $mi = ORM::for_table('sys_transactions')->where('type','Income')->where('account', $account_name)->where_gte('date',$first_day_month)->where_lte('date',$mdate)->sum('cr');
+        if($mi == ''){
+            $mi = '0.00';
+        }
+        $ui->assign('mi',$mi);
+        $me = ORM::for_table('sys_transactions')->where('type','Expense')->where('account', $account_name)->where_gte('date',$first_day_month)->where_lte('date',$mdate)->sum('dr');
+        if($me == ''){
+            $me = '0.00';
+        }
+        $ui->assign('me',$me);
+        $m = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$mdate)->sum('cr');
+        if($m == ''){
+            $m = '0.00';
+        }
+        $ui->assign('ti',$m);
+        $m = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$mdate)->sum('dr');
+        if($m == ''){
+            $m = '0.00';
+        }
+        $ui->assign('te',$m);
+
+
+
+        $xjq .= '
+
+
+    $("#set_goal").click(function (e) {
+        e.preventDefault();
+
+        bootbox.prompt({
+            title: "'.$_L['Set New Goal for Net Worth'].'",
+            value: "'.$v_goal.'",
+            buttons: {
+        \'cancel\': {
+            label: \''.$_L['Cancel'].'\'
+        },
+        \'confirm\': {
+            label: \''.$_L['OK'].'\'
+        }
+    },
+            callback: function(result) {
+                if (result === null) {
+
+                } else {
+                   // alert(result);
+                     $.post( "'.U.'settings/networth_goal/", { goal: result })
+        .done(function( data ) {
+            location.reload();
+        });
+                }
+            }
+        });
+
+    });
+
+    $(\'.amount\').autoNumeric(\'init\', {
+
+    aSign: \''.$config['currency_code'].' \',
+    dGroup: '.$config['thousand_separator_placement'].',
+    aPad: '.$config['currency_decimal_digits'].',
+    pSign: \''.$config['currency_symbol_position'].'\',
+    aDec: \''.$config['dec_point'].'\',
+    aSep: \''.$config['thousands_sep'].'\'
+
+    });
+
+ ';
+
+        $ui->assign('jsvar',$jsvar);
+
+        $ui->assign('xjq', $xjq);
+
+        $invoices = ORM::for_table('sys_invoices')->limit(5)->order_by_desc('id')->find_many();
+        $ui->assign('invoices',$invoices);								
+        $d = ORM::for_table('sys_transactions')->where('type','Expense')->where('account', $account_name)->limit(5)->order_by_desc('id')->find_many();
+        $ui->assign('exp',$d);
+
+        $d = ORM::for_table('sys_transactions')->where('type','Income')->where('account', $account_name)->limit(5)->order_by_desc('id')->find_many();        
+        $ui->assign('inc',$d);								
+				$followup=ORM::for_table('sys_invoices')->where_not_equal('status','Paid')->limit(10)->order_by_desc('duedate')->find_many();					
+				foreach($followup as $row){				
+				$row['phone']=ORM::for_table('crm_accounts')->where('id', $row['userid'])->find_one()->phone; 		
+				}							
+				$ui->assign('followup',$followup);    
+				$company = ORM::for_table('sys_accounts')->find_many();		
+				$ui->assign('company',$company);   	
+        $ui->display('dashboard_canvas_ajax.tpl');
+        break;
+
+				
+				
+    case 'section_1':
+
+
+echo '
+
+
+   ';
+
+
+
+        break;
+    case 'render':
+
+        $ib_now = time();
+        $ib_u_t = $config['ib_u_t'];
+
+        $arr = array(
+            'msg' => ''
+        );
+
+
+        $data = ib_get_posted_data();
+        $base_key = $config['ib_key'];
+        $ib_s = $config['ib_s'];
+
+        if(isset($data['inner_graph'])){
+
+//            $key = base64_decode($base_key);
+//            $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
+//            $data_graph_render = base64_decode($ib_s);
+//            $iv_dec = substr($data_graph_render, 0, $iv_size);
+//            $data_graph_row = substr($data_graph_render, $iv_size);
+//            $u = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $key, $data_graph_row, MCRYPT_MODE_CBC, $iv_dec);
+
+
+
+            $arr = Dashboard::graphUpdate($user,$config);
+
+
+        }
+
+
+
+        header('Content-Type: application/json');
+
+        echo json_encode($arr);
+
+        ib_close();
+
+
+
+        break;
+
+    case 'json_income_vs_exp':
+
+
+
+        header('Content-Type: application/json');
+
+        $data = Dashboard::dataLastTwelveMonthsIncExp();
+
+        echo json_encode($data);
+
+
+
+
+
+
+        break;
+
+    case 'json_d_inc_exp_month':
+
+        header('Content-Type: application/json');
+
+        $data = Dashboard::dataIncVsExp();
+
+        echo json_encode($data);
+
+        break;
+
+    case 'json_d_chart_data':
+
+        header('Content-Type: application/json');
+
+        $data = Dashboard::dataIncExpD('dd');
+
+        echo json_encode($data);
+
+
+        break;
+
+
+    case 'legacy':
+
+        Event::trigger('dashboard/',array($action));
+
+        $dashboard_extra_section_1 = '';
+        $dashboard_extra_section_2 = '';
+        $dashboard_extra_section_3 = '';
+        $dashboard_extra_section_4 = '';
+        $dashboard_extra_section_5 = '';
+        $ui->assign('dashboard_extra_section_1',$dashboard_extra_section_1);
+        $ui->assign('dashboard_extra_section_2',$dashboard_extra_section_2);
+        $ui->assign('dashboard_extra_section_3',$dashboard_extra_section_3);
+        $ui->assign('dashboard_extra_section_4',$dashboard_extra_section_4);
+        $ui->assign('dashboard_extra_section_5',$dashboard_extra_section_5);
+        Event::trigger('dashboard/');
+
+        $d = ORM::for_table('sys_accounts')->order_by_desc('balance')->limit(5)->find_many();
+        $tbal = ORM::for_table('sys_accounts')->sum('balance');
+        $tbal = number_format($tbal,'2','.','');
+        $ui->assign('d',$d);
+        $ui->assign('tbal',$tbal);
+        $fdate = date('Y-m-01');
+        $tdate = date('Y-m-t');
+//first day of month
+        $first_day_month = date('Y-m-01');
+        $mdate = date('Y-m-d');
+        $month_n = date('n');
+        $mi = ORM::for_table('sys_transactions')->where('type','Income')->where_gte('date',$first_day_month)->where_lte('date',$mdate)->sum('cr');
+        if($mi == ''){
+            $mi = '0.00';
+        }
+        $ui->assign('mi',$mi);
+        $me = ORM::for_table('sys_transactions')->where('type','Expense')->where_gte('date',$first_day_month)->where_lte('date',$mdate)->sum('dr');
+        if($me == ''){
+            $me = '0.00';
+        }
+        $ui->assign('me',$me);
+        $m = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$mdate)->sum('cr');
+        if($m == ''){
+            $m = '0.00';
+        }
+        $ui->assign('ti',$m);
+        $m = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$mdate)->sum('dr');
+        if($m == ''){
+            $m = '0.00';
+        }
+        $ui->assign('te',$m);
+        $out = array();
+        $d = ORM::for_table('sys_repeating');
+        $d->where_gte('date', $fdate);
+        $d->where_lte('date', $tdate);
+        $d->where('type','Expense');
+        $d->where('status','Uncleared');
+        $d->order_by_asc('date');
+        $d->limit(5);
+        $rx =  $d->find_many();
+        $ui->assign('rx',$rx);
+        $d = ORM::for_table('sys_transactions')->where('type','Expense')->limit(5)->order_by_desc('id')->find_many();
+        $ui->assign('exp',$d);
+        $d = ORM::for_table('sys_transactions')->where('type','Income')->limit(5)->order_by_desc('id')->find_many();
+        $ui->assign('inc',$d);
+
+        $net_worth = ORM::for_table('sys_accounts')->sum('balance');
+        $ui->assign('net_worth',$net_worth);
+        $goal = $config['networth_goal'];
+        $v_goal = number_format($goal,2,$config['dec_point'],$config['thousands_sep']);
+        if($goal != '' AND $goal != '0'){
+            $division = $net_worth / $goal;
+            $pg = $division * 100;
+            $pg = number_format($pg, 2,'.','');
+        }
+        else{
+            $pg = '0';
+        }
+        $ui->assign('pg',$pg);
+        if($pg <= 100){
+            $pgb = $pg;
+        }
+        else{
+            $pgb = '100';
+        }
+        $ui->assign('pgb',$pgb);
+        if($pgb < 49){
+            $ui->assign('pgc','danger');
+        }
+        elseif($pgb < 69){
+            $ui->assign('pgc','warning');
+        }
+        else{
+            $ui->assign('pgc','success');
+        }
+//$month_n = date('n');
+//$array = array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
+//$till = $month_n - 1;
+//$gstring = '';
+//$egstring = '';
+//for ($m=0; $m<=$till; $m++) {
+//    $mnth = $array[$m];
+//    $cal = ORM::for_table('sys_transactions')->where_gte('date',date('Y-m-d',strtotime("first day of $mnth")))->where_lte('date',date('Y-m-d',strtotime("last day of $mnth")))->sum('dr');
+//    $egstring .= '["'.$m.'",'.$cal.'], ';
+//    $cal = ORM::for_table('sys_transactions')->where_gte('date',date('Y-m-d',strtotime("first day of $mnth")))->where_lte('date',date('Y-m-d',strtotime("last day of $mnth")))->sum('cr');
+//    $gstring .= '["'.$m.'",'.$cal.'], ';
+//
+//}
+//$gstring = rtrim($gstring,',');
+
+        $d1 = date('Y-m-01');
+        $d1i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d1)->sum('cr');
+        if($d1i == ''){
+            $d1i = '0.00';
+        }
+        $d1e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d1)->sum('dr');
+        if($d1e == ''){
+            $d1e = '0.00';
+        }
+
+
+        $d2 = date('Y-m-02');
+        $d2i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d2)->sum('cr');
+        if($d2i == ''){
+            $d2i = '0.00';
+        }
+        $d2e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d2)->sum('dr');
+        if($d2e == ''){
+            $d2e = '0.00';
+        }
+
+        $d3 = date('Y-m-03');
+        $d3i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d3)->sum('cr');
+        if($d3i == ''){
+            $d3i = '0.00';
+        }
+        $d3e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d3)->sum('dr');
+        if($d3e == ''){
+            $d3e = '0.00';
+        }
+
+        $d4 = date('Y-m-04');
+        $d4i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d4)->sum('cr');
+        if($d4i == ''){
+            $d4i = '0.00';
+        }
+        $d4e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d4)->sum('dr');
+        if($d4e == ''){
+            $d4e = '0.00';
+        }
+
+
+        $d5 = date('Y-m-05');
+        $d5i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d5)->sum('cr');
+        if($d5i == ''){
+            $d5i = '0.00';
+        }
+        $d5e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d5)->sum('dr');
+        if($d5e == ''){
+            $d5e = '0.00';
+        }
+
+        $d6 = date('Y-m-06');
+        $d6i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d6)->sum('cr');
+        if($d6i == ''){
+            $d6i = '0.00';
+        }
+        $d6e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d6)->sum('dr');
+        if($d6e == ''){
+            $d6e = '0.00';
+        }
+
+        $d7 = date('Y-m-07');
+        $d7i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d7)->sum('cr');
+        if($d7i == ''){
+            $d7i = '0.00';
+        }
+        $d7e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d7)->sum('dr');
+        if($d7e == ''){
+            $d7e = '0.00';
+        }
+
+        $d8 = date('Y-m-08');
+        $d8i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d8)->sum('cr');
+        if($d8i == ''){
+            $d8i = '0.00';
+        }
+        $d8e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d8)->sum('dr');
+        if($d8e == ''){
+            $d8e = '0.00';
+        }
+
+
+        $d9 = date('Y-m-09');
+        $d9i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d9)->sum('cr');
+        if($d9i == ''){
+            $d9i = '0.00';
+        }
+        $d9e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d9)->sum('dr');
+        if($d9e == ''){
+            $d9e = '0.00';
+        }
+
+        $d10 = date('Y-m-10');
+        $d10i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d10)->sum('cr');
+        if($d10i == ''){
+            $d10i = '0.00';
+        }
+        $d10e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d10)->sum('dr');
+        if($d10e == ''){
+            $d10e = '0.00';
+        }
+
+
+        $d11 = date('Y-m-11');
+        $d11i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d11)->sum('cr');
+        if($d11i == ''){
+            $d11i = '0.00';
+        }
+        $d11e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d11)->sum('dr');
+        if($d11e == ''){
+            $d11e = '0.00';
+        }
+
+        $d12 = date('Y-m-12');
+        $d12i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d12)->sum('cr');
+        if($d12i == ''){
+            $d12i = '0.00';
+        }
+        $d12e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d12)->sum('dr');
+        if($d12e == ''){
+            $d12e = '0.00';
+        }
+
+
+        $d13 = date('Y-m-13');
+        $d13i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d13)->sum('cr');
+        if($d13i == ''){
+            $d13i = '0.00';
+        }
+        $d13e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d13)->sum('dr');
+        if($d13e == ''){
+            $d13e = '0.00';
+        }
+
+
+        $d14 = date('Y-m-14');
+        $d14i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d14)->sum('cr');
+        if($d14i == ''){
+            $d14i = '0.00';
+        }
+        $d14e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d14)->sum('dr');
+        if($d14e == ''){
+            $d14e = '0.00';
+        }
+
+
+        $d15 = date('Y-m-15');
+        $d15i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d15)->sum('cr');
+        if($d15i == ''){
+            $d15i = '0.00';
+        }
+        $d15e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d15)->sum('dr');
+        if($d15e == ''){
+            $d15e = '0.00';
+        }
+
+
+        $d16 = date('Y-m-16');
+        $d16i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d16)->sum('cr');
+        if($d16i == ''){
+            $d16i = '0.00';
+        }
+        $d16e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d16)->sum('dr');
+        if($d16e == ''){
+            $d16e = '0.00';
+        }
+
+        $d17 = date('Y-m-17');
+        $d17i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d17)->sum('cr');
+        if($d17i == ''){
+            $d17i = '0.00';
+        }
+        $d17e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d17)->sum('dr');
+        if($d17e == ''){
+            $d17e = '0.00';
+        }
+
+        $d18 = date('Y-m-18');
+        $d18i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d18)->sum('cr');
+        if($d18i == ''){
+            $d18i = '0.00';
+        }
+        $d18e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d18)->sum('dr');
+        if($d18e == ''){
+            $d18e = '0.00';
+        }
+
+        $d19 = date('Y-m-19');
+        $d19i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d19)->sum('cr');
+        if($d19i == ''){
+            $d19i = '0.00';
+        }
+        $d19e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d19)->sum('dr');
+        if($d19e == ''){
+            $d19e = '0.00';
+        }
+
+
+        $d20 = date('Y-m-20');
+        $d20i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d20)->sum('cr');
+        if($d20i == ''){
+            $d20i = '0.00';
+        }
+        $d20e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d20)->sum('dr');
+        if($d20e == ''){
+            $d20e = '0.00';
+        }
+
+
+
+        $d21 = date('Y-m-21');
+        $d21i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d21)->sum('cr');
+        if($d21i == ''){
+            $d21i = '0.00';
+        }
+        $d21e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d21)->sum('dr');
+        if($d21e == ''){
+            $d21e = '0.00';
+        }
+
+        $d22 = date('Y-m-22');
+        $d22i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d22)->sum('cr');
+        if($d22i == ''){
+            $d22i = '0.00';
+        }
+        $d22e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d22)->sum('dr');
+        if($d22e == ''){
+            $d22e = '0.00';
+        }
+
+        $d23 = date('Y-m-23');
+        $d23i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d23)->sum('cr');
+        if($d23i == ''){
+            $d23i = '0.00';
+        }
+        $d23e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d23)->sum('dr');
+        if($d23e == ''){
+            $d23e = '0.00';
+        }
+
+        $d24 = date('Y-m-24');
+        $d24i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d24)->sum('cr');
+        if($d24i == ''){
+            $d24i = '0.00';
+        }
+        $d24e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d24)->sum('dr');
+        if($d24e == ''){
+            $d24e = '0.00';
+        }
+
+        $d25 = date('Y-m-25');
+        $d25i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d25)->sum('cr');
+        if($d25i == ''){
+            $d25i = '0.00';
+        }
+        $d25e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d25)->sum('dr');
+        if($d25e == ''){
+            $d25e = '0.00';
+        }
+
+        $d26 = date('Y-m-26');
+        $d26i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d26)->sum('cr');
+        if($d26i == ''){
+            $d26i = '0.00';
+        }
+        $d26e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d26)->sum('dr');
+        if($d26e == ''){
+            $d26e = '0.00';
+        }
+
+        $d27 = date('Y-m-27');
+        $d27i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d27)->sum('cr');
+        if($d27i == ''){
+            $d27i = '0.00';
+        }
+        $d27e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d27)->sum('dr');
+        if($d27e == ''){
+            $d27e = '0.00';
+        }
+
+
+        $d28 = date('Y-m-28');
+        $d28i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d28)->sum('cr');
+        if($d28i == ''){
+            $d28i = '0.00';
+        }
+        $d28e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d28)->sum('dr');
+        if($d28e == ''){
+            $d28e = '0.00';
+        }
+
+        $d29 = date('Y-m-29');
+        $d29i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d29)->sum('cr');
+        if($d29i == ''){
+            $d29i = '0.00';
+        }
+        $d29e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d29)->sum('dr');
+        if($d29e == ''){
+            $d29e = '0.00';
+        }
+
+        $d30 = date('Y-m-30');
+        $d30i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d30)->sum('cr');
+        if($d30i == ''){
+            $d30i = '0.00';
+        }
+        $d30e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d30)->sum('dr');
+        if($d30e == ''){
+            $d30e = '0.00';
+        }
+
+        $d31 = date('Y-m-31');
+        $d31i = ORM::for_table('sys_transactions')->where('type','Income')->where('date',$d31)->sum('cr');
+        if($d31i == ''){
+            $d31i = '0.00';
+        }
+        $d31e = ORM::for_table('sys_transactions')->where('type','Expense')->where('date',$d31)->sum('dr');
+        if($d31e == ''){
+            $d31e = '0.00';
+        }
+
+
+
+
+        $invoices = ORM::for_table('sys_invoices')->limit(5)->order_by_desc('id')->find_many();
+        $ui->assign('invoices',$invoices);
+
+
+        $ui->assign('xheader', '
+<link href="'.APP_URL.'/ui/lib/c3/c3.min.css" rel="stylesheet" type="text/css">
+');
+
+// next
+
+//$ui->assign('xheader', '
+//<link href="'.APP_URL.'/ui/lib/c3/c3.min.css" rel="stylesheet" type="text/css">
+//<link href="'.APP_URL.'/ui/lib/css/dashboard.css" rel="stylesheet" type="text/css">
+//');
+
+
+        $ui->assign('xfooter', Asset::js(array('dashboard/graph')).'
+<script type="text/javascript" src="'.APP_URL.'/ui/lib/c3/d3.min.js"></script>
+<script type="text/javascript" src="'.APP_URL.'/ui/lib/c3/c3.min.js"></script>
+<script type="text/javascript" src="'.APP_URL.'/ui/lib/numeric.js"></script>
+');
+
+// next
+
+//$ui->assign('xfooter', '
+//<script type="text/javascript" src="'.APP_URL.'/ui/lib/c3/d3.min.js"></script>
+//<script type="text/javascript" src="'.APP_URL.'/ui/lib/c3/c3.min.js"></script>
+//<script type="text/javascript" src="'.APP_URL.'/ui/lib/numeric.js"></script>
+//<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+//<script type="text/javascript" src="'.APP_URL.'/ui/lib/dashboard.js"></script>
+//');
+
+
+
+//$js_currency_symbol_position = '';
+//$js_currency_decimal_digits = '';
+//
+//if($config['currency_symbol_position'] == 's'){
+//    $js_currency_symbol_position = 'aSign: \''.$config['currency_code'].' \',';
+//}
+//
+//if($config['currency_decimal_digits'] == '0'){
+//    $js_currency_decimal_digits = 'aPad: false,';
+//}
+
+        $ui->assign('jsvar','');
+
+        $ui->assign('xjq', '
+
+var chart = c3.generate({
+    bindto: \'#chart\',
+    data: {
+	columns: [
+
+		[\''.$_L['Income'].'\', \'0\','.$d1i.','.$d2i.', '.$d3i.', '.$d4i.', '.$d5i.', '.$d6i.', '.$d7i.', '.$d8i.', '.$d9i.', '.$d10i.', '.$d11i.', '.$d12i.', '.$d13i.', '.$d14i.', '.$d15i.', '.$d16i.', '.$d17i.', '.$d18i.', '.$d19i.', '.$d20i.', '.$d21i.', '.$d22i.', '.$d23i.', '.$d24i.', '.$d25i.', '.$d26i.', '.$d27i.', '.$d28i.', '.$d29i.', '.$d30i.', '.$d31i.'],
+		[\''.$_L['Expense'].'\', \'0\','.$d1e.','.$d2e.', '.$d3e.', '.$d4e.', '.$d5e.', '.$d6e.', '.$d7e.', '.$d8e.', '.$d9e.', '.$d10e.', '.$d11e.', '.$d12e.', '.$d13e.', '.$d14e.', '.$d15e.', '.$d16e.', '.$d17e.', '.$d18e.', '.$d19e.', '.$d20e.', '.$d21e.', '.$d22e.', '.$d23e.', '.$d24e.', '.$d25e.', '.$d26e.', '.$d27e.', '.$d28e.', '.$d29e.', '.$d30e.', '.$d31e.']
+	],
+        type: \'area-spline\',
+         colors: {
+            '.$_L['Income'].': \'#23c6c8\',
+            '.$_L['Expense'].': \'#ed5565\'
+        }
+    }
+
+});
+
+var dchart = c3.generate({
+    bindto: \'#dchart\',
+    data: {
+        columns: [
+            [\''.$_L['Income'].'\', '.$mi.'],
+            [\''.$_L['Expense'].'\', '.$me.'],
+        ],
+        type : \'donut\',
+        colors: {
+            '.$_L['Income'].': \'#23c6c8\',
+            '.$_L['Expense'].': \'#ed5565\'
+        }
+    },
+    donut: {
+        title: "'.$_L['Income_Vs_Expense'].'"
+    }
+});
+
+    $("#set_goal").click(function (e) {
+        e.preventDefault();
+
+        bootbox.prompt({
+            title: "'.$_L['Set New Goal for Net Worth'].'",
+            value: "'.$v_goal.'",
+            buttons: {
+        \'cancel\': {
+            label: \''.$_L['Cancel'].'\'
+        },
+        \'confirm\': {
+            label: \''.$_L['OK'].'\'
+        }
+    },
+            callback: function(result) {
+                if (result === null) {
+
+                } else {
+                   // alert(result);
+                     $.post( "'.U.'settings/networth_goal/", { goal: result })
+        .done(function( data ) {
+            location.reload();
+        });
+                }
+            }
+        });
+
+    });
+
+    $(\'.amount\').autoNumeric(\'init\', {
+
+    aSign: \''.$config['currency_code'].' \',
+    dGroup: '.$config['thousand_separator_placement'].',
+    aPad: '.$config['currency_decimal_digits'].',
+    pSign: \''.$config['currency_symbol_position'].'\',
+    aDec: \''.$config['dec_point'].'\',
+    aSep: \''.$config['thousands_sep'].'\'
+
+    });
+
+ ');
+
+ $sales = ORM::for_table('crm_sales')->where_gte('expire_date', date('Y-m-d'))->where_lte('expire_date', date('Y-m-d', strtotime(date('Y-m-d'). ' + 21 days')))->limit(10)->order_by_desc('id')->find_many();
+ $ui->assign('sales',$sales);       
+
+        Event::trigger('dashboard/_on_display');
+
+        $ui->display('dashboard-alt.tpl');
+
+
+
+        break;
+
+
+    case 'invoice_stats':
+
+
+        $paid = ORM::for_table('sys_invoices')->where('status','Paid')->count();
+        $unpaid = ORM::for_table('sys_invoices')->where('status','Unpaid')->count();
+        $partially_paid = ORM::for_table('sys_invoices')->where('status','Partially Paid')->count();
+
+        $arr = array('Paid' => $paid,'Unpaid' => $unpaid,'Partially Paid' => $partially_paid);
+
+
+        $p = Ib_Math::array_percentage($arr);
+
+
+
+
+
+        echo '<table class="table table-bordered">
+
+                        <tbody>
+
+
+                            <tr>
+                                <td width="200px;"> <a href="'.U.'invoices/list/filter/unpaid/">'.$_L['Unpaid'].' ('.$unpaid.')</a> </td>
+                                <td><div class="progress progress-small progress-thin" style="margin-bottom: 0;">
+                                        <div style="width: '.$p['Unpaid']['percentage'].'%;" class="progress-bar progress-bar-danger"></div>
+                                    </div></td>
+
+                               
+                            </tr>
+                            <tr>
+                                <td width="200px;"><a href="'.U.'invoices/list/filter/partially_paid/">'.$_L['Partially Paid'].' ('.$partially_paid.')</a></td>
+                                <td><div class="progress progress-small progress-thin" style="margin-bottom: 0;">
+                                        <div style="width: '.$p['Partially Paid']['percentage'].'%;" class="progress-bar progress-bar-success"></div>
+                                    </div></td>
+
+                               
+                            </tr>
+
+                            <tr>
+                                <td width="200px;"><a href="'.U.'invoices/list/filter/paid/">'.$_L['Paid'].' ('.$paid.')</a></td>
+                                <td><div class="progress progress-small progress-thin" style="margin-bottom: 0;">
+                                        <div style="width: '.$p['Paid']['percentage'].'%;" class="progress-bar progress-bar-info"></div>
+                                    </div></td>
+
+                               
+                            </tr>
+
+                          
+
+
+                        </tbody>
+                    </table>';
+
+
+
+        break;
+default:
+        echo 'action not defined';
+
+
+}

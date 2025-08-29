@@ -1,0 +1,296 @@
+<html>
+
+<head>
+
+    <style>
+
+/*
+
+PDF library using PHP have some limitations and all CSS properties may not support. Before Editing this file, Please create a backup, so that You can restore this.
+
+The location of this file is here- application/lib/invoices/pdf-x2.php
+
+*/
+
+        * { margin: 0; padding: 0; }
+        body {
+            /*
+
+            Important: Do not Edit Font Name, Unless you are sure. It's required for PDF Rendering Properly
+
+            */
+
+
+            font: 14px/1.4  dejavusanscondensed;
+
+
+            /*
+
+            Font Name End
+
+            */
+        }
+
+        #page-wrap { width: 800px; margin: 0 auto; }
+
+        table { border-collapse: collapse; }
+        table td, table th { border: 1px solid black; padding: 5px; }
+
+
+        #customer { overflow: hidden; }
+
+        #logo { text-align: right; float: right; position: relative; margin-top: 25px; border: 1px solid #fff; max-width: 540px; overflow: hidden; }
+
+        #meta { margin-top: 1px; width: 100%; float: right; }
+        #meta td { text-align: right;  }
+        #meta td.meta-head { text-align: left; background: #eee; }
+        #meta td textarea { width: 100%; height: 20px; text-align: right; }
+
+        #items { clear: both; width: 100%; margin: 30px 0 0 0; border: 1px solid black; }
+        #items th { background: #eee; }
+        #items textarea { width: 80px; height: 50px; }
+        #items tr.item-row td {  vertical-align: top; }
+        #items td.description { width: 300px; }
+        #items td.item-name { width: 175px; }
+        #items td.description textarea, #items td.item-name textarea { width: 100%; }
+        #items td.total-line { border-right: 0; text-align: right; }
+        #items td.total-value { border-left: 0; padding: 10px; }
+        #items td.total-value textarea { height: 20px; background: none; }
+        #items td.balance { background: #eee; }
+        #items td.blank { border: 0; }
+
+        #terms { text-align: left; margin: 20px 0 0 0; }
+        #terms h5 { text-transform: uppercase; font: 13px <?php echo $config['pdf_font']; ?>; letter-spacing: 10px; border-bottom: 1px solid black; padding: 0 0 8px 0; margin: 0 0 8px 0; }
+        #terms textarea { width: 100%; text-align: center;}
+
+    </style>
+
+</head>
+
+<body style="font-family:dejavusanscondensed">
+
+<div id="page-wrap">
+	<table width="100%">
+		<tr>
+			<td style="border: 0;  text-align: left" width="62%">
+				<span style="font-size: 18px; color: #2f4f4f"><strong><?php echo $_L['INVOICE']; ?> # <?php
+									if($d['cn'] != ''){
+											$dispid = $d['cn'];
+									}
+									else{
+											$dispid = $d['id'];
+									}
+									echo $d['invoicenum'].$dispid;
+									?></strong></span>
+			</td>
+			<td style="border: 0;  text-align: right" width="62%"><div id="logo" style="font-size:18px">
+							<img id="image" src="<?php echo APP_URL; ?>/application/storage/system/logo.png" alt="logo" /> <br> <br>
+							<?php echo $config['caddress']; ?>
+					</div>
+			</td>
+		</tr>
+	</table><hr>
+  <div style="clear:both"></div>
+    <div id="customer">
+      <table id="meta">
+				<tr>
+					<td rowspan="5" style="border: 1px solid white; border-right: 1px solid black; text-align: left" width="62%"> <strong><?php echo $_L['Invoiced To']; ?></strong> <br>
+							<?php if($a['company'] != '') {
+									?>
+									<?php echo $a['company']; ?> <br>
+									<?php echo $_L['ATTN']; ?>: <?php echo $a['account']; ?> <br>
+							<?php
+							}
+							else{
+									?>
+									<?php echo $d['account']; ?> <br>
+							<?php
+							}
+							?>
+							<?php echo $a['address']; ?> <br>
+							<?php echo $a['city']; ?> <?php echo $a['state']; ?> <?php echo $a['zip']; ?> <br>
+							<?php echo $a['country']; ?> <br>
+							<?php
+							if(($a['phone']) != ''){
+									echo 'Phone: '. $a['phone']. ' <br>';
+							}
+							if(($a['email']) != ''){
+									echo 'Email: '. $a['email']. ' <br>';
+							}
+							foreach ($cf as $cfs){
+									echo $cfs['fieldname'].': '. get_custom_field_value($cfs['id'],$a['id']). ' <br>';
+							}
+							?><br>
+										<strong><?php echo $_L['gst'].": ";?></strong> <?php echo $a['gst_no']; ?>
+					</td>
+					<td class="meta-head"><?php echo $_L['INVOICE']; ?> #</td>
+					<td><?php echo $d['invoicenum'].$dispid; ?></td>
+				</tr>
+				<tr>
+
+						<td class="meta-head"><?php echo $_L['Status']; ?></td>
+						<td><?php
+							 echo ib_lan_get_line($d['status'])
+								?></td>
+				</tr>
+				<tr>
+
+						<td class="meta-head"><?php echo $_L['Invoice Date']; ?></td>
+						<td><?php echo date($config['df'], strtotime($d['date'])); ?></td>
+				</tr>
+				<tr>
+						<td class="meta-head"><?php echo $_L['Due Date']; ?></td>
+						<td><?php echo date($config['df'], strtotime($d['duedate'])); ?></td>
+				</tr>
+				<?php
+				if($d['credit'] != '0.00'){
+						?>
+						<tr>
+								<td class="meta-head"><?php echo $_L['Amount Due']; ?></td>
+								<td><div class="due"><?php echo ib_money_format($i_due,$config,$d['currency_symbol']); ?></div></td>
+						</tr>
+				<?php
+				}
+				else{
+						?>
+						<tr>
+								<td class="meta-head"><?php echo $_L['Amount Due']; ?></td>
+								<td><div class="due"><?php echo ib_money_format($i_due,$config,$d['currency_symbol']); ?></div></td>
+						</tr>
+				<?php
+				}
+				?>
+        </table>
+    </div>
+			
+		<div class="table-responsive">
+			<table class="table" id="items">
+				<tr>
+					<th rowspan="2" id="cell-item" class="text-semibold">#</th>
+					<th rowspan="2" id="cell-item" class="text-semibold"><?php echo $_L['Description'];?></th>
+					<th rowspan="2" id="cell-code" class="text-semibold"><?php echo $_L['HSNSAC'];?></th>
+					<th rowspan="2" id="cell-qty" class="text-center text-semibold"><?php echo $_L['Weight'];?></th>
+					<th rowspan="2" id="cell-price" class="text-center text-semibold"><?php echo $_L['Rate'];?></th>				
+					<th colspan="2" id="cell-cgst" class="text-center text-semibold"><?php echo 'CGST';?></th>
+					<th colspan="2" id="cell-sgst" class="text-center text-semibold"><?php echo 'SGST';?></th>				
+					<th colspan="2" id="cell-igst" class="text-center text-semibold"><?php echo 'IGST';?></th>				
+					<th rowspan="2" id="cell-total" class="text-center text-semibold"><?php echo $_L['Total'];?></th>
+				</tr>
+				<tr>
+					<th>%</th>
+					<th>AMT</th>
+					<th>%</th>
+					<th>AMT</th>
+					<th>%</th>
+					<th>AMT</th>
+				</tr>
+					<?php  $i=0; 
+					foreach ($items as $item){ 
+							echo '<tr class="item-row">
+							<td class="center">'.++$i.'</td>
+							<td class="">'.$item['description'].'</td>
+							<td class="">'.get_item_hsn($item['itemcode']).'</td>
+							<td align="right">'.$item['qty'].'</td>
+							<td align="right">'.$item['amount'].'</td>';
+							if(get_tax_type($item['taxed'])=="GST"){
+						echo	'<td align="right">'.($item['taxrate']/2).'</td>
+							<td align="right">'.($item['taxamount']/2).'</td>
+							<td align="right">'.($item['taxrate']/2).'</td>
+							<td align="right">'.($item['taxamount']/2).'</td>';
+							}else{
+								echo '<td></td><td></td><td></td><td></td>';
+							}
+							if(get_tax_type($item['taxed'])=="IGST"){
+								echo '<td align="right">'.$item['taxrate'].'</td>
+								<td align="right">'.$item['taxamount'].'</td>';
+							}else{
+								echo '<td></td><td></td>';
+							}
+							echo '<td align="right"><span class="price">'.$item['total'].'</span></td>
+					</tr>';
+					} 
+
+					?>
+			</table>	
+		</div>		<br>
+		<div class="table-responsive">
+			<table class="table" align="right">		
+					<tr><td class="total-line"><?php echo $_L['Sub Total']; ?></td>
+							<td class="total-value" align="right"><div id="subtotal"><?php echo ib_money_format($d['subtotal'],$config,$d['currency_symbol']); ?></div></td>
+					</tr>
+				<?php if(($d['discount']) != '0.00'){ ?>
+					<tr><td class="total-line"><?php echo $_L['Discount']; ?>
+								<?php if($d['discount_type'] == 'p'){ echo '('.$d['discount_value'].')%'; } ?></td>
+							<td class="total-value" align="right"><div id="subtotal"><?php echo ib_money_format($d['discount'],$config,$d['currency_symbol']); ?></div></td>
+					</tr>
+				<?php } ?>
+				<?php if (($d['tax']) != '0.00'){ ?>
+					<tr><td class="total-line"><?php echo $_L['TAX']." Amount"; ?></td>
+							<td class="total-value" align="right"><div id="total"><?php echo ib_money_format($d['tax'],$config,$d['currency_symbol']); ?></div></td>
+					</tr>
+				<?php } ?>
+				<?php if($d['credit'] != '0.00'){ ?>
+					<tr><td class="total-line"><?php echo $_L['Invoice Total']; ?></td>
+							<td class="total-value" align="right"><div class="due"><?php echo ib_money_format($d['total'],$config,$d['currency_symbol']); ?></div></td>
+					</tr>
+					<tr><td  class="total-line"><?php echo $_L['Total Paid']; ?></td>
+							<td class="total-value" align="right"><div class="due"><?php echo ib_money_format($d['credit'],$config,$d['currency_symbol']); ?></div></td>
+					</tr>
+					<tr><td class="total-line balance"><?php echo $_L['Amount Due']; ?></td>
+							<td class="total-value balance" align="right"><div class="due"><?php echo ib_money_format($i_due,$config,$d['currency_symbol']) ?></div></td>
+					</tr>
+				<?php }else{ ?>
+					<tr><td class="total-line balance"><?php echo $_L['Grand Total']; ?></td>
+							<td class="total-value balance" align="right"><div class="due"><?php echo ib_money_format($d['total'],$config,$d['currency_symbol']); ?></div></td>
+					</tr>
+				<?php } ?>
+			</table>
+		</div>
+    
+    <!--    related transactions -->
+    <?php
+    if ($trs_c != ''){
+        ?>
+        <h4><?php echo $_L['Related Transactions']; ?>: </h4>
+				<div class="table-responsive">
+					<table class="table" id="related_transactions" style="width: 100%">
+            <tr>
+                <th align="left"><?php echo $_L['Date']; ?></th>
+                <th align="left"><?php echo $_L['Account']; ?></th>
+								<th align="left"><?php echo $_L['Method']; ?></th>
+                <th align="left"><?php echo $_L['Description']; ?></th>
+                <th align="right"><?php echo $_L['Amount']; ?></th>
+            </tr>
+            <?php
+            foreach ($trs as $tr){
+                echo '  <tr class="item-row">
+            <td align="left">'.date( $config['df'], strtotime($tr['date'])).'</td>
+            <td align="left">'.$tr['account'].'</td>
+						<td align="left">'.$tr['method'].'</td>
+            <td align="left">'.$tr['description'].'</td>
+            <td align="right"><span class="price">'.ib_money_format($tr['amount'],$config,$d['currency_symbol']).'</span></td>
+        </tr>';
+            }
+            ?>
+        </table>
+      </div>
+    <?php
+    }
+    ?>
+    <!--    end related transactions -->
+
+    <?php
+    if($d['notes'] != ''){
+        ?>
+        <div id="terms">
+            <h5><?php echo $_L['Terms']; ?></h5>
+            <?php echo $d['notes']; ?>
+        </div>
+    <?php
+    }
+    ?>
+</div>
+
+</body>
+
+</html>

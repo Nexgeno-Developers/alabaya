@@ -1,0 +1,55 @@
+$(document).ready(function () {
+
+	$("#colorcoated").click(function () {
+		console.log('click');
+	   if($('#colorcoated').is(':checked')){
+		   	console.log('checked');
+			$("#colorcoated").attr ( "checked" ,"checked" );
+			$("#colorcoated").val ('on');
+			$("#color").removeAttr('disabled');
+		}
+		else
+		{
+			console.log('uncheck');
+			$("#colorcoated").removeAttr('checked');
+			$("#colorcoated").val('off');
+			$("#color").attr ( "disabled" ,"disabled" );
+		}
+	});	
+    $(".progress").hide();
+    $("#emsg").hide();
+    $("#submit").click(function (e) {
+        e.preventDefault();
+        $('#ibox_form').block({ message: null });
+        var _url = $("#_url").val();
+        $.post(_url + 'ps/add-post/', {
+            category: $('#category').val(),
+            company: $('#company').val(),
+            name: $('#name').val(),
+            thickness: $('#thickness').val(),
+            width: $('#width').val(),
+            height: $('#height').val(),
+            colorcoated: $('#colorcoated').val(),
+            color: $('#color').val(),
+            hsnsac: $('#hsnsac').val(),
+            item_number: $('#item_number').val(),
+            sales_price: $('#sales_price').val(),
+            type: $('#type').val()
+        })
+		.done(function (data) {
+
+			setTimeout(function () {
+				var sbutton = $("#submit");
+				var _url = $("#_url").val();
+				if ($.isNumeric(data)) {
+					location.reload();
+				}
+				else {
+					$('#ibox_form').unblock();
+					$("#emsgbody").html(data);
+					$("#emsg").show("slow");
+				}
+			}, 2000);
+		});
+    });
+});

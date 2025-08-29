@@ -1,0 +1,626 @@
+<?php
+_auth();
+$ui->assign('_application_menu', 'ps');
+$ui->assign('_title', $_L['Products n Services'].'- '. $config['CompanyName']);
+$ui->assign('_st', $_L['Products n Services']);
+$action = $routes['1'];
+$user = User::_info();
+$ui->assign('user', $user);
+switch ($action) {
+
+    case 'modal-list':
+		
+      $d = ORM::for_table('sys_items')->order_by_asc('name')->find_many();
+
+        echo '
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+			<h3>'.$_L['Products n Services'].'</h3>
+		</div>
+		<div class="modal-body">
+			<table id="datatable" class="table table-striped" id="items_table">
+			  <thead>
+				<tr>
+				  <th width="10%">#</th>
+				  <th width="20%">'.$_L['Item Id'].'</th>
+				  <th width="55%">'.$_L['Item Name'].'</th>
+				  <th width="55%">'.$_L['Weight'].'</th>
+				  <th width="55%">'.$_L['Length'].'</th>
+				  <th width="15%">'.$_L['Rate'].'</th>
+				</tr>
+			  </thead>
+			  <tbody>
+			   ';
+
+				foreach($d as $ds){
+				   /* $price = number_format($ds['sales_price'],2,$config['dec_point'],$config['thousands_sep']); */
+				   $price = $ds['sales_price'];
+					echo ' <tr>
+				  <td><input type="checkbox" class="si" value="'.$ds['id'].'"></td>
+				   <td>'.$ds['id'].'</td>
+				  <td>'.$ds['name'].'</td>
+				  <td>'.$ds['weight'].'</td>
+				  <td>'.$ds['height'].'</td>
+				  <td class="price">'.$price.'</td>
+				</tr>';
+				}
+				echo '
+			  </tbody>
+			</table>
+		</div>
+		<div class="modal-footer">
+			<button type="button" data-dismiss="modal" class="btn">'.$_L['Close'].'</button>
+			<button class="btn btn-primary update">'.$_L['Select'].'</button>
+		</div>';
+		echo '<script type="text/javascript">$(document).ready(function() {$("#datatable").DataTable(); });</script>';
+		
+        break;
+		
+    case 'stock_available':
+	
+		$productId = _post('p_id');
+		$weight =  _post('weight');
+		$edit_weight =  _post('edit_weight');
+		/* var_dump($weight);
+		var_dump($edit_weight); */
+		$items = ORM::for_table('sys_items')->select('weight')->select('height')->find_one($productId);
+		
+        /* //if Weight exist */
+		if(!empty($edit_weight) && $weight < $edit_weight){
+			$updateWeight = $edit_weight - $weight;
+			$availableStock = $items['weight'] + $updateWeight;
+			if ($weight <= $availableStock) {
+				echo 'true';
+			} else {
+				echo 'false';
+			}
+		}elseif(!empty($edit_weight) && $weight > $edit_weight){
+			
+			$availableStock = $items['weight'] + $edit_weight;
+			if ($weight <= $availableStock) {
+				echo 'true';
+			} else {
+				echo 'false';
+			}
+		}
+		else{
+			if ($weight <= $items['weight']) {
+				echo 'true';
+			} else {
+				echo 'false';
+			}
+        }
+	 break;
+
+    case 'stock_available_length':
+	
+		$productId = _post('p_id');
+		$edit_height =  _post('edit_height');
+		$height =  _post('height');
+		
+		$items = ORM::for_table('sys_items')->select('weight')->select('height')->find_one($productId);
+		
+        /* //if Height exist */
+		if(!empty($edit_height) && $height < $edit_height){
+			$updateHeight = $edit_height - $height;
+			$availableStock = $items['height'] + $updateHeight;
+			
+			if ($height <= $availableStock) {
+				echo 'true';
+			} else {
+				echo 'false';
+			}
+		}else {
+			if ($height <= $items['height']) {
+				echo 'true';
+			} else {
+				echo 'false';
+			}
+        }
+		
+        break;
+		
+		case 'product-list':
+
+        $lists = ORM::for_table('sys_items')->order_by_asc('name')->find_many();
+		$listopt = "";
+		foreach ($lists as $list) {
+          $listopt .= '<option value=' . $list['id'] . '>' . $list['name'] .' </option>';
+        } 
+        
+		//var_dump($out);
+		echo $listopt;
+
+        break;
+
+		case 'product-details' :
+				$id = _post('id');
+				
+        $items = ORM::for_table('sys_items')->select('id')->select('name')->select('sales_price')->select('item_number')->find_one($id);
+
+				$out = array(
+					 'id' => utf8_encode($items['id']), 
+					 'name' => utf8_encode($items['name']), 
+					 'sales_price' => utf8_encode($items['sales_price']), 
+					 'item_number' => utf8_encode($items['item_number']), 
+				);
+
+				echo json_encode($out);
+
+        break;
+
+
+    case 'p-new':
+	
+        $ui->assign('type','Product');
+        $ui->assign('xfooter', Asset::js(array('numeric','jslib/add-ps')));
+        $ui->assign('xjq', '$(\'.amount\').autoNumeric(\'init\');');
+
+        $categorylist = ORM::for_table('product_category')->where('type','product')->order_by_asc('sorder')->find_many();
+	
+        $companylist = ORM::for_table('sys_companies')->order_by_asc('id')->find_many();
+		
+        $max = ORM::for_table('sys_items')->max('id');
+        /* $nxt = $max+1;
+        $ui->assign('nxt',$nxt); */
+        $ui->assign('categorylist',$categorylist);
+        $ui->assign('companylist',$companylist);
+        $ui->display('add-ps.tpl');
+        break;
+
+    case 's-new':
+	
+        $ui->assign('type','Service');
+        $ui->assign('xfooter', Asset::js(array('numeric','jslib/add-ps')));
+        $ui->assign('xjq', '$(\'.amount\').autoNumeric(\'init\');');
+
+        $max = ORM::for_table('sys_items')->max('id');
+        $nxt = $max+1;
+        $ui->assign('nxt',$nxt);
+        $ui->display('add-ps.tpl');
+        break;
+
+    case 'add-post':
+		/* //var_dump($_POST);exit; */
+        $category = _post('category');
+        $company = _post('company');
+        $name = _post('name');
+        $weight = _post('weight');
+        $thickness = _post('thickness');
+        $width = _post('width');
+        $height = _post('height');
+        $hsnsac = _post('hsnsac');
+        $colorcoated = _post('colorcoated');
+        $color = _post('color');
+        $sales_price = Finance::amount_fix(_post('sales_price'));
+        $item_number = _post('item_number');
+        $type = _post('type');
+	
+        $msg = '';
+
+        if($category == ''){
+            $msg .= 'Product Category is required <br>';
+        }
+        if($company == ''){
+            $msg .= 'Product Company is required <br>';
+        }
+        if($name == ''){
+            $msg .= 'Product Name is required <br>';
+        }
+        if($thickness == ''){
+            $msg .= 'Product Thickness is required <br>';
+        }
+        if($weight == ''){
+            $msg .= 'Product Weight is required <br>';
+        }
+        if($width == ''){
+            $msg .= 'Product Width is required <br>';
+        }
+        if($height == ''){
+            $msg .= 'Product Height is required <br>';
+        }
+        if($hsnsac == ''){
+            $msg .= 'Product HSN/SAC is required <br>';
+        }
+        if($item_number == ''){
+            $msg .= 'Product Bundle Number is required <br>';
+        }
+        if($sales_price == ''){
+            $msg .= 'Product Sales Price is required <br>';
+        }
+       if(!is_numeric($item_number)){
+           $msg .= 'Product Bundle should be number. <br>';
+       }
+       if(!is_numeric($sales_price)){
+           $msg .= 'Product Sales Price should be number <br>';
+       }
+       if($colorcoated=='on'){
+		   if($color=='' || empty($color)){
+			   $msg .= 'Product Color is required Price should be number <br>';
+		   }
+	   }
+       if($colorcoated=='off'){
+			$color = NULL;
+	   }
+        if($msg == ''){
+            $d = ORM::for_table('sys_items')->create();
+            $d->category = $category;
+            $d->company = $company;
+            $d->name = $name;
+            $d->weight = $weight;
+            $d->thickness = $thickness;
+            $d->width = $width;
+            $d->height = $height;
+            $d->colorcoated = $colorcoated;
+            $d->color = $color;
+            $d->hsnsac = $hsnsac;
+            $d->sales_price = $sales_price;
+            $d->item_number = $item_number;
+            $d->type = $type;
+            $d->added = date('Y-m-d');
+			//others
+            $d->unit = '';
+            $d->e = '';
+			$d->save();
+            echo _msglog('s',$_L['Product_Added_Successfully']);
+            echo $d->id();
+        }
+        else{
+            echo $msg;
+        }
+        break;
+
+    case 'view':
+//        $id  = $routes['2'];
+//        $d = ORM::for_table('sys_items')->find_one($id);
+//        if($d){
+//
+//            //find all activity for this user
+//            $ac = ORM::for_table('sys_activity')->where('cid',$id)->limit(20)->order_by_desc('id')->find_many();
+//            $ui->assign('ac',$ac);
+//            $ui->assign('countries',Countries::all($d['country']));
+//
+//            $ui->assign('xheader', '
+//			<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/select2/select2.css"/>
+//
+//');
+//            $ui->assign('xfooter', '
+//			<script type="text/javascript" src="' . $_theme . '/lib/select2/select2.min.js"></script>
+//			<script type="text/javascript" src="' . $_theme . '/lib/profile.js"></script>
+//
+//');
+//
+//            $ui->assign('xjq', '
+// 			$("#country").select2();
+//
+// ');
+//            $ui->assign('d',$d);
+//            $ui->display('ps-view.tpl');
+//
+//        }
+//        else{
+//         //   r2(U . 'customers/list', 'e', $_L['Account_Not_Found']);
+//
+//        }
+
+        break;
+
+    case 'p-list':
+        $paginator = Paginator::bootstrap('sys_items','type','Product');
+        $d = ORM::for_table('sys_items')->where('type','Product')->offset($paginator['startpoint'])->limit($paginator['limit'])->order_by_desc('id')->find_many();
+        $ui->assign('d',$d);
+        $ui->assign('type','Product');
+        $ui->assign('paginator',$paginator);
+        $ui->assign('xheader', '
+<link rel="stylesheet" type="text/css" href="' . $_theme . '/css/modal.css"/>
+
+');
+        $ui->assign('xfooter', '
+        <script type="text/javascript" src="' . $_theme . '/lib/modal.js"></script>
+<script type="text/javascript" src="' . $_theme . '/lib/ps-list.js"></script>
+
+');
+        $ui->display('ps-list.tpl');
+        break;
+
+    case 's-list':
+
+        $paginator = Paginator::bootstrap('sys_items','type','Service');
+        $d = ORM::for_table('sys_items')->where('type','Service')->offset($paginator['startpoint'])->limit($paginator['limit'])->order_by_desc('id')->find_many();
+        $ui->assign('d',$d);
+        $ui->assign('type','Service');
+        $ui->assign('paginator',$paginator);
+        $ui->assign('xheader', '<link rel="stylesheet" type="text/css" href="' . $_theme . '/css/modal.css"/>');
+        $ui->assign('xfooter', '<script type="text/javascript" src="' . $_theme . '/lib/modal.js"></script>
+<script type="text/javascript" src="' . $_theme . '/lib/ps-list.js"></script>');
+        $ui->display('ps-list.tpl');
+        break;
+
+
+    case 'edit-post':
+		/* var_dump($_POST);exit; */
+        $msg = '';
+        $id = _post('id');
+        $category = _post('category');
+        $company = _post('company');
+        $name = _post('name');
+        $weight = _post('weight');
+        $thickness = _post('thickness');
+        $width = _post('width');
+        $height = _post('height');
+        $hsnsac = _post('hsnsac');
+        $colorcoated = _post('colorcoated');
+        $color = _post('color');
+        $sales_price = Finance::amount_fix(_post('sales_price'));
+        $item_number = _post('item_number');
+        $type = _post('type');
+	
+        $msg = '';
+
+        if($category == ''){
+            $msg .= 'Product Category is required <br>';
+        }
+        if($company == ''){
+            $msg .= 'Product Company is required <br>';
+        }
+        if($name == ''){
+            $msg .= 'Product Name is required <br>';
+        }
+        if($weight == ''){
+            $msg .= 'Product Weight is required <br>';
+        }
+        if($thickness == ''){
+            $msg .= 'Product Thickness is required <br>';
+        }
+        if($width == ''){
+            $msg .= 'Product Width is required <br>';
+        }
+        if($height == ''){
+            $msg .= 'Product Height is required <br>';
+        }
+        if($hsnsac == ''){
+            $msg .= 'Product HSN/SAC is required <br>';
+        }
+        if($item_number == ''){
+            $msg .= 'Product Bundle Number is required <br>';
+        }
+        if($sales_price == ''){
+            $msg .= 'Product Sales Price is required <br>';
+        }
+       if(!is_numeric($item_number)){
+           $msg .= 'Product Bundle should be number. <br>';
+       }
+       if(!is_numeric($sales_price)){
+           $msg .= 'Product Sales Price should be number <br>';
+       }
+       if($colorcoated=='on'){
+		   if($color=='' || empty($color)){
+			   $msg .= 'Product Color is required Price should be number <br>';
+		   }
+	   }
+       if($colorcoated=='off'){$color = NULL;}
+       if($colorcoated==''){$colorcoated = 'off';}
+
+
+        if($msg == ''){
+            $d = ORM::for_table('sys_items')->find_one($id);
+            if($d){
+			$d->category = $category;
+            $d->company = $company;
+            $d->name = $name;
+            $d->weight = $weight;
+            $d->thickness = $thickness;
+            $d->width = $width;
+            $d->height = $height;
+            $d->colorcoated = $colorcoated;
+            $d->color = $color;
+            $d->hsnsac = $hsnsac;
+            $d->sales_price = $sales_price;
+            $d->item_number = $item_number;
+                $d->save();
+                echo $d->id();
+            }
+            else{
+                echo 'Not Found';
+            }
+
+
+        }
+        else{
+            echo $msg;
+        }
+
+
+        break;
+    case 'delete':
+        $id = $routes['2'];
+        if($_app_stage == 'Demo'){
+            r2(U . 'accounts/list', 'e', 'Sorry! Deleting Account is disabled in the demo mode.');
+        }
+        $d = ORM::for_table('sys_accounts')->find_one($id);
+        if($d){
+            $d->delete();
+            r2(U . 'accounts/list', 's', $_L['account_delete_successful']);
+        }
+
+        break;
+
+    case 'edit-form':
+
+	    $categorylist = ORM::for_table('product_category')->where('type','product')->order_by_asc('sorder')->find_many();
+	
+        $companylist = ORM::for_table('sys_companies')->order_by_asc('id')->find_many();
+	
+        $id = $routes['2'];
+        $d = ORM::for_table('sys_items')->find_one($id);
+		/* var_dump($d); */
+        if($d){
+            $price = number_format(($d['sales_price']),2,$config['dec_point'],$config['thousands_sep']);
+            echo '
+<div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+	<h3>'.$_L['Edit'].'</h3>
+</div>
+<div class="modal-body">
+
+<form class="form-horizontal" role="form" id="edit_form" method="post">
+     <input type="hidden" name="id" value="'.$d['id'].'">
+<div class="row">
+    <div class="col-md-6 col-sm-12">
+        <div class="form-group">
+		<label class="col-lg-3 control-label" for="category">'.$_L['Category'].'</label>
+            <div class="col-lg-9">
+            <select id="category" name="category" class="form-control">
+               <option value="">---Select Category---</option>';
+               foreach($categorylist as $clist):
+                     echo '<option ';
+					if($clist["id"]==$d['category']){echo 'selected="selected"';}
+					echo ' value="'.$clist['id'].'">'.$clist['name'].'</option>';
+               endforeach;
+             echo '</select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="name" class="col-lg-3 control-label">'.$_L['Name'].'</label>
+            <div class="col-lg-9">
+                <input type="text" class="form-control" value="'.$d['name'].'" name="name" id="name">
+            </div>
+        </div>
+		<div class="form-group">
+             <label class="col-lg-3 control-label" for="height">'.$_L['Length'].'</label>
+            <div class="col-lg-9">
+                <input type="number" id="height" name="height" value="'.$d['height'].'" class="form-control" autocomplete="off">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-lg-3 control-label" for="width">'.$_L['Width'].'</label>
+            <div class="col-lg-9">
+                <input type="number" id="width" name="width" class="form-control" value="'.$d['width'].'" autocomplete="off">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-lg-4 control-label" for="colorcoated">
+        <input type="checkbox" id="colorcoated" name="colorcoated"';
+		if($d['colorcoated']=='on'){echo 'checked';}
+		echo ' value="'.$d['colorcoated'].'">'.$_L['Color Coated'].'</label>
+            <div class="col-lg-8">
+                <input type="text" id="color" name="color" class="form-control" placeholder="'.$_L['Color'].'" ';
+				if($d['colorcoated']=='on'){ echo 'value="'.$d['color'].'">';}
+				if($d['colorcoated']=='off' || $d['colorcoated']=='' || $d['colorcoated']==NULL){ echo 'value="" disabled>';}
+            echo '</div>
+        </div>
+        <div class="form-group">
+            <label class="col-lg-4 control-label" for="item_number">'.$_L['Bundle Number'].'</label>
+            <div class="col-lg-8">
+                <input type="number" id="item_number" value="'.$d['item_number'].'" name="item_number" class="form-control" autocomplete="off">
+
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-sm-12">
+        <div class="form-group">
+            <label class="col-lg-3 control-label" for="company">'.$_L['Company'].'</label>
+            <div class="col-lg-9">
+            <select id="company" name="company" class="form-control">
+                <option value="">---Select Company---</option>';
+               foreach($companylist as $comlist):
+                     echo '<option ';
+					  if($comlist["id"]==$d['company']){echo 'selected="selected"';}
+					echo 'value="'.$comlist['id'].'">'.$comlist['company_name'].'</option>';
+                endforeach;
+             echo '</select>
+            </div>
+        </div>
+		<div class="form-group">
+			<label class="col-lg-3 control-label" for="weight">'.$_L['Weight'].'</label>
+			<div class="col-lg-9">
+			<input type="number" id="weight" value="'.$d['weight'].'" name="weight" class="form-control" autocomplete="off">
+			</div>
+		</div>
+         <div class="form-group">
+             <label class="col-lg-3 control-label" for="Thickness">'.$_L['Thickness'].'</label>
+            <div class="col-lg-9">
+                <input type="number" id="thickness"  value="'.$d['thickness'].'" name="thickness" class="form-control" autocomplete="off">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-lg-3 control-label" for="hsnsac">'.$_L['HSNSAC'].'</label>
+            <div class="col-lg-9">
+                <input type="text" id="hsnsac" name="hsnsac" value="'.$d['hsnsac'].'" class="form-control" autocomplete="off">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-lg-3 control-label" for="sales_price">'.$_L['Sales Price'].'</label>
+            <div class="col-lg-9">
+                <input type="number" id="sales_price" name="sales_price" value="'.$price.'" class="form-control amount" autocomplete="off" data-a-sign="'.$_c['currency_code'].'"  data-a-dec="'.$_c['dec_point'].'" data-a-sep="'.$_c['thousands_sep'].'" data-d-group="2">
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+</div>
+<div class="modal-footer">
+	<button type="button" data-dismiss="modal" class="btn">'.$_L['Close'].'</button>
+	<button id="update" class="btn btn-primary">'.$_L['Update'].'</button>
+</div>';
+?>
+<script>
+$(document).ready(function () {
+	$("#colorcoated").click(function () {
+		console.log('click');
+	   if($('#colorcoated').is(':checked')){
+		   	console.log('checked');
+			$("#colorcoated").attr ( "checked" ,"checked" );
+			$("#colorcoated").val ('on');
+			$("#color").removeAttr('disabled');
+		}
+		else
+		{
+			console.log('uncheck');
+			$("#colorcoated").removeAttr('checked');
+			$("#colorcoated").val('off');
+			$("#color").attr ( "disabled" ,"disabled" );
+		}
+	});
+});
+</script>
+<?php
+        }
+        else{
+            echo 'not found';
+        }
+		
+        break;
+
+		case 'get_tax_opt':
+        $taxes = ORM::for_table('sys_tax')->order_by_asc('rate')->find_many();
+        $tax_opts = "";
+     /*    foreach ($taxes as $tax) {
+          $tax_opts .= '<option value="' . $tax['id'] . '">' . $tax['name'] ." ". $tax['rate'] ." %" .'</option>';
+        } 
+		echo $tax_opts; */
+		
+		echo '<optgroup label="GST">';
+			foreach ($taxes as $tax) :
+			if($tax['taxtype']== "GST"){
+			echo '<option value="'.$tax['id'].'" >'.$tax['name'].''.$tax['rate'].' %</option>';
+			}
+			endforeach;
+		echo '</optgroup>';
+		echo '<optgroup label="IGST">';
+			foreach ($taxes as $tax) :
+			if($tax['taxtype']=="IGST"){
+			echo '<option value="'.$tax['id'].'" >'.$tax['name'].''.$tax['rate'].' %</option>';
+			}
+			endforeach;
+		echo '</optgroup>';
+		
+        break;
+
+    case 'post':
+
+        break;
+
+    default:
+        echo 'action not defined';
+}

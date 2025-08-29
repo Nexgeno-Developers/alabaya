@@ -1,0 +1,120 @@
+{include file="sections/header.tpl"}
+<div class="wrapper wrapper-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="ibox float-e-margins">
+                <div class="ibox-title">
+                    <h5>
+                        {if $type eq 'Product'}
+                            {$_L['Add Product']}
+                            {else}
+                            {$_L['Add Service']}
+                        {/if}
+                    </h5>
+                    <div class="ibox-tools">
+                       {if $type eq 'Product'}
+                           <a href="{$_url}ps/p-list" class="btn btn-primary btn-xs">{$_L['List Products']}</a>
+
+                       {/if}
+                        {if $type eq 'Service'}
+                            <a href="{$_url}ps/s-list" class="btn btn-primary btn-xs">{$_L['List Services']}</a>
+                        {/if}
+							
+					</div>
+                </div>
+                <div class="ibox-content" id="ibox_form">
+                    <div class="alert alert-danger" id="emsg">
+                        <span id="emsgbody"></span>
+                    </div>
+				
+                    <form class="form-horizontal" id="rform">
+					<input type="hidden" id="type" name="type" value="{$type}">
+					<div class="row">
+					<div class="col-md-6 col-sm-12">
+                        <div class="form-group">
+						<label class="col-lg-3 control-label" for="category">{$_L['Category']}</label>
+                            <div class="col-lg-9">
+							<select id="category" name="category" class="form-control">
+							   <option value="">---Select Category---</option>
+							   {foreach $categorylist as $clist}
+									<option value="{$clist['id']}">{$clist['name']}</option>
+								{/foreach}
+							</select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+						<label class="col-lg-3 control-label" for="name">{$_L['Name']}</label>
+                            <div class="col-lg-9"><input type="text" id="name" name="name" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+						<div class="form-group">
+						<label class="col-lg-3 control-label" for="height">{$_L['Length']}</label>
+                            <div class="col-lg-9"><input type="number" id="height" name="height" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group">
+						<label class="col-lg-3 control-label" for="width">{$_L['Width']}</label>
+                            <div class="col-lg-9"><input type="text" id="width" name="width" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group">
+						<label class="col-lg-4 control-label" for="colorcoated">
+						<input type="checkbox" id="colorcoated" name="colorcoated" value="off">{$_L['Color Coated']}</label>
+                            <div class="col-lg-8"><input type="text" id="color" name="color" class="form-control" placeholder="{$_L['Color']}" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+						<label class="col-lg-4 control-label" for="item_number">{$_L['Bundle Number']}</label>
+                            <div class="col-lg-8"><input type="text" id="item_number" value="1" name="item_number" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+					<div class="col-md-6 col-sm-12">
+						<div class="form-group">
+						<label class="col-lg-3 control-label" for="company">{$_L['Company']}</label>
+                            <div class="col-lg-9">
+							<select id="company" name="company" class="form-control">
+								<option value="">---Select Company---</option>
+							   {foreach $companylist as $comlist}
+									<option value="{$comlist['id']}">{$comlist['company_name']}</option>
+								{/foreach}
+							</select>
+                            </div>
+                        </div>
+						<div class="form-group">
+						<label class="col-lg-3 control-label" for="weight">{$_L['Weight']}</label>
+                            <div class="col-lg-9">
+							<input type="text" id="weight" value="" name="weight" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+						<div class="form-group">
+						<label class="col-lg-3 control-label" for="thickness">{$_L['Thickness']}</label>
+                            <div class="col-lg-9"><input type="text" id="thickness" value="" name="thickness" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+						<div class="form-group">
+						<label class="col-lg-3 control-label" for="hsnsac">{$_L['HSNSAC']}</label>
+                            <div class="col-lg-9"><input type="text" id="hsnsac" name="hsnsac" class="form-control" autocomplete="off">
+                            </div>
+                        </div>
+						<div class="form-group">
+							<label class="col-lg-3 control-label" for="sales_price">{$_L['Sales Price']}</label>
+                            <div class="col-lg-9"><input type="text" id="sales_price" name="sales_price" class="form-control amount" autocomplete="off" data-a-sign="{$_c['currency_code']} "  data-a-dec="{$_c['dec_point']}" data-a-sep="{$_c['thousands_sep']}" data-d-group="2">
+                            </div>
+                        </div>
+						<div class="form-group">
+                            <div class="col-lg-offset-2 col-lg-10">
+                                <button class="btn btn-sm btn-primary" type="submit" id="submit">{$_L['Submit']}</button>
+                            </div>
+                        </div>
+                    </div>
+					 </div>
+					
+					</div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{include file="sections/footer.tpl"}
