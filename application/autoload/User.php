@@ -9,8 +9,14 @@ Class User{
 
         $id = $_SESSION['uid'];
 
-        $d = ORM::for_table('sys_users')->find_one($id);
-
+        // $d = ORM::for_table('sys_users')->find_one($id);
+        // Join sys_users with sys_accounts to get branch name
+        $d = ORM::for_table('sys_users')
+            ->table_alias('u')
+            ->select('u.*')
+            ->select('a.account', 'branch_name') // assuming 'account' column in sys_accounts stores branch name
+            ->left_outer_join('sys_accounts', array('u.branch_id', '=', 'a.id'), 'a')
+            ->find_one($id);
         return $d;
     }
 }

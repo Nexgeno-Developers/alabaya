@@ -583,18 +583,87 @@ minHeight: 150 // pixels
         break;
 
     case 'users':
-        $ui->assign('content_inner',inner_contents($config['c_cache']));
-        if($user['user_type'] != 'Admin'){
+
+        $ui->assign('content_inner', inner_contents($config['c_cache']));
+
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'staff')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
-//        $ui->assign('xfooter', '
-//<script type="text/javascript" src="ui/lib/c/users.js"></script>
-//');
+
+        // Read filters from GET
+        $branch_id = isset($_GET['branch_id']) ? trim($_GET['branch_id']) : '';
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+        // Build base query
+        $users_q = ORM::for_table('sys_users');
+
+        // 🔹 If Admin (roleid = 0), allow "all branches" filter
+        if($user->roleid == 0){
+            if ($branch_id !== '' && $branch_id !== 'all') {
+                $users_q->where('branch_id', (int)$branch_id);
+            }
+            // Load all branches for dropdown
+            $branches = ORM::for_table('sys_accounts')->order_by_asc('account')->find_array();
+        }
+        else {
+            // 🔹 Non-admin staff: restrict to their own branch
+            $branch_id = $user->branch_id; // force their branch_id
+            $users_q->where('branch_id', $branch_id);
+
+            // Only load their branch for dropdown
+            $branches = ORM::for_table('sys_accounts')->where('id', $branch_id)->find_array();
+        }
+
+        // 🔍 Search by name/email/username
+        if ($q !== '') {
+            $like = "%{$q}%";
+            $users_q->where_raw(
+                '(username LIKE ? OR fullname LIKE ? OR email LIKE ?)',
+                array($like, $like, $like)
+            );
+        }
+
+        $users_q->order_by_asc('fullname');
+        $d = $users_q->find_many();
+
+        // Assign to template
+        $ui->assign('d', $d);
+        $ui->assign('branches', $branches);
+        $ui->assign('branch_id', $branch_id);
+        $ui->assign('q', $q);
+
+        // Active menu
+        $ui->assign('_application_menu', 'user_management');
+        $ui->assign('_application_menu_staff', 'staff');
+
+        $ui->display('users.tpl');
+        break;
+
+
+
+
+        
+    /*case 'users':
+        $ui->assign('content_inner',inner_contents($config['c_cache']));
+        // if($user['user_type'] != 'Admin'){
+        //     r2(U."dashboard",'e',$_L['You do not have permission']);
+        // }
+        // Permission check
+        if(!has_access($user->roleid, 'staff')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
+        // $ui->assign('xfooter', '<script type="text/javascript" src="ui/lib/c/users.js"></script>');
         $d = ORM::for_table('sys_users')->find_many();
         $ui->assign('d',$d);
-        $ui->display('users.tpl');
 
+        // Set active parent & child menu
+        $ui->assign('_application_menu_staff', 'staff');
+        $ui->assign('_application_menu', 'user_management');
+        $ui->display('users.tpl');
         break;
+    */
 
     case 'users-add':
 
@@ -609,7 +678,13 @@ minHeight: 150 // pixels
         $roles = Model::factory('Models_Role')->find_array();
         $ui->assign('roles',$roles);
 
+        // Get branches
+        $branches = ORM::for_table('sys_accounts')->find_array();
+        $ui->assign('branches',$branches);
 
+        // Set active parent & child menu
+        $ui->assign('_application_menu_staff', 'staff');
+        $ui->assign('_application_menu', 'user_management');
 
         $ui->display('users-add.tpl');
 
@@ -636,6 +711,13 @@ minHeight: 150 // pixels
             $roles = Model::factory('Models_Role')->find_array();
             $ui->assign('roles',$roles);
 
+            // Get branches
+            $branches = ORM::for_table('sys_accounts')->find_array();
+            $ui->assign('branches',$branches);
+            
+            // Set active parent & child menu
+            $ui->assign('_application_menu_staff', 'staff');
+            $ui->assign('_application_menu', 'user_management');
             $ui->display('users-edit.tpl');
 
         }
@@ -674,7 +756,7 @@ minHeight: 150 // pixels
         $password = _post('password');
         $cpassword = _post('cpassword');
         $user_type = _post('user_type');
-
+        $branch_id  = _post('branch_id');
 
         $r = Model::factory('Models_Role')->find_one($user_type);
 
@@ -725,6 +807,7 @@ minHeight: 150 // pixels
             $d->password = $password;
             $d->fullname = $fullname;
             $d->user_type = $user_type;
+            $d->branch_id = $branch_id;
 
             //others
             $d->phonenumber = '';
@@ -763,7 +846,7 @@ minHeight: 150 // pixels
         $img = _post('picture');
         $password = _post('password');
         $cpassword = _post('cpassword');
-
+        $branch_id  = _post('branch_id');
 
 
         $msg = '';
@@ -808,19 +891,19 @@ minHeight: 150 // pixels
 
         $user_type = _post('user_type');
 
-        $r = Model::factory('Models_Role')->find_one($user_type);
-
-        if($r){
-            $role = $r->rname;
-            $roleid = $user_type;
-            $user_type = $r->rname;
+        if ($user_type !== '') {
+            $r = Model::factory('Models_Role')->find_one($user_type);
+            if ($r) {
+                $role     = $r->rname;
+                $roleid   = $user_type;
+                $userType = $r->rname;
+            }
+        }else{
+            // Default to existing values
+            $role     = $d->role;
+            $roleid   = $d->roleid;
+            $userType = $d->user_type;
         }
-        else{
-            $role = '';
-            $roleid = 0;
-            $user_type = 'Admin';
-        }
-
 
         if($msg == ''){
 
@@ -836,11 +919,11 @@ minHeight: 150 // pixels
             $d->fullname = $fullname;
             if(($user['id']) != $id){
 
-                $d->user_type = $user_type;
+                $d->user_type = $userType;
             }
 
             $d->img = $img;
-
+            $d->branch_id = $branch_id;
             $d->role = $role;
             $d->roleid = $roleid;
 
@@ -2912,6 +2995,11 @@ else{
         $roles = Model::factory('Models_Role')->find_array();
 
         $ui->assign('roles',$roles);
+
+        
+        // Set active parent & child menu
+        $ui->assign('_application_menu_roles', 'roles');
+        $ui->assign('_application_menu', 'user_management');
 
         $ui->display('settings_roles.tpl');
 
