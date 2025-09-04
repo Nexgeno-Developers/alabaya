@@ -307,17 +307,11 @@ input[type=number]::-webkit-outer-spin-button {
 						<label for="advance_amount">Advance Amount</label>
 						<input type="text" pattern="[0-9]+" class="form-control" name="advance_amount" id="advance_amount">
 					</div>					
-					
 					<div class="form-group">
 						<label for="cid">{$_L['Customer']}</label>
 						<select id="cid" name="cid" class="form-control">
 							<option value="">{$_L['Select Contact']}...</option>
-								{foreach $c as $cs}
-									<option value="{$cs['id']}"
-										{if $p_cid eq ($cs['id'])}selected="selected" {/if}>{$cs['account']} / {$cs['phone']}</option>
-								{/foreach}
 						</select>
-						
 						<!--<span class="help-block"><a href="#" id="contact_add">| {$_L['Or Add New Customer']}</a> </span>-->
 					</div>
 					<div class="form-group hide">

@@ -55,7 +55,20 @@ switch ($action) {
             $ui->assign('g_selected_id','');
         }
 
-
+        // 🔹 Branch logic (same as "users")
+        if($user->roleid == 0){
+            // Admin → all branches
+            $branches = ORM::for_table('sys_accounts')
+                ->order_by_asc('account')
+                ->find_array();
+        }
+        else{
+            // Non-admin staff → only their branch
+            $branches = ORM::for_table('sys_accounts')
+                ->where('id', $user->branch_id)
+                ->find_array();
+        }
+        $ui->assign('branches', $branches);
 
 
 //        $ui->assign('xheader', '
@@ -1034,6 +1047,21 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
             $currencies = Model::factory('Models_Currency')->find_array();
 
+            // 🔹 Branch logic
+            if($user->roleid == 0){
+                // Admin → load all branches
+                $branches = ORM::for_table('sys_accounts')
+                    ->order_by_asc('account')
+                    ->find_array();
+            }
+            else{
+                // Staff → only their branch
+                $branches = ORM::for_table('sys_accounts')
+                    ->where('id', $user->branch_id)
+                    ->find_array();
+            }
+            $ui->assign('branches', $branches);
+
             $ui->assign('currencies',$currencies);
 
             $ui->display('ajax.contact-edit.tpl');
@@ -1181,6 +1209,8 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
         $company = _post('company');
         $email = _post('email');
         $phone = _post('phone');
+        $branch_id  = _post('branch_id');
+
 				if( _post('currency') != ''){
 					 $currency = _post('currency');
 				}else{
@@ -1206,6 +1236,9 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 //check if tag is already exisit
         if($account == ''){
             $msg .= $_L['Account Name is required'].' <br>';
+        }
+        if($branch_id == ''){
+            $msg .= 'Branch is required'.' <br>';
         }
 
 //check account is already exist
@@ -1270,6 +1303,9 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
             $d->employee_category_id = $categoryID;
             $d->tags = Arr::arr_to_str($tags);
 
+            // Save branch_id
+            $d->branch_id = $branch_id;
+
             //others
             $d->fname = '';
             $d->lname = '';
@@ -1331,7 +1367,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
         }
     break;
 
-    case 'list':
+    /*case 'list':
 
         Event::trigger('contacts/list/');
 
@@ -1385,6 +1421,159 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
         $ui->display('list-contacts.tpl');
 
         break;
+    */
+
+    case 'list':
+
+    Event::trigger('contacts/list/');
+
+    // Page data
+    $all_groups = ORM::for_table('crm_groups')->order_by_asc('sorder')->find_array();
+    $branches   = ORM::for_table('sys_accounts')->order_by_asc('account')->find_array();
+
+    // -------------------
+    // tiny helpers (compact & reusable)
+    // -------------------
+
+    // find ids from a table where $col LIKE $term (returns numeric id array)
+    $find_ids = function(string $table, string $col, string $term) {
+        if ($term === '') return [];
+        $rows = ORM::for_table($table)->select('id')->where_like($col, $term)->find_array();
+        return array_map('intval', array_column($rows, 'id'));
+    };
+
+    // make id => name map for a table
+    $make_map = function(string $table, string $name_col) {
+        $map = [];
+        $rows = ORM::for_table($table)->find_many();
+        foreach ($rows as $r) $map[$r->id] = $r->{$name_col};
+        return $map;
+    };
+
+    // build search_sql & params for global search (including group/branch name matching)
+    $build_search = function(string $search) use ($find_ids) {
+        $search_sql = '';
+        $params = [];
+        if ($search !== '') {
+            $g = '%' . $search . '%';
+            $params = [$g, $g, $g, $g]; // account, phone, email, company
+            $clauses = ['account LIKE ?', 'phone LIKE ?', 'email LIKE ?', 'company LIKE ?'];
+
+            // match groups/branches by name and add IN(...) clauses if any
+            $mg = $find_ids('crm_groups', 'gname', $g);
+            if (!empty($mg)) {
+                $ph = implode(',', array_fill(0, count($mg), '?'));
+                $clauses[] = 'gid IN (' . $ph . ')';
+                $params = array_merge($params, $mg);
+            }
+            $mb = $find_ids('sys_accounts', 'account', $g);
+            if (!empty($mb)) {
+                $ph = implode(',', array_fill(0, count($mb), '?'));
+                $clauses[] = 'branch_id IN (' . $ph . ')';
+                $params = array_merge($params, $mb);
+            }
+
+            $search_sql = '(' . implode(' OR ', $clauses) . ')';
+        }
+        return [$search_sql, $params];
+    };
+
+    // -------------------
+    // DataTables server-side
+    // -------------------
+    if (isset($_GET['draw'])) {
+
+        // read DT params
+        $draw  = intval($_GET['draw']);
+        $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
+        $len   = isset($_GET['length']) ? intval($_GET['length']) : 10;
+        $search = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
+
+        $orderIdx = isset($_GET['order'][0]['column']) ? intval($_GET['order'][0]['column']) : 0;
+        $orderDir = (isset($_GET['order'][0]['dir']) && $_GET['order'][0]['dir'] === 'asc') ? 'asc' : 'desc';
+
+        // filters
+        $filter_group  = isset($_GET['group']) ? $_GET['group'] : '';
+        $filter_branch = isset($_GET['branch']) ? $_GET['branch'] : '';
+
+        // column map (displayed): id, branch, name, phone, group
+        $col_map = [0=>'id', 1=>'branch_id', 2=>'account', 3=>'phone', 4=>'gid'];
+
+        // prepare search SQL & params
+        list($search_sql, $search_params) = $build_search($search);
+
+        // total records
+        $recordsTotal = (int) ORM::for_table('crm_accounts')->count();
+
+        // filtered count (apply dropdown filters + search)
+        $count_q = ORM::for_table('crm_accounts');
+        if ($filter_group !== '' && $filter_group !== 'all') $count_q->where('gid', $filter_group);
+        if ($filter_branch !== '' && $filter_branch !== 'all') $count_q->where('branch_id', $filter_branch);
+        if ($search_sql) $count_q->where_raw($search_sql, $search_params);
+        $recordsFiltered = (int) $count_q->count();
+
+        // fetch rows (same filters)
+        $q = ORM::for_table('crm_accounts');
+        if ($filter_group !== '' && $filter_group !== 'all') $q->where('gid', $filter_group);
+        if ($filter_branch !== '' && $filter_branch !== 'all') $q->where('branch_id', $filter_branch);
+        if ($search_sql) $q->where_raw($search_sql, $search_params);
+
+        // ordering
+        if (isset($col_map[$orderIdx])) {
+            $orderCol = $col_map[$orderIdx];
+            $orderDir === 'asc' ? $q->order_by_asc($orderCol) : $q->order_by_desc($orderCol);
+        } else {
+            $q->order_by_desc('id');
+        }
+
+        // pagination
+        if ($len != -1) $q->offset($start)->limit($len);
+
+        $rows = $q->find_many();
+
+        // maps (single queries)
+        $group_map  = $make_map('crm_groups', 'gname');
+        $branch_map = $make_map('sys_accounts', 'account');
+
+        // assemble data in display order: id, branch, name, phone, group, manage
+        $data = [];
+        $baseUrl = rtrim(U, '/') . 'contacts/';
+        foreach ($rows as $r) {
+            $view = '<a href="'. $baseUrl . 'view/' . $r->id . '/" class="btn btn-primary btn-xs"><i class="fa fa-search"></i> ' . $_L['View'] . '</a>';
+            $del  = '<a href="delete/crm-user/' . $r->id . '/" class="btn btn-danger btn-xs cdelete" id="uid' . $r->id . '"><i class="fa fa-trash"></i> ' . $_L['Delete'] . '</a>';
+            $data[] = [
+                intval($r->id),
+                htmlspecialchars($branch_map[$r->branch_id] ?? '', ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r->account, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r->phone, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($group_map[$r->gid] ?? '', ENT_QUOTES, 'UTF-8'),
+                $view . ' ' . $del
+            ];
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'draw' => $draw,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data
+        ]);
+        exit;
+    }
+
+    // -------------------
+    // Normal page render
+    // -------------------
+    $ui->assign('all_groups', $all_groups);
+    $ui->assign('branches', $branches);
+    $ui->assign('t', ORM::for_table('sys_tags')->where('type','contacts')->find_many());
+    $ui->assign('xfooter', '<script type="text/javascript" src="' . $_theme . '/lib/list-contacts.js"></script>');
+    $ui->assign('jsvar', '_L[\'are_you_sure\'] = \''.$_L['are_you_sure'].'\';');
+    $ui->display('list-contacts2.tpl');
+
+    break;
+
+
 
 
     case 'edit-post':
@@ -1402,6 +1591,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
             $company = _post('company');
 
             $email = _post('edit_email');
+            $branch_id  = _post('branch_id');
 
             if(isset($_POST['tags'])){
                 $tags = $_POST['tags'];
@@ -1533,6 +1723,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $d->password = Password::_crypt($password);
 
                 }
+                $d->branch_id = $branch_id;
 
                 $d->save();
 
@@ -2328,6 +2519,60 @@ _L[\'are_you_sure\'] = \''.$_L['are_you_sure'].'\';
 
         break;
 
+    case 'ajax_search_contacts':
+        $term = _get('q'); // use _get since Select2 sends q via GET
+        $page = intval(_get('page', 1));
+        $perPage = 20;
+        $offset = ($page - 1) * $perPage;
+
+        $query = ORM::for_table('crm_accounts')
+            ->table_alias('c')
+            ->select('c.id')
+            ->select('c.account')
+            ->select('c.phone')
+            ->select('b.alias', 'branch_alias')
+            ->join('sys_accounts', ['c.branch_id', '=', 'b.id'], 'b')
+            ->where('c.gid', 1);
+
+        if (!empty($term)) {
+            $like = '%' . $term . '%';
+            $query->where_raw(
+                '(c.account LIKE ? OR c.phone LIKE ? OR c.email LIKE ? OR b.alias LIKE ?)',
+                [$like, $like, $like, $like]
+            );
+        }
+
+        // Clone for total count
+        $totalQuery = clone $query;
+        $totalCount = $totalQuery->count();
+
+        $rows = $query
+            ->order_by_desc('c.id')
+            ->limit($perPage)
+            ->offset($offset)
+            ->find_array();
+
+        $results = [];
+        foreach ($rows as $r) {
+            $text = $r['account'];
+            if (!empty($r['phone'])) {
+                $text .= ' - ' . $r['phone'];
+            }
+            if (!empty($r['branch_alias'])) {
+                $text .= ' [' . $r['branch_alias'] . ']';
+            }
+            $results[] = [
+                'id'   => $r['id'],
+                'text' => $text
+            ];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'results' => $results,
+            'total_count' => $totalCount
+        ]);
+        break;
 
 
 

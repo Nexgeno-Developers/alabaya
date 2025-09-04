@@ -376,7 +376,7 @@ input[type=number]::-webkit-outer-spin-button {
 								{/foreach}
 							</select>
 						</div>
-						<div class="form-group">
+						{*<div class="form-group">
 							<label for="cid">{$_L['Customer']}</label>
 							<select id="cid" name="cid" class="form-control">
 									<option value="">{$_L['Select Contact']}...</option>
@@ -385,6 +385,18 @@ input[type=number]::-webkit-outer-spin-button {
 									{/foreach}
 							</select>
 							<!--<span class="help-block"><a href="#" id="contact_add">| {$_L['Or Add New Customer']}</a> </span>-->
+						</div>*}
+						<div class="form-group">
+							<label for="cid">{$_L['Customer']}</label>
+							<select id="cid" name="cid" class="form-control">
+								{if $current_c}
+									<option value="{$current_c.id}" selected="selected">
+										{$current_c.account}
+										{if $current_c.phone neq ''} - {$current_c.phone}{/if}
+										{if $current_c.branch_alias neq ''} [{$current_c.branch_alias}]{/if}
+									</option>
+								{/if}
+							</select>
 						</div>
 						<div class="form-group" style="display: none;">
 							<label for="currency">{$_L['Currency']}</label>
