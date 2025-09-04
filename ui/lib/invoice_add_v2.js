@@ -123,7 +123,8 @@ $(document).ready(function () {
     }	
 		
 	update_address();
-	$('#cid').select2({
+
+	/*$('#cid').select2({
 			// theme: "bootstrap",
 			language: {
 					noResults: function () {
@@ -133,7 +134,38 @@ $(document).ready(function () {
 		}).on("change", function(e) {
 					// mostly used event, fired to the original element when the value changes
 					update_address();
+	});*/
+
+	$('#cid').select2({
+		// theme: 'bootstrap',
+		placeholder: $("#_lan_select_contact").val() || "Select Contact...",
+		allowClear: true,
+		ajax: {
+			url: base_url + "contacts/ajax_search_contacts",
+			dataType: 'json',
+			delay: 100,
+			data: function (params) {
+				return {
+					q: params.term || '',
+					page: params.page || 1
+				};
+			},
+			processResults: function (data, params) {
+				params.page = params.page || 1;
+				return {
+					results: data.results,
+					pagination: {
+						more: (params.page * 20) < data.total_count
+					}
+				};
+			},
+			cache: true
+		},
+		minimumInputLength: 3
+	}).on("change", function(e) {
+		update_address();
 	});
+
 
 	$('.drop-dn').select2();
 

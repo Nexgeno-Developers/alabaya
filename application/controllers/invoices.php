@@ -78,9 +78,10 @@ switch ($action) {
         }
 
         $ui->assign('_st', $_L['Add Invoice']);
-        $c = ORM::for_table('crm_accounts')->select('id')->select('account')->select('phone')->select('email')->where('gid', 1)->order_by_desc('id')->find_many();
-        $ui->assign('c', $c);
-				$comp = ORM::for_table('sys_accounts')->select('id')->select('account')->order_by_asc('id')->find_many();
+        // $c = ORM::for_table('crm_accounts')->select('id')->select('account')->select('phone')->select('email')->where('gid', 1)->order_by_desc('id')->find_many();
+        // $ui->assign('c', $c);
+
+        $comp = ORM::for_table('sys_accounts')->select('id')->select('account')->order_by_asc('id')->find_many();
         $ui->assign('comp', $comp);
         $ui->assign('idate', date('Y-m-d'));
 
@@ -160,13 +161,26 @@ switch ($action) {
             $ui->assign('a', $a);
             $ui->assign('d', $d);
             $ui->assign('_st', $_L['Add Invoice']);
-            $c = ORM::for_table('crm_accounts')->select('id')->select('account')->select('company')->select('phone')->select('email')->where('gid', 1)->order_by_desc('id')->find_many();
-            $ui->assign('c', $c);
-						$products = ORM::for_table('sys_items')->find_many();
-						$ui->assign('products', $products);
-				
-						$taxes = ORM::for_table('sys_tax')->order_by_asc('rate')->find_many();
-						$ui->assign('taxes', $taxes); 
+            // $c = ORM::for_table('crm_accounts')->select('id')->select('account')->select('company')->select('phone')->select('email')->where('gid', 1)->order_by_desc('id')->find_many();
+            // $ui->assign('c', $c);
+            $current_c = ORM::for_table('crm_accounts')
+                ->table_alias('c')
+                ->select('c.id')
+                ->select('c.account')
+                ->select('c.phone')
+                ->select('c.email')
+                ->select('b.alias', 'branch_alias')
+                ->join('sys_accounts', ['c.branch_id', '=', 'b.id'], 'b')
+                ->where('c.id', $d['userid'])
+                ->find_one();
+
+            $ui->assign('current_c', $current_c);
+
+            $products = ORM::for_table('sys_items')->find_many();
+            $ui->assign('products', $products);
+    
+            $taxes = ORM::for_table('sys_tax')->order_by_asc('rate')->find_many();
+            $ui->assign('taxes', $taxes); 
 
             $ui->assign('idate', date('Y-m-d'));
 
@@ -1326,9 +1340,9 @@ switch ($action) {
           r2(U . "client/ipdf/$invoiceId/token_$_token/view/", 's', '');
         break;         
         
-		    case 'list':
+    case 'list':
 
-			Event::trigger('invoices/list/');
+        Event::trigger('invoices/list/');
 
         $paginator = array();
 

@@ -78,6 +78,26 @@
         </div>
     </div>
 
+    <div class="form-group">
+        <label for="branch_id" class="col-lg-2 control-label">Branch</label>
+        <div class="col-lg-10">
+            <select name="branch_id" id="branch_id" class="form-control" required>
+                {if $user->roleid eq 0}
+                    <option value="">Select Branch</option>
+                    {foreach $branches as $branch}
+                        <option value="{$branch.id}" {if $d->branch_id eq $branch.id}selected{/if}>{$branch.account}</option>
+                    {/foreach}
+                {else}
+                    {foreach $branches as $branch}
+                        {if $branch.id eq $user->branch_id}
+                            <option value="{$branch.id}" {if $d->branch_id eq $branch.id}selected{/if}>{$branch.account}</option>
+                        {/if}
+                    {/foreach}
+                {/if}
+            </select>
+        </div>
+    </div>
+
     <div id="categoryDropdown" class="form-group" style="display: none;">
         <label class="col-lg-2 control-label" for="group">{$_L['Category']} </label>
         <div class="col-lg-10">
