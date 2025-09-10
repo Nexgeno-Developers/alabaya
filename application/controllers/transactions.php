@@ -20,7 +20,10 @@ Event::trigger('transactions');
 
 switch ($action) {
     case 'deposit':
-
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'transactions')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         Event::trigger('transactions/deposit/');
 
 
@@ -185,14 +188,18 @@ switch ($action) {
 
 
     case 'expense':
-
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'transactions')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+        
         Event::trigger('transactions/expense/');
 
         $d = ORM::for_table('sys_accounts')->find_many();
-        $p = ORM::for_table('crm_accounts')->find_many();
+        /*$p = ORM::for_table('crm_accounts')->find_many();
+        $ui->assign('p', $p);*/
         //$p = ORM::for_table('crm_accounts')->where('gid', 1)->find_many();
         $v = ORM::for_table('crm_accounts')->where('gid', 2)->find_many();
-        $ui->assign('p', $p);
         $ui->assign('d', $d);
         $ui->assign('v', $v);
         $tags = Tags::get_all('Expense');
@@ -202,38 +209,43 @@ switch ($action) {
         $pms = ORM::for_table('sys_pmethods')->find_many();
         $ui->assign('pms', $pms);
         $ui->assign('mdate', $mdate);
-//        $ui->assign('xheader', '
-//<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/select2/select2.css"/>
-//<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/dp/dist/datepicker.min.css"/>
-//');
+
+        //        $ui->assign('xheader', '
+        //<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/select2/select2.css"/>
+        //<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/dp/dist/datepicker.min.css"/>
+        //');
 
         $ui->assign('xheader', Asset::css(array('dropzone/dropzone','modal','s2/css/select2.min','dp/dist/datepicker.min')));
 
-//        $ui->assign('xfooter', '
-//<script type="text/javascript" src="' . $_theme . '/lib/select2/select2.min.js"></script>
-//<script type="text/javascript" src="' . $_theme . '/lib/dp/dist/datepicker.min.js"></script>
-//<script type="text/javascript" src="' . $_theme . '/lib/numeric.js"></script>
-//<script type="text/javascript" src="' . $_theme . '/lib/expense.js"></script>
-//');
+        //        $ui->assign('xfooter', '
+        //<script type="text/javascript" src="' . $_theme . '/lib/select2/select2.min.js"></script>
+        //<script type="text/javascript" src="' . $_theme . '/lib/dp/dist/datepicker.min.js"></script>
+        //<script type="text/javascript" src="' . $_theme . '/lib/numeric.js"></script>
+        //<script type="text/javascript" src="' . $_theme . '/lib/expense.js"></script>
+        //');
 
         $ui->assign('xfooter', Asset::js(array('modal','dropzone/dropzone','s2/js/select2.min','s2/js/i18n/'.lan(),'dp/dist/datepicker.min','dp/i18n/'.$config['language'],'numeric','expense')));
 
         $ui->assign('xjq', '
+            $(\'.amount\').autoNumeric(\'init\', {
+                aSign: \''.$config['currency_code'].' \',
+                dGroup: '.$config['thousand_separator_placement'].',
+                aPad: '.$config['currency_decimal_digits'].',
+                pSign: \''.$config['currency_symbol_position'].'\',
+                aDec: \''.$config['dec_point'].'\',
+                aSep: \''.$config['thousands_sep'].'\'
+                });
+        ');
 
- $(\'.amount\').autoNumeric(\'init\', {
+        //find latest Expense
+        // $tr = ORM::for_table('sys_transactions')->where('type','Expense')->order_by_desc('id')->limit('20')->find_many();
+        $tr = ORM::for_table('sys_transactions')
+            ->where('type','Expense')
+            ->where('branch_id', $user['branch_id'])
+            ->order_by_desc('id')
+            ->limit(20)
+            ->find_many();
 
-    aSign: \''.$config['currency_code'].' \',
-    dGroup: '.$config['thousand_separator_placement'].',
-    aPad: '.$config['currency_decimal_digits'].',
-    pSign: \''.$config['currency_symbol_position'].'\',
-    aDec: \''.$config['dec_point'].'\',
-    aSep: \''.$config['thousands_sep'].'\'
-
-    });
-
- ');
-        //find latest income
-        $tr = ORM::for_table('sys_transactions')->where('type','Expense')->order_by_desc('id')->limit('20')->find_many();
         $ui->assign('tr', $tr);
 
         $ui->display('expense.tpl');
@@ -257,7 +269,7 @@ switch ($action) {
         $tags = $_POST['tags'];
         $invoice_id = _post('invoice_id') ? _post('invoice_id') : 0;
         $vendor_id = _post('vendor_id');
-
+        $branch_id = _post('branch_id');
         $attachments = _post('attachments');
 
         // Get timesheet IDs from the post request
@@ -295,6 +307,7 @@ switch ($action) {
             $a->balance=$nbal;
             $a->save();
             $d = ORM::for_table('sys_transactions')->create();
+            $d->branch_id = $branch_id;
             $d->account = $account;
             $d->type = 'Expense';
             $d->payeeid =  $payee;
@@ -564,9 +577,149 @@ case 'set_view_mode':
         break;
 
 
-
-
     case 'list':
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'transactions')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+        Event::trigger('transactions/list/');
+
+        // Load branches for dropdown
+        $branches = ORM::for_table('sys_accounts')
+            ->select('id')
+            ->select('alias')
+            ->find_array();
+
+        $ui->assign('branches', $branches);
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'list-transaction']));
+
+        $ui->display('transactions2.tpl');
+        break;
+
+
+    case 'list-datatable':
+        $request = $_REQUEST;
+
+        $columns = [
+            0 => 'date',
+            1 => 'branch_alias',
+            2 => 'type',
+            3 => 'description',
+            4 => 'method',
+            5 => 'category',
+            6 => 'amount'
+        ];
+
+        // total records (no filters)
+        $totalData = (int) ORM::for_table('sys_transactions')->count();
+
+        $length = isset($request['length']) ? (int)$request['length'] : 10;
+        $start  = isset($request['start'])  ? max(0, (int)$request['start']) : 0;
+
+        // safe: pick order column only if provided and valid
+        $order_index = isset($request['order'][0]['column']) ? (int)$request['order'][0]['column'] : 0;
+        $order = isset($columns[$order_index]) ? $columns[$order_index] : 'date';
+        $dir   = (isset($request['order'][0]['dir']) && strtolower($request['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+        // Build base query (do not execute yet)
+        $base_q = ORM::for_table('sys_transactions')->table_alias('t')
+            ->select('t.*')
+            ->select('b.alias', 'branch_alias')
+            ->join('sys_accounts', ['t.branch_id', '=', 'b.id'], 'b');
+
+        // Apply search filter (if any)
+        if (!empty($request['search']['value'])) {
+            $search = "%" . $request['search']['value'] . "%";
+            $base_q->where_raw(
+                '(t.description LIKE ? OR t.type LIKE ? OR t.method LIKE ? OR t.category LIKE ? OR b.alias LIKE ?)',
+                [$search, $search, $search, $search, $search]
+            );
+        }
+
+        // Date filter
+        if (!empty($request['date_from']) && !empty($request['date_to'])) {
+            $base_q->where_raw('t.date BETWEEN ? AND ?', [$request['date_from'], $request['date_to']]);
+        }
+
+        // Other filters
+        if (!empty($request['branch_id'])) {
+            $base_q->where('t.branch_id', $request['branch_id']);
+        }
+        if (!empty($request['type'])) {
+            $base_q->where('t.type', $request['type']);
+        }
+        if (!empty($request['method'])) {
+            $base_q->where('t.method', $request['method']);
+        }
+        if (!empty($request['category'])) {
+            $base_q->where('t.category', $request['category']);
+        }
+        if (!empty($request['account_id'])) {
+            $base_q->where('t.account_id', $request['account_id']);
+        }
+
+        // Clone for the count (so data query stays untouched)
+        $count_q = clone $base_q;
+        $totalFiltered = (int) $count_q->count();
+
+        // Clone for fetch
+        $data_q = clone $base_q;
+
+        // apply ordering BEFORE limit/offset
+        $data_q->order_by_expr("$order $dir");
+
+        // pagination: only apply limit/offset when length != -1 (DataTables "All" = -1)
+        if ($length != -1) {
+            $data_q->offset($start)->limit($length);
+        }
+
+        // fetch rows as array
+        $rows = $data_q->find_array();
+
+        // prepare response
+        $data = [];
+        $total_income = 0.0;
+        $total_expense = 0.0;
+
+        foreach ($rows as $r) {
+            $amount = (float)$r['amount'];
+            if ($r['type'] === 'Income') $total_income += $amount;
+            if ($r['type'] === 'Expense') $total_expense += $amount;
+
+            $nested = [];
+            $nested[] = date($_c['df'], strtotime($r['date']));
+            $nested[] = $r['branch_alias'];
+            $nested[] = $r['type'];
+            $nested[] = $r['description'];
+            $nested[] = $r['method'];
+            $nested[] = $r['category'];
+            $nested[] = '<span class="amount">'.number_format($amount, 2, '.', '').'</span>';
+            $nested[] = '<a href="'.U.'transactions/manage/'.$r['id'].'" class="btn btn-xs btn-primary">'.$_L['Manage'].'</a>';
+
+            $data[] = $nested;
+        }
+
+        $json_data = [
+            "draw"            => intval($request['draw'] ?? 0),
+            "recordsTotal"    => intval($totalData),
+            "recordsFiltered" => intval($totalFiltered),
+            "data"            => $data,
+            "totals"          => [
+                "income"  => number_format($total_income, 2, '.', ''), 
+                "expense" => number_format($total_expense, 2, '.', ''), 
+                "balance" => number_format($total_income - $total_expense, 2, '.', '')
+            ]
+        ];
+
+        header('Content-Type: application/json');
+        echo json_encode($json_data);
+        break;
+
+
+
+
+    /*case 'list':
 
         Event::trigger('transactions/list/');
 
@@ -577,28 +730,29 @@ case 'set_view_mode':
         $ui->assign('paginator',$paginator);
 
         $ui->assign('_st', $_L['Transactions'].'<div class="btn-group pull-right" style="padding-right: 10px;">
-  <a class="btn btn-success btn-xs" href="'.U.'transactions/export_csv/'.'" style="box-shadow: none;"><i class="fa fa-download"></i></a>
-</div>');
+        <a class="btn btn-success btn-xs" href="'.U.'transactions/export_csv/'.'" style="box-shadow: none;"><i class="fa fa-download"></i></a>
+        </div>');
 
         $ui->assign('xfooter',Asset::js(array('numeric','datatables.min','list-transaction')));
 
         $ui->assign('xjq', '
 
- $(\'.amount\').autoNumeric(\'init\', {
+        $(\'.amount\').autoNumeric(\'init\', {
 
-    aSign: \''.$config['currency_code'].' \',
-    dGroup: '.$config['thousand_separator_placement'].',
-    aPad: '.$config['currency_decimal_digits'].',
-    pSign: \''.$config['currency_symbol_position'].'\',
-    aDec: \''.$config['dec_point'].'\',
-    aSep: \''.$config['thousands_sep'].'\'
+            aSign: \''.$config['currency_code'].' \',
+            dGroup: '.$config['thousand_separator_placement'].',
+            aPad: '.$config['currency_decimal_digits'].',
+            pSign: \''.$config['currency_symbol_position'].'\',
+            aDec: \''.$config['dec_point'].'\',
+            aSep: \''.$config['thousands_sep'].'\'
 
-    });
+            });
 
- ');
+        ');
 
-        $ui->display('transactions.tpl');
-        break;
+        $ui->display('transactions2.tpl');
+        // $ui->display('transactions.tpl');
+        break;*/
 				
     case 'list-proforma':
 

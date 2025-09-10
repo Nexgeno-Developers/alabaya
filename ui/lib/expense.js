@@ -3,16 +3,24 @@ $(document).ready(function () {
     //$('.amount').autoNumeric('init');
 
     $("#account").select2({
-            theme: "bootstrap",
+            // theme: "bootstrap",
             language: {
                 noResults: function () {
                     return $("#_lan_no_results_found").val();
                 }
             }
-        }
-    );
+    }).on("change", function () {
+        // always get from original <option>, not from Select2 markup
+        let branchId = $("#account option:selected").data("branch");
+        $("#branch_id_hidden").val(branchId);
+    });
+
+    // set hidden field on first load
+    let initBranch = $("#account option:selected").data("branch");
+    $("#branch_id_hidden").val(initBranch);
+
     $("#cats").select2({
-            theme: "bootstrap",
+            // theme: "bootstrap",
             language: {
                 noResults: function () {
                     return $("#_lan_no_results_found").val();
@@ -21,7 +29,7 @@ $(document).ready(function () {
         }
     );
     $("#pmethod").select2({
-            theme: "bootstrap",
+            // theme: "bootstrap",
             language: {
                 noResults: function () {
                     return $("#_lan_no_results_found").val();
@@ -29,15 +37,49 @@ $(document).ready(function () {
             }
         }
     );
+    
+    /*$("#payee").select2({
+            theme: "bootstrap",
+            language: {
+                noResults: function () {
+                    return $("#_lan_no_results_found").val();
+                }
+            }
+        }
+    );*/
+
     $("#payee").select2({
-            theme: "bootstrap",
-            language: {
-                noResults: function () {
-                    return $("#_lan_no_results_found").val();
-                }
+        // theme: "bootstrap",
+        placeholder: $("#_lan_select_payer").val() || "Select Payer...",
+        allowClear: true,
+        ajax: {
+            url: base_url + "contacts/ajax_search_contacts",
+            dataType: 'json',
+            delay: 100,
+            data: function (params) {
+                return {
+                    q: params.term || '', // search term
+                    page: params.page || 1
+                };
+            },
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: (params.page * 20) < data.total_count
+                    }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 3,
+        language: {
+            noResults: function () {
+                return $("#_lan_no_results_found").val();
             }
         }
-    );
+    });
 
     $("#invoice_id").select2({
             theme: "bootstrap",
@@ -62,7 +104,7 @@ $(document).ready(function () {
     $('#tags').select2({
         tags: true,
         tokenSeparators: [','],
-        theme: "bootstrap",
+        // theme: "bootstrap",
         language: {
             noResults: function () {
                 return $("#_lan_no_results_found").val();
@@ -197,7 +239,7 @@ $(document).ready(function () {
 
             account: $('#account').val(),
             date: $('#date').val(),
-
+            branch_id: $('#branch_id_hidden').val(),
             amount: $('#amount').val(),
             cats: $('#cats').val(),
             description: $('#description').val(),
