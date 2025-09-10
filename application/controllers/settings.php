@@ -2990,8 +2990,10 @@ else{
 
 
     case 'roles':
-
-
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'roles')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         $roles = Model::factory('Models_Role')->find_array();
 
         $ui->assign('roles',$roles);
