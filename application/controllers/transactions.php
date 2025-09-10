@@ -25,9 +25,9 @@ switch ($action) {
 
 
         $d = ORM::for_table('sys_accounts')->find_many();
-       /* // $p = ORM::for_table('sys_payers')->find_many(); */
-        $p = ORM::for_table('crm_accounts')->find_many();
-        $ui->assign('p', $p);
+        /* $p = ORM::for_table('sys_payers')->find_many(); */
+        // $p = ORM::for_table('crm_accounts')->find_many();
+        // $ui->assign('p', $p);
         $ui->assign('d', $d);
         $cats = ORM::for_table('sys_cats')->where('type','Income')->order_by_asc('sorder')->find_many();
         $ui->assign('cats', $cats);
@@ -37,38 +37,41 @@ switch ($action) {
 
         $tags = Tags::get_all('Income');
         $ui->assign('tags',$tags);
-/* //        $ui->assign('xheader', '
-//<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/select2/select2.css"/>
-//<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/dp/dist/datepicker.min.css"/>
-//'); */
+        /* //        $ui->assign('xheader', '
+        //<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/select2/select2.css"/>
+        //<link rel="stylesheet" type="text/css" href="' . $_theme . '/lib/dp/dist/datepicker.min.css"/>
+        //'); */
 
         $ui->assign('xheader', Asset::css(array('dropzone/dropzone','modal','s2/css/select2.min','dp/dist/datepicker.min')));
 
-
-/* //        $ui->assign('xfooter', '
-//<script type="text/javascript" src="' . $_theme . '/lib/select2/select2.min.js"></script>
-//<script type="text/javascript" src="' . $_theme . '/lib/dp/dist/datepicker.min.js"></script>
-//<script type="text/javascript" src="' . $_theme . '/lib/numeric.js"></script>
-//<script type="text/javascript" src="' . $_theme . '/lib/deposit.js"></script>
-//'); */
+        /* //        $ui->assign('xfooter', '
+        //<script type="text/javascript" src="' . $_theme . '/lib/select2/select2.min.js"></script>
+        //<script type="text/javascript" src="' . $_theme . '/lib/dp/dist/datepicker.min.js"></script>
+        //<script type="text/javascript" src="' . $_theme . '/lib/numeric.js"></script>
+        //<script type="text/javascript" src="' . $_theme . '/lib/deposit.js"></script>
+        //'); */
 
         $ui->assign('xfooter', Asset::js(array('modal','dropzone/dropzone','s2/js/select2.min','s2/js/i18n/'.lan(),'dp/dist/datepicker.min','dp/i18n/'.$config['language'],'numeric','deposit')));
 
         $ui->assign('xjq', '
- $(\'.amount\').autoNumeric(\'init\', {
+        $(\'.amount\').autoNumeric(\'init\', {
+            aSign: \''.$config['currency_code'].' \',
+            dGroup: '.$config['thousand_separator_placement'].',
+            aPad: '.$config['currency_decimal_digits'].',
+            pSign: \''.$config['currency_symbol_position'].'\',
+            aDec: \''.$config['dec_point'].'\',
+            aSep: \''.$config['thousands_sep'].'\'
+            });
+        ');
+        /* find latest income */
+        // $tr = ORM::for_table('sys_transactions')->where('type','Income')->order_by_desc('id')->limit('20')->find_many();
+        $tr = ORM::for_table('sys_transactions')
+            ->where('type','Income')
+            ->where('branch_id', $user['branch_id'])
+            ->order_by_desc('id')
+            ->limit(20)
+            ->find_many();
 
-    aSign: \''.$config['currency_code'].' \',
-    dGroup: '.$config['thousand_separator_placement'].',
-    aPad: '.$config['currency_decimal_digits'].',
-    pSign: \''.$config['currency_symbol_position'].'\',
-    aDec: \''.$config['dec_point'].'\',
-    aSep: \''.$config['thousands_sep'].'\'
-
-    });
-
- ');
-       /* //find latest income */
-       $tr = ORM::for_table('sys_transactions')->where('type','Income')->order_by_desc('id')->limit('20')->find_many();
         $ui->assign('tr', $tr);
         $ui->display('deposit.tpl');
 
@@ -89,16 +92,16 @@ switch ($action) {
         $ref = _post('ref');
         $pmethod = _post('pmethod');
         $cat = _post('cats');
+        $branch_id = _post('branch_id');
         $tags = $_POST['tags'];
 
         /* @since Build 4560. added support file attachments */
 
         $attachments = _post('attachments');
 
-
-if($payerid == ''){
-    $payerid = '0';
-}
+        if($payerid == ''){
+            $payerid = '0';
+        }
         $description = _post('description');
         $msg = '';
         if ($description == '') {
@@ -108,7 +111,6 @@ if($payerid == ''){
         if (Validator::Length($account, 100, 1) == false) {
             $msg .= $_L['Choose an Account'].' ' . '<br>';
         }
-
 
         if (is_numeric($amount) == false) {
             $msg .= $_L['amount_error'] . '<br>';
@@ -125,6 +127,7 @@ if($payerid == ''){
             $a->balance=$nbal;
             $a->save();
             $d = ORM::for_table('sys_transactions')->create();
+            $d->branch_id = $branch_id;
             $d->account = $account;
             $d->type = 'Income';
             $d->payerid =  $payerid;

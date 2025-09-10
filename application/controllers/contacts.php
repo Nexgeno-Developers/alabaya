@@ -2524,16 +2524,18 @@ _L[\'are_you_sure\'] = \''.$_L['are_you_sure'].'\';
         $page = intval(_get('page', 1));
         $perPage = 20;
         $offset = ($page - 1) * $perPage;
-
+        $gid = _get('gid'); // pass gid from frontend if needed
         $query = ORM::for_table('crm_accounts')
             ->table_alias('c')
             ->select('c.id')
             ->select('c.account')
             ->select('c.phone')
             ->select('b.alias', 'branch_alias')
-            ->join('sys_accounts', ['c.branch_id', '=', 'b.id'], 'b')
-            ->where('c.gid', 1);
-
+            ->join('sys_accounts', ['c.branch_id', '=', 'b.id'], 'b');
+        // apply gid filter only if provided
+        if (!empty($gid)) {
+            $query->where('c.gid', $gid);
+        }
         if (!empty($term)) {
             $like = '%' . $term . '%';
             $query->where_raw(
