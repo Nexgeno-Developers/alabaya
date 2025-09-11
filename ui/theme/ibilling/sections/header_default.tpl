@@ -64,6 +64,14 @@
 </head>
 
 <body class="fixed-nav {if $_c['mininav']}mini-navbar{/if}">
+<style>
+.navbar-right-side-content{
+    width: 34%;
+}
+.navbar-user-profile{
+    width: 50%;
+}
+</style>
 <section>
     <div id="wrapper">
         <nav class="navbar-default navbar-static-side" role="navigation">
@@ -83,7 +91,7 @@
                         <a class="navbar-minimalize minimalize-styl-2 btn btn-primary btn-flat" href="#"><i class="fa fa-dedent"></i> </a>
 
                     </div>
-                    <ul class="nav navbar-top-links navbar-right pull-right">
+                    <ul class="nav navbar-top-links navbar-right pull-right navbar-right-side-content">
 
 
 
@@ -122,7 +130,7 @@
                             </ul>
                         </li>
 
-                        <li class="dropdown navbar-user">
+                        <li class="dropdown navbar-user navbar-user-profile">
 
                             <a href="javascript:;" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="true">
 
@@ -134,7 +142,11 @@
                                     <img src="{$user['img']}" class="img-circle" alt="{$user['fullname']}">
                                 {/if}
 
-                                <span class="hidden-xs">{$_L['Welcome']} {$user['fullname']}</span> <b class="caret"></b>
+                                <span class="hidden-xs">
+                                    {$_L['Welcome']} {$user['fullname']}<br>
+                                    <b style="color:#888;">{$user['branch_name']}</b>
+                                </span> 
+                                <b class="caret"></b>
                             </a>
                             <ul class="dropdown-menu animated fadeIn">
                                 <li class="arrow"></li>

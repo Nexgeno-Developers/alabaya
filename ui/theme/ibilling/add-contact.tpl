@@ -183,7 +183,26 @@
                                     <!--<span class="help-block"><a href="#" id="add_new_group">{$_L['Add New Group']}</a> </span>-->
                                 </div>
                             </div>
-                            
+
+                            <div class="form-group"><label class="col-md-4 control-label" for="branch_id">Branch</label>
+                                <div class="col-lg-8">
+                                    <select name="branch_id" id="branch_id" class="form-control" required>
+                                        {if $user->roleid eq 0}
+                                            <option value="">Select Branch</option>
+                                            {foreach $branches as $branch}
+                                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                            {/foreach}
+                                        {else}
+                                            {foreach $branches as $branch}
+                                                {if $branch.id eq $user->branch_id}
+                                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                                {/if}
+                                            {/foreach}
+                                        {/if}
+                                    </select>
+                                </div>
+                            </div>
+
                             <div id="categoryDropdown" class="form-group" style="display: none;">
                                 <label class="col-md-4 control-label" for="group">{$_L['Category']} </label>
                                 <div class="col-md-8">

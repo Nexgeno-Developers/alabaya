@@ -12,11 +12,11 @@
                 <form role="form" name="accadd" method="post" action="{$_url}settings/users-edit-post">
                     <div class="form-group">
                         <label for="username">{$_L['Username']}</label>
-                        <input type="text" class="form-control" id="username" name="username" value="{$d['username']}">
+                        <input type="text" class="form-control" id="username" name="username" value="{$d['username']}" required>
                     </div>
                     <div class="form-group">
                         <label for="fullname">{$_L['Full Name']}</label>
-                        <input type="text" class="form-control" id="fullname" name="fullname" value="{$d['fullname']}">
+                        <input type="text" class="form-control" id="fullname" name="fullname" value="{$d['fullname']}" required>
                     </div>
 
                     <div class="form-group">
@@ -42,16 +42,56 @@
                             {*</select>*}
                             {*<span class="help-block">{$_L['user_type_help']}</span>*}
 
-                            <label>{$_L['User']} {$_L['Type']}</label>
+                            {*<label>{$_L['User']} {$_L['Type']}</label>
 
                             <div class="i-checks"><label> <input type="radio" value="Admin" name="user_type" {if $d->user_type eq 'Admin'}checked{/if}> <i></i> {$_L['Full Administrator']} </label></div>
 
                             {foreach $roles as $role}
                                 <div class="i-checks"><label> <input type="radio" value="{$role['id']}" name="user_type" {if $d->roleid eq $role['id']}checked{/if}> <i></i> {$role['rname']} </label></div>
                             {/foreach}
+                            *}
+
+                            <label>{$_L['User']} {$_L['Type']}</label>
+
+                            {if $user->roleid eq 0}
+                                <div class="i-checks">
+                                    <label>
+                                        <input type="radio" value="Admin" name="user_type" {if $d->user_type eq 'Admin'}checked{/if} required>
+                                        <i></i> {$_L['Full Administrator']}
+                                    </label>
+                                </div>
+                            {/if}
+
+                            {foreach $roles as $role}
+                                <div class="i-checks">
+                                    <label>
+                                        <input type="radio" value="{$role['id']}" name="user_type" {if $d->roleid eq $role['id']}checked{/if} required>
+                                        <i></i> {$role['rname']}
+                                    </label>
+                                </div>
+                            {/foreach}
 
                         </div>
                     {/if}
+
+                    <div class="form-group">
+                        <label for="branch_id">Branch</label>
+                        <select name="branch_id" id="branch_id" class="form-control" required>
+                            {if $user->roleid eq 0}
+                                <option value="">Select Branch</option>
+                                {foreach $branches as $branch}
+                                    <option value="{$branch.id}" {if $d->branch_id eq $branch.id}selected{/if}>{$branch.account}</option>
+                                {/foreach}
+                            {else}
+                                {foreach $branches as $branch}
+                                    {if $branch.id eq $user->branch_id}
+                                        <option value="{$branch.id}" {if $d->branch_id eq $branch.id}selected{/if}>{$branch.account}</option>
+                                    {/if}
+                                {/foreach}
+                            {/if}
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label for="password">{$_L['Password']}</label>
                         <input type="password" class="form-control" id="password" name="password">

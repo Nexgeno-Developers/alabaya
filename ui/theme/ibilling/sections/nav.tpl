@@ -299,9 +299,9 @@
     <li class="{if $_application_menu eq 'settings'}active{/if}" id="li_settings">
             <a href="#"><i class="fa fa-cogs"></i> <span class="nav-label">{$_L['Settings']} </span><span class="fa arrow"></span></a>
             <ul class="nav nav-second-level">
-                <!--<li><a href="{$_url}settings/app/">{$_L['General Settings']}</a></li>-->
+                <!--<li><a href="{$_url}settings/app/">{$_L['General Settings']}</a></li>
                 <li><a href="{$_url}settings/users/">{$_L['Staff']}</a></li>
-                <li><a href="{$_url}settings/roles/">{$_L['Roles']}</a></li>
+                <li><a href="{$_url}settings/roles/">{$_L['Roles']}</a></li>-->
                 {*<li><a href="{$_url}settings/plugins/">{$_L['Plugins']}</a></li>*}
                 <!--<li><a href="{$_url}settings/localisation/">{$_L['Localisation']}</a></li>
                 <li><a href="{$_url}settings/currencies/">{$_L['Currencies']}</a></li>
@@ -333,6 +333,30 @@
                 <li><a href="{$_url}settings/about/">{$_L['About']}</a></li>-->
             </ul>
             </li>
+    {/if}
+
+    {if has_access($user->roleid,'staff') || has_access($user->roleid,'roles')}
+        <li class="{if $_application_menu eq 'user_management'}active{/if}" id="li_users_manage">
+            <a href="#"><i class="fa fa-users"></i>
+                <span class="nav-label">User Management</span>
+                <span class="fa arrow"></span>
+            </a>
+            <ul class="nav nav-second-level">
+
+                {if has_access($user->roleid,'staff')}
+                    <li class="{if $_application_menu_staff eq 'staff'}active{/if}" id="li_staff">
+                        <a href="{$_url}settings/users/"><i class="fa fa-user"></i> {$_L['Staff']}</a>
+                    </li>
+                {/if}
+
+                {if has_access($user->roleid,'roles')}
+                    <li class="{if $_application_menu_roles eq 'roles'}active{/if}" id="li_roles">
+                        <a href="{$_url}settings/roles/"><i class="fa fa-shield"></i> {$_L['Roles']}</a>
+                    </li>
+                {/if}
+
+            </ul>
+        </li>
     {/if}
 
 
