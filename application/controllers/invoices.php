@@ -1340,7 +1340,7 @@ switch ($action) {
           r2(U . "client/ipdf/$invoiceId/token_$_token/view/", 's', '');
         break;         
         
-    case 'list':
+    /*case 'list':
 
         Event::trigger('invoices/list/');
 
@@ -1444,6 +1444,215 @@ $(".cdelete").click(function (e) {
 
         $ui->display('list-invoices.tpl');
         break;  
+*/
+
+    // ----------------------
+// invoices controller
+// ----------------------
+
+    case 'list':
+
+        Event::trigger('invoices/list/');
+
+        // Load branches for branch filter dropdown
+        $branches = ORM::for_table('sys_accounts')->select('id')->select('account')->select('alias')->order_by_asc('account')->find_array();
+
+        $ui->assign('branches', $branches);
+
+        $mode_js = Asset::js(array('datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'numeric','footable/js/footable.all.min','contacts/mode_search'));
+
+        // load DataTables css/js assets
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
+        $ui->assign('xfooter', $mode_js);
+
+        $ui->assign('xjq', '
+            $(\'.amount\').autoNumeric(\'init\', {        
+                dGroup: '.$config['thousand_separator_placement'].',
+                aPad: '.$config['currency_decimal_digits'].',
+                pSign: \''.$config['currency_symbol_position'].'\',
+                aDec: \''.$config['dec_point'].'\',
+                aSep: \''.$config['thousands_sep'].'\'
+            });
+        ');
+
+        // render new server-side template
+        $ui->display('list-invoices2.tpl');
+
+        break;
+
+
+    case 'list-datatable':
+
+        // DataTables server-side endpoint
+        $request = $_REQUEST;
+
+        // map datatable column index -> db expression
+        // displayed columns: 0 Invoice No, 1 Customer, 2 Phone, 3 Amount, 4 Invoice Date, 5 Delivery Date, 6 Reminder Date,
+        // 7 Payment Status, 8 Invoice Status, 9 Created By, 10 Updated At, 11 Created At, 12 Manage
+        $columns = [
+            0 => 't.id',         // invoice no (we will search invoice number fields separately)
+            1 => 'c.account',    // customer
+            2 => 'c.phone',
+            3 => 't.subtotal',
+            4 => 't.date',
+            5 => 't.duedate',
+            6 => 't.reminder_date',
+            7 => 't.status',
+            8 => 't.delivery_status', // use this as Invoice Status
+            9 => 'u.fullname',
+            10 => 't.updated_at',
+            11 => 't.created_at'
+        ];
+
+        // total records (no filters)
+        $totalData = (int) ORM::for_table('sys_invoices')->count();
+
+        // pagination params
+        $length = isset($request['length']) ? (int)$request['length'] : 25;
+        $start  = isset($request['start']) ? max(0, (int)$request['start']) : 0;
+
+        // ordering
+        $order_index = isset($request['order'][0]['column']) ? (int)$request['order'][0]['column'] : 12; // default created_at
+        $order_col = isset($columns[$order_index]) ? $columns[$order_index] : 't.created_at';
+        $order_dir = (isset($request['order'][0]['dir']) && strtolower($request['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+        // Build base query (join customer and user and branch)
+        $base_q = ORM::for_table('sys_invoices')->table_alias('t')
+            ->select('t.*')
+            ->select('c.account', 'customer_account')
+            ->select('c.phone', 'customer_phone')
+            ->select('c.company', 'customer_company')
+            ->select('b.alias', 'branch_alias')
+            ->select('u.fullname', 'created_by_name')
+            ->join('crm_accounts', ['t.userid', '=', 'c.id'], 'c')
+            ->left_outer_join('sys_accounts', ['t.company_id', '=', 'b.id'], 'b')
+            ->left_outer_join('sys_users', ['t.created_by', '=', 'u.id'], 'u');
+
+        // --- global search (DataTables search)
+        if (!empty($request['search']['value'])) {
+            $s = '%' . $request['search']['value'] . '%';
+            // search across invoice number fields, customer account, phone, company
+            $base_q->where_raw('(
+                t.invoicenum LIKE ? OR
+                t.cn LIKE ? OR
+                c.account LIKE ? OR
+                c.phone LIKE ? OR
+                c.company LIKE ? OR
+                b.alias LIKE ?
+            )', [$s, $s, $s, $s, $s, $s]);
+        }
+
+        // --- filters from the form
+        if (!empty($request['branch_id'])) {
+            $base_q->where('t.company_id', $request['branch_id']);
+        }
+
+        // invoice number exact or partial
+        if (!empty($request['invoice_no'])) {
+            $in = '%' . $request['invoice_no'] . '%';
+            $base_q->where_raw('(t.invoicenum LIKE ? OR t.cn LIKE ?)', [$in, $in]);
+        }
+
+        // customer search (server side): search customer name or phone or company
+        if (!empty($request['customer'])) {
+            $csearch = '%' . $request['customer'] . '%';
+            $base_q->where_raw('(c.account LIKE ? OR c.phone LIKE ? OR c.company LIKE ?)', [$csearch, $csearch, $csearch]);
+        }
+
+        // Type: which date field to filter by (invoice_date or delivery_date)
+        if (!empty($request['type']) && !empty($request['date_from']) && !empty($request['date_to'])) {
+            $df = $request['date_from'];
+            $dt = $request['date_to'];
+            if ($request['type'] === 'invoice_date') {
+                $base_q->where_raw('t.date BETWEEN ? AND ?', [$df, $dt]);
+            } else {
+                // delivery_date
+                $base_q->where_raw('t.duedate BETWEEN ? AND ?', [$df, $dt]);
+            }
+        } else {
+            // fallback single-date filters if provided
+            if (!empty($request['date_from']) && !empty($request['date_to'])) {
+                $base_q->where_raw('t.date BETWEEN ? AND ?', [$request['date_from'], $request['date_to']]);
+            }
+        }
+
+        // payment status (Paid, Unpaid, Partially Paid, Cancelled)
+        if (!empty($request['payment_status'])) {
+            $base_q->where('t.status', $request['payment_status']);
+        }
+
+        if (!empty($request['delivery_status'])) {
+            $base_q->where('t.delivery_status', $request['delivery_status'] || $request['invoice_status']);
+        }
+
+        // --- get filtered count (clone query to avoid mutation)
+        $count_q = clone $base_q;
+        $totalFiltered = (int) $count_q->count();
+
+        // --- data query (clone, apply ordering and pagination)
+        $data_q = clone $base_q;
+        $data_q->order_by_expr("$order_col $order_dir");
+
+        if ($length != -1) {
+            $data_q->offset($start)->limit($length);
+        }
+
+        $rows = $data_q->find_array();
+
+        // Build response rows
+        $data = [];
+        foreach ($rows as $r) {
+
+            $invoice_no_display = ($r['cn'] !== '') ? $r['cn'] : $r['invoicenum'];
+            $invoice_link = '<a href="'. U .'invoices/view/'. $r['id'] .'/">'.$invoice_no_display.'</a>';
+
+            // amount formatting
+            $amount_formatted = number_format((float)$r['subtotal'], 2, '.', '');
+
+            // created by fallback
+            $created_by = $r['created_by_name'] ?: get_type_by_id('sys_users', 'id', $r['created_by'], 'fullname');
+
+            $manage_html = '';
+            // you can conditionally show edit/delete based on $r['status'] or permissions
+            $manage_html .= '<a href="'. U .'invoices/view/'. $r['id'] .'/" class="btn btn-primary btn-xs"><i class="fa fa-check"></i> '.$_L['View'].'</a> ';
+            if ($r['status'] === 'Unpaid') {
+                $manage_html .= '<a href="'. U .'invoices/edit/'. $r['id'] .'/" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> '.$_L['Edit'].'</a> ';
+            }
+            if (empty($r['sale_trans_code'])) {
+                $manage_html .= '<a href="#" class="btn btn-danger btn-xs cdelete" id="iid'.$r['id'].'"><i class="fa fa-trash"></i> '.$_L['Delete'].'</a>';
+            }
+
+            $data[] = [
+                $invoice_link,
+                htmlspecialchars($r['customer_account'], ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['customer_phone'], ENT_QUOTES, 'UTF-8'),
+                '<span class="amount">'. $amount_formatted .'</span>',
+                date($_c['df'], strtotime($r['date'])),
+                date($_c['df'], strtotime($r['duedate'])),
+                !empty($r['reminder_date']) ? $r['reminder_date'] : '',
+                htmlspecialchars($r['status'], ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['delivery_status'], ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($created_by, ENT_QUOTES, 'UTF-8'),
+                !empty($r['updated_at']) ? date('Y-m-d H:i A', $r['updated_at']) : '',
+                !empty($r['created_at']) ? date('Y-m-d H:i A', $r['created_at']) : '',
+                $manage_html
+            ];
+        }
+
+        // JSON response
+        $response = [
+            'draw' => intval($request['draw'] ?? 0),
+            'recordsTotal' => intval($totalData),
+            'recordsFiltered' => intval($totalFiltered),
+            'data' => $data
+        ];
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($response);
+
+        break;
+
+
 
     case 'list-proforma':
 
@@ -2365,6 +2574,41 @@ $inv_prefix = '';
             r2(U . 'accounts/list', 's', $_L['account_delete_successful']);
         }
 
+        break;
+
+        case 'ajax-delete':
+            Event::trigger('invoices/ajax-delete/');
+            // Get ID from route
+            $id = $routes['2'];
+            // Demo mode protection
+            if ($_app_stage == 'Demo') {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Deleting is disabled in demo mode.'
+                ]);
+                exit;
+            }
+            // Find the invoice
+            $invoice = ORM::for_table('sys_invoices')->find_one($id);
+            if ($invoice) {
+                try {
+                    $invoice->delete();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Invoice deleted successfully.'
+                    ]);
+                } catch (Exception $e) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Error deleting invoice: ' . $e->getMessage()
+                    ]);
+                }
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Invoice not found.'
+                ]);
+            }
         break;
 
 
