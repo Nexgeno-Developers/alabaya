@@ -11,7 +11,7 @@
                 <span id="emsgbody"></span>
             </div>
             <form class="form-horizontal" method="post" id="tform" role="form">
-                <div class="form-group">
+                {*<div class="form-group">
                     <label for="account" class="col-sm-3 control-label">{$_L['Account']}</label>
                     <div class="col-sm-9">
                         <select id="account" name="account" class="form-control">
@@ -23,7 +23,55 @@
 
                         </select>
                     </div>
+                </div>*}
+                
+                {*<div class="form-group">
+                    <label for="account" class="col-sm-3 control-label">{$_L['Account']}</label>
+                    <div class="col-sm-9">
+                        <select id="account" name="account" class="form-control" required>
+                            {foreach $d as $ds}
+                                <option value="{$ds.account}"
+                                        data-branch="{$ds.id}"
+                                        {if $ds.id eq $user.branch_id}selected{/if}>
+                                    {$ds.account}
+                                </option>
+                            {/foreach}
+                        </select>
+
+                        <!-- hidden input -->
+                        <input type="hidden" id="branch_id_hidden" name="branch_id" value="{$user.branch_id}">
+                    </div>
+                </div>*}
+
+                <div class="form-group">
+                    <label for="account" class="col-sm-3 control-label">{$_L['Account']}</label>
+                    <div class="col-sm-9">
+                        <select id="account" name="account" class="form-control" required>
+                            {if $user->roleid eq 0}
+                                <option value="">{$_L['Choose an Account']}</option>
+                                {foreach $d as $ds}
+                                    <option value="{$ds['account']}" data-branch="{$ds['id']}" {if $ds.id eq $user.branch_id}selected{/if}>
+                                        {$ds['account']}
+                                    </option>
+                                {/foreach}
+                            {else}
+                                {foreach $d as $ds}
+                                    {if $ds['id'] eq $user->branch_id}
+                                        <option value="{$ds['account']}" 
+                                                data-branch="{$ds['id']}" 
+                                                {if $ds.id eq $user.branch_id}selected{/if}>
+                                            {$ds['account']}
+                                        </option>
+                                    {/if}
+                                {/foreach}
+                            {/if}
+                        </select>
+
+                        <!-- Hidden branch_id field -->
+                        <input type="hidden" id="branch_id_hidden" name="branch_id" value="{$user['branch_id']}">
+                    </div>
                 </div>
+
                 <div class="form-group">
                     <label for="date" class="col-sm-3 control-label">{$_L['Date']}</label>
                     <div class="col-sm-9">
@@ -88,13 +136,14 @@
                     <div class="form-group">
                         <label for="inputPassword3" class="col-sm-3 control-label">{$_L['Payer']}</label>
                         <div class="col-sm-9">
-                            <select id="payer" name="payer" class="form-control">
+                            {*<select id="payer" name="payer" class="form-control">
                                 <option value="">{$_L['Choose Contact']}</option>
                                 {foreach $p as $ps}
                                     <option value="{$ps['id']}">{$ps['account']}</option>
                                 {/foreach}
-
-
+                            </select>*}
+                            <select id="payer" name="payer" class="form-control">
+                                <option value="">{$_L['Choose Contact']}...</option>
                             </select>
                         </div>
                     </div>

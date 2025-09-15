@@ -147,7 +147,8 @@ $(document).ready(function () {
 			data: function (params) {
 				return {
 					q: params.term || '',
-					page: params.page || 1
+					page: params.page || 1,
+					gid: 1
 				};
 			},
 			processResults: function (data, params) {

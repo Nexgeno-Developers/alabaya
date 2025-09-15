@@ -1,8 +1,8 @@
 <style>
-    .select2-dropdown {
+/*.select2-dropdown {
     height: 250px;
     overflow-x: hidden;
-}
+}*/
 </style>
 
 
@@ -22,12 +22,35 @@
                     <div class="form-group">
                         <label for="account" class="col-sm-3 control-label">{$_L['Account']}</label>
                         <div class="col-sm-9">
-                            <select id="account" name="account" class="form-control">
+                            {*<select id="account" name="account" class="form-control">
                                 <!--<option value="">{$_L['Choose an Account']}</option>-->
                                 {foreach $d as $ds}
                                     <option value="{$ds['account']}">{$ds['account']}</option>
                                 {/foreach}
+                            </select>*}
+                            <select id="account" name="account" class="form-control" required>
+                                {if $user->roleid eq 0}
+                                    <option value="">{$_L['Choose an Account']}</option>
+                                    {foreach $d as $ds}
+                                        <option value="{$ds['account']}" data-branch="{$ds['id']}" {if $ds.id eq $user.branch_id}selected{/if}>
+                                            {$ds['account']}
+                                        </option>
+                                    {/foreach}
+                                {else}
+                                    {foreach $d as $ds}
+                                        {if $ds['id'] eq $user->branch_id}
+                                            <option value="{$ds['account']}" 
+                                                    data-branch="{$ds['id']}" 
+                                                    {if $ds.id eq $user.branch_id}selected{/if}>
+                                                {$ds['account']}
+                                            </option>
+                                        {/if}
+                                    {/foreach}
+                                {/if}
                             </select>
+
+                            <!-- Hidden branch_id field -->
+                            <input type="hidden" id="branch_id_hidden" name="branch_id" value="{$user['branch_id']}">
                         </div>
                     </div>
                     <div class="form-group">
@@ -94,11 +117,14 @@
                             <!--<label for="payee" class="col-sm-3 control-label">{$_L['Payee']}</label>-->
                             <label for="payee" class="col-sm-3 control-label">Contact</label>
                             <div class="col-sm-9">
-                                <select id="payee" name="payee" class="form-control">
+                                {*<select id="payee" name="payee" class="form-control">
                                     <option value="">{$_L['Choose Contact']}</option>
                                     {foreach $p as $ps}
                                         <option value="{$ps['id']}">{$ps['account']} / {$ps['phone']}</option>
                                     {/foreach}
+                                </select>*}
+                                <select id="payee" name="payee" class="form-control">
+                                    <option value="">{$_L['Choose Contact']}...</option>
                                 </select>
                             </div>
                         </div>
