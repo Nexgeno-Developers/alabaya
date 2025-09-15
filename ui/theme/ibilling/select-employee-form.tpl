@@ -150,8 +150,10 @@
 
 
 <script>
-var baseUrl = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : '');
-let URL = baseUrl+'/?ng=';
+var URL = $("#_url").val();
+//console.log(_url);
+//var baseUrl = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : '');
+//let URL = baseUrl+'/?ng=';
 $(document).ready(function() {
     
     

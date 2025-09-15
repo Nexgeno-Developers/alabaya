@@ -2993,10 +2993,26 @@ $inv_prefix = '';
             $a_opt = '';
             // <option value="{$ds['account']}">{$ds['account']}</option>
             $a = ORM::for_table('sys_accounts')->find_many();
-            foreach ($a as $acs) {
-                $a_opt .= '<option value="' . $acs['account'] . '" selected>' . $acs['account'] . '</option>';
-            }
+            // foreach ($a as $acs) {
+            //     $a_opt .= '<option value="' . $acs['account'] . '" selected>' . $acs['account'] . '</option>';
+            // }
 
+            // check user role
+            if ($user['roleid'] == 0) {
+                // Super admin - show all
+                foreach ($a as $acs) {
+                    $sel = ($acs['id'] == $user->branch_id) ? 'selected' : '';
+                    $a_opt .= '<option value="' . $acs['account'] . '" data-branch="' . $acs['id'] . '" ' . $sel . '>' . $acs['account'] . '</option>';
+                }
+            } else {
+                // Normal user - show only their branch
+                foreach ($a as $acs) {
+                    if ($acs['id'] == $user->branch_id) {
+                        $a_opt .= '<option value="' . $acs['account'] . '" data-branch="' . $acs['id'] . '" selected>' . $acs['account'] . '</option>';
+                    }
+                }
+            }
+            
             $pms_opt = '';
             // <option value="{$pm['name']}">{$pm['name']}</option>
             $pms = ORM::for_table('sys_pmethods')->order_by_asc('sorder')->find_many();
@@ -3012,7 +3028,7 @@ $inv_prefix = '';
                 $cats_opt .= '<option value="' . $cat['name'] . '">' . $cat['name'] . '</option>';
             }
 
-
+// <option value="">'.$_L['Choose an Account'].'</option>
             echo '
 <div class="modal-header">
 	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
@@ -3024,14 +3040,10 @@ $inv_prefix = '';
 <div class="form-group">
     <label for="subject" class="col-sm-2 control-label">'.$_L['Account'].'</label>
     <div class="col-sm-10">
-       <select id="account" name="account">
-                            <option value="">'.$_L['Choose an Account'].'</option>
-
-' . $a_opt . '
-
-                        </select>
+       <select id="account" name="account" class="form-control">' . $a_opt . '</select>
+       <input type="hidden" id="branch_id" name="branch_id" value="">
     </div>
-  </div>
+</div>
 
 <div class="form-group">
     <label for="date" class="col-sm-2 control-label">'.$_L['Date'].'</label>
@@ -3365,8 +3377,10 @@ function showDiv(elem){
     case 'fetch-employee-invoice':
     Event::trigger('invoices/fetch-employee-invoice/');
     
+    $branchId = $user->branch_id; // current logged-in user's branch
+
     // Fetch data from the crm_accounts table
-    $accounts = ORM::for_table('crm_accounts')->where('employee_category_id', $_GET['categoryId'])->find_many();
+    $accounts = ORM::for_table('crm_accounts')->where('employee_category_id', $_GET['categoryId'])->where('branch_id', $branchId)->find_many();
     
     // var_dump($accounts);
     
@@ -4009,6 +4023,7 @@ function showDiv(elem){
         $amount = Finance::amount_fix($amount);
         $payerid = _post('payer');
         $pmethod = _post('pmethod');
+        $branch_id = _post('branch_id');
         $ref = _post('ref');
         if($payerid == ''){
             $payerid = '0';
@@ -4048,6 +4063,7 @@ function showDiv(elem){
             $a->balance = $nbal;
             $a->save();
             $d = ORM::for_table('sys_transactions')->create();
+            $d->branch_id = $branch_id;
             $d->account = $account;
             $d->type = 'Income';
             $d->payerid = $payerid;
