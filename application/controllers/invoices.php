@@ -14,10 +14,15 @@ switch ($action) {
     case 'add':
 //find all clients.
 
-        if($user['roleid'] != 0)
-        {
-        exit; 
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'sales')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
         }
+
+        // if($user['roleid'] != 0)
+        // {
+        // exit; 
+        // }
 
         Event::trigger('invoices/add/');
 
@@ -130,11 +135,15 @@ switch ($action) {
         break;
 
     case 'edit':
-
-        if($user['roleid'] != 0)
-        {
-        exit; 
-        }   
+ 
+        // Permission check (keep)
+        if(!has_access($user->roleid, 'sales')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+        // if($user['roleid'] != 0)
+        // {
+        // exit; 
+        // }   
 
         Event::trigger('invoices/edit/');
         $id = $routes['2'];

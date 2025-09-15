@@ -19,10 +19,22 @@
                             <div class="form-group">
                                 <label for="filter_branch">Branch</label>
                                 <select name="branch_id" id="filter_branch" class="form-control">
-                                    <option value="">All</option>
-                                    {foreach $branches as $branch}
-                                        <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias|default:$branch.account}</option>
-                                    {/foreach}
+                                    {if $user->roleid eq 0}
+                                        <option value="">All</option>
+                                        {foreach $branches as $branch}
+                                            <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>
+                                                {$branch.alias|default:$branch.account}
+                                            </option>
+                                        {/foreach}
+                                    {else}
+                                        {foreach $branches as $branch}
+                                            {if $branch.id eq $user->branch_id}
+                                                <option value="{$branch.id}" selected>
+                                                    {$branch.alias|default:$branch.account}
+                                                </option>
+                                            {/if}
+                                        {/foreach}
+                                    {/if}
                                 </select>
                             </div>
                         </div>
