@@ -17,14 +17,25 @@ $(document).ready(function () {
             $modal.modal();
             $('.amount').autoNumeric('init');
             $(".datepicker").datepicker();
+            // $("#account").select2({
+            //     theme: "bootstrap"
+            // });
             $("#account").select2({
-                theme: "bootstrap"
+                // theme: "bootstrap"
+            }).on("change", function(){
+                var branchId = $(this).find(":selected").data("branch");
+                $("#branch_id").val(branchId);
             });
+
+            // set hidden branch_id immediately on load
+            var branchIdInit = $("#account").find(":selected").data("branch");
+            $("#branch_id").val(branchIdInit);
+
             $("#cats").select2({
-                theme: "bootstrap"
+                // theme: "bootstrap"
             });
             $("#pmethod").select2({
-                theme: "bootstrap"
+                // theme: "bootstrap"
             });
         });
 

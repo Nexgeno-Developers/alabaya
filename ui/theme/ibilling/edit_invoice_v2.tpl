@@ -368,12 +368,31 @@ input[type=number]::-webkit-outer-spin-button {
 												</div>
 								<div class="form-group">
 							<label for="company">{$_L['Company']}</label>
-							<select id="company" name="company" class="form-control">
+							{*<select id="company" name="company" class="form-control">
 								<!--<option value="">{$_L['Select Company']}...</option>-->
 								{foreach $comp as $cs}
 								<option value="{$cs['id']}"
-                {if $d['company_id'] eq ($cs['id'])}selected="selected" {/if}>{$cs['account']}</option>
+                					{if $d['company_id'] eq ($cs['id'])}selected="selected" {/if}>{$cs['account']}</option>
 								{/foreach}
+							</select>*}
+							<select id="company" name="company" class="form-control" required>
+								{if $user->roleid eq 0}
+									{foreach $comp as $cs}
+										<option value="{$cs['id']}" data-branch="{$cs['id']}" {if $cs.id eq $user.branch_id}selected{/if}>
+											{$cs['account']}
+										</option>
+									{/foreach}
+								{else}
+									{foreach $comp as $cs}
+										{if $cs['id'] eq $user->branch_id}
+											<option value="{$cs['id']}" 
+													data-branch="{$cs['id']}" 
+													{if $cs.id eq $user.branch_id}selected{/if}>
+												{$cs['account']}
+											</option>
+										{/if}
+									{/foreach}
+								{/if}
 							</select>
 						</div>
 						{*<div class="form-group">
