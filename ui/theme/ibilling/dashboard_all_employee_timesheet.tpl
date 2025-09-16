@@ -113,82 +113,119 @@ $(document).ready(function() {
     
     // Initialize Select2 for existing select elements
     $(".select2").select2();
+    var baseUrl = "{$APP_URL}";
+    let APP_URL = baseUrl+'/?ng=';
 
-    let employeeIdIndex = 0; // Initialize index counter for employee_id[]
+    var employeeIdIndex = 0;
+    // global helper: fetch employees for branch
+    function fetchBranchEmployees(branchId, cb) {
+        $.post(APP_URL + "timesheet/timesheet-ajax-employees", { branch_id: branchId }, function(resp) {
+            cb(resp || []);
+        }, 'json');
+    }
 
     function addInputRow(formattedDate2, dayName, startDateTimeLocal, endDateTimeLocal) {
         var message = "On " + formattedDate2 + ", all selected employees will be marked present.";
+
         var inputRow = `
-            <div class="row row-form">
-                <div class="toaster" id="toaster" style="position: relative; margin: 10px 0 10px;
-                background-color: #51A351; color: #fff; padding: 10px;">` + message + `</div>
-                <div class="col-md-4" style="padding:0px;">
-                    <div class="input-row">
-                        <div class="col-md-6">
-                            <div class="">
-                                <label for="checkin">Check In</label>
-                                <input class="checkin12 form-control" required type="datetime-local" name="checkin-holiday[]" value="` + startDateTimeLocal + `">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="">
-                                <label for="checkout">Check Out</label>
-                                <input class="checkout12 form-control" required type="datetime-local" name="checkout-holiday[]" value="` + endDateTimeLocal + `">
-                            </div>
-                        </div>
-                    </div>
+            <div class="row row-form" data-row-index="` + employeeIdIndex + `">
+                <div class="toaster" style="position: relative; margin: 10px 0;
+                    background-color: #51A351; color: #fff; padding: 10px;">` + message + `</div>
+
+                <div class="col-md-3">
+                    <label>Branch</label>
+                    <select name="branch_id" id="branch_id" class="branch-select form-control" required>
+                        {if $user->roleid eq 0}
+                            <option value="">Select Branch</option>
+                            {foreach $branches as $branch}
+                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                            {/foreach}
+                        {else}
+                            {foreach $branches as $branch}
+                                {if $branch.id eq $user->branch_id}
+                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                {/if}
+                            {/foreach}
+                        {/if}
+                    </select>
                 </div>
-                <div class="col-md-4">
+
+                <div class="col-md-3">
+                    <label for="checkin">Check In</label>
+                    <input class="checkin12 form-control" required type="datetime-local" name="checkin-holiday[]" value="` + startDateTimeLocal + `">
+                </div>
+                <div class="col-md-3">
+                    <label for="checkout">Check Out</label>
+                    <input class="checkout12 form-control" required type="datetime-local" name="checkout-holiday[]" value="` + endDateTimeLocal + `">
+                </div>
+
+                <div class="col-md-3">
+                    <label>Employees</label>
                     <div class="row">
-                        <div class="col-md-12">
-                            <label id="employee_name_label` + employeeIdIndex + `">Employee Name</label>
-                        </div>
                         <div class="col-md-8">
-                            <select required multiple name="employee_id_` + employeeIdIndex + `[]" class="employee_id3 select2 form-control">
-                                {foreach $hourly_employee_name as $employee}
-                                <option value="{$employee.id}">{$employee.account}</option>
-                                {/foreach}
-                            </select>
+                            <select required multiple name="employee_id_` + employeeIdIndex + `[]" class="employee_id3 select2 form-control"></select>
                         </div>
                         <div class="col-md-4">
-                            <button class="btn btn-primary select-all-btn2" id="select-all-btn">Select All</button>
+                            <button type="button" class="btn btn-primary select-all-btn2">Select All</button>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <label for="remarks">Remarks</label>
-                        </div>
-                        <div class="col-md-9">
-                            <textarea required class="form-control remarks" placeholder="Remarks" name="remarks[]">`+ dayName +` </textarea>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-danger remove-input-row">-</button>
-                        </div>
-                    </div>
+
+                <div class="col-md-9" style="margin-top:10px;">
+                    <label for="remarks">Remarks</label>
+                    <textarea required class="form-control remarks" placeholder="Remarks" name="remarks[]">` + dayName + `</textarea>
+                </div>
+                <div class="col-md-3" style="margin-top:32px;">
+                    <button type="button" class="btn btn-danger remove-input-row">-</button>
                 </div>
             </div>
         `;
+
         $("#dynamic-inputs-container").append(inputRow);
-        // Initialize Select2 for newly added select element
-        $("#dynamic-inputs-container").find(".select2").last().select2();
-        
-        // Increment the index for the next employee_id[]
+
+        // Initialize Select2
+        var $lastSelect = $("#dynamic-inputs-container").find(".employee_id3").last();
+        $lastSelect.select2();
+
         employeeIdIndex++;
     }
+
+    // EVENT: branch change inside row → load employees
+    $("#dynamic-inputs-container").on('change', '.branch-select', function() {
+        var $row = $(this).closest('.row-form');
+        var branchId = $(this).val();
+        var $empSelect = $row.find('.employee_id3');
+
+        if (!branchId) {
+            $empSelect.html('<option value="">No employees</option>').trigger('change');
+            return;
+        }
+
+        fetchBranchEmployees(branchId, function(emps) {
+            var options = '';
+            $.each(emps, function(i, emp) {
+                options += '<option value="' + emp.id + '">' + emp.account + '</option>';
+            });
+            $empSelect.html(options);
+            // preselect all employees
+            $empSelect.find('option').prop('selected', true);
+            $empSelect.trigger('change');
+        });
+    });
+
+    // EVENT: per-row select all
+    $("#dynamic-inputs-container").on('click', '.select-all-btn2', function(e) {
+        e.preventDefault();
+        var $row = $(this).closest('.row-form');
+        var $sel = $row.find('.employee_id3');
+        $sel.find('option').prop('selected', true);
+        $sel.trigger('change');
+    });
 
     $("#dynamic-inputs-container").on("click", ".remove-input-row", function (e) {
         e.preventDefault();
         $(this).closest(".row-form").remove();
         toggleSubmitButton();
-    });
-
-    $('#dynamic-inputs-container').on('click', '.select-all-btn2', function(e) {
-        e.preventDefault();
-        var rowForm = $(this).closest('.row-form');
-        rowForm.find('.employee_id3').find('option').prop('selected', true);
-        rowForm.find('.employee_id3').trigger('change');
     });
 
     $("#datepicker").on("change", function() {
@@ -502,6 +539,7 @@ $(document).on('click', '.timesheet-entry-post300', function(e) {
                     search_param.employee_id = $('input[name="employee_id"]').val();
                     search_param.fromdate = $('input[name="fromdate"]').val();
                     search_param.todate = $('input[name="todate"]').val();
+                    search_param.branch_id = $('select[name="branch_id"]').val() || $('select#branch_select').val() || '';
                 }
             },
             drawCallback: function(settings) {

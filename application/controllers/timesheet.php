@@ -1,8 +1,8 @@
 <?php
 _auth();
 
-$ui->assign('_title', $_L['Timesheet'].'- '. $config['CompanyName']);
-$ui->assign('_st', $_L['Timesheet']);
+$ui->assign('_title', 'Timesheet - '. $config['CompanyName']);
+$ui->assign('_st', 'Timesheet');
 $user = User::_info();
 $ui->assign('user',$user);
 
@@ -22,30 +22,90 @@ if($action == ''){
 
 switch($action){
    
-        case 'index':
-            
-            Event::trigger('index');
-            $_L = 'Timesheet';
-            $ui->assign('_application_menu', 'timesheet');
-            $ui->assign('_st', $_L);
-            $ui->assign('_title', $_L .' - '. $config['CompanyName']);
+    case 'index':
+        
+        Event::trigger('index');
+        $_L = 'Timesheet';
+        $ui->assign('_application_menu', 'timesheet');
+        $ui->assign('_st', $_L);
+        $ui->assign('_title', $_L .' - '. $config['CompanyName']);
+
+        // Load branches for branch select / filter
+        $branches = ORM::for_table('sys_accounts')
+            ->select('id')
+            ->select('account')
+            ->select('alias')
+            ->order_by_asc('account')
+            ->find_array();
+
+        $ui->assign('branches', $branches);
+                
+        // Pick initial branch for employee load:
+        // If super-admin show all per-hour employees initially (or first branch if you prefer),
+        // otherwise restrict to user's branch only.
+        if ($user->roleid == 0) {
+            // Super admin: show all per_hour employees (optional: you can limit to first branch instead)
             $employees = ORM::for_table('crm_accounts')
                 ->select('id')
-                ->select('account') 
+                ->select('account')
                 ->where('salery_type', 'per_hour')
-                ->find_many();
-                
-            $ui->assign('APP_URL', APP_URL);
-            $ui->assign('hourly_employee_name', $employees);
-            $ui->assign('employees', $employees);
-            $ui->assign('xheader',Asset::css(array('modal')));
-            $ui->assign('xfooter',Asset::js(array('modal')));
-            $ui->assign('xfooter2',Asset::js(array('jquery.dataTables')));
-            // $ui->display('dashboard_timesheet.tpl');
-            $ui->display('dashboard_all_employee_timesheet.tpl');
-        break;
+                ->order_by_asc('account')
+                ->find_array();
+        } else {
+            // Non-admin: only employees for that branch
+            $employees = ORM::for_table('crm_accounts')
+                ->select('id')
+                ->select('account')
+                ->where('salery_type', 'per_hour')
+                ->where('branch_id', $user->branch_id)
+                ->order_by_asc('account')
+                ->find_array();
+        }
         
-        
+        $ui->assign('APP_URL', APP_URL);
+        $ui->assign('hourly_employee_name', $employees);
+        $ui->assign('employees', $employees);
+        $ui->assign('xheader',Asset::css(array('modal')));
+        $ui->assign('xfooter',Asset::js(array('modal')));
+        $ui->assign('xfooter2',Asset::js(array('jquery.dataTables')));
+        // $ui->display('dashboard_timesheet.tpl');
+        $ui->display('dashboard_all_employee_timesheet.tpl');
+    break;
+    
+            
+    // AJAX endpoint: return employees JSON for a branch
+    case 'timesheet-ajax-employees':
+        $user = User::_info();
+        $branch_id = _post('branch_id');
+
+        // If non-admin and no branch posted, force user branch
+        if (empty($branch_id) && $user->roleid != 0) {
+            $branch_id = $user->branch_id;
+        }
+
+        if (!empty($branch_id)) {
+            $emps = ORM::for_table('crm_accounts')
+                ->select('id')
+                ->select('account')
+                ->where('salery_type', 'per_hour')
+                ->where('branch_id', $branch_id)
+                ->order_by_asc('account')
+                ->find_array();
+        } else {
+            // If branch not provided and superadmin, return all per_hour employees
+            $emps = ORM::for_table('crm_accounts')
+                ->select('id')
+                ->select('account')
+                ->where('salery_type', 'per_hour')
+                ->order_by_asc('account')
+                ->find_array();
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($emps);
+
+    break;
+
     // case 'holiday-timesheet-ajax':
     //     Event::trigger('timesheet/holiday-timesheet-ajax');
     
@@ -256,6 +316,13 @@ switch($action){
                 $totalRecordQuery->where('crm_accounts.salery_type', $salery_type);
             }
             
+            if (!empty($_POST['branch_id'])) {
+                $branch_id = (int) $_POST['branch_id']; // cast to int for safety
+                if ($branch_id > 0) {
+                    $totalRecordQuery->where('crm_accounts.branch_id', $branch_id);
+                }
+            }
+
             // Count total records
             $totalRecordCount = $totalRecordQuery->count();
                         
@@ -281,34 +348,48 @@ switch($action){
                 $earnAmountSumTotal->where('crm_accounts.salery_type', $salery_type);
             }
             
+            if (!empty($_POST['branch_id'])) {
+                $branch_id = (int) $_POST['branch_id'];
+                if ($branch_id > 0) {
+                    $earnAmountSumTotal->where('crm_accounts.branch_id', $branch_id);
+                }
+            }
+
             // Fetch the total earnings sum
             $earnAmountSumTotalResult = $earnAmountSumTotal->find_one();
             $earnAmountSumTotal = $earnAmountSumTotalResult ? $earnAmountSumTotalResult->total_earnings : 0;
             
            // Query 2: Fetch the paginated records
-$recordQuery = ORM::for_table('crm_timesheet')
-    ->select('crm_timesheet.*')  // Select all fields from crm_timesheet
-    ->select('crm_accounts.account')  // Select crm_accounts.account
-    ->select('crm_accounts.salery_type')  // Select crm_accounts.salery_type
-    ->selectExpr("CASE WHEN crm_timesheet.invoice_alocation_id IS NOT NULL THEN 'per_piece' ELSE crm_accounts.salery_type END AS salery_type")  // Set salery_type to per_piece if invoice_allocation_id is present
-    ->left_outer_join('crm_accounts', ['crm_timesheet.employee_id', '=', 'crm_accounts.id']);  // Join with crm_accounts
+            $recordQuery = ORM::for_table('crm_timesheet')
+                ->select('crm_timesheet.*')  // Select all fields from crm_timesheet
+                ->select('crm_accounts.account')  // Select crm_accounts.account
+                ->select('crm_accounts.salery_type')  // Select crm_accounts.salery_type
+                ->selectExpr("CASE WHEN crm_timesheet.invoice_alocation_id IS NOT NULL THEN 'per_piece' ELSE crm_accounts.salery_type END AS salery_type")  // Set salery_type to per_piece if invoice_allocation_id is present
+                ->left_outer_join('crm_accounts', ['crm_timesheet.employee_id', '=', 'crm_accounts.id']);  // Join with crm_accounts
 
-// Apply the same conditions to fetch paginated records
-if ($employee_id) {
-    $recordQuery->where('crm_timesheet.employee_id', $employee_id);
-}
+            // Apply the same conditions to fetch paginated records
+            if ($employee_id) {
+                $recordQuery->where('crm_timesheet.employee_id', $employee_id);
+            }
 
-if ($fromdate && $todate) {
-    $recordQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
-}
+            if ($fromdate && $todate) {
+                $recordQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
+            }
 
-if ($employee_name) {
-    $recordQuery->where_like('crm_accounts.account', "%$employee_name%");
-}
+            if ($employee_name) {
+                $recordQuery->where_like('crm_accounts.account', "%$employee_name%");
+            }
 
-if ($salery_type) {
-    $recordQuery->where('crm_accounts.salery_type', $salery_type);
-}
+            if ($salery_type) {
+                $recordQuery->where('crm_accounts.salery_type', $salery_type);
+            }
+            
+            if (!empty($_POST['branch_id'])) {
+                $branch_id = (int) $_POST['branch_id'];
+                if ($branch_id > 0) {
+                    $recordQuery->where('crm_accounts.branch_id', $branch_id);
+                }
+            }
 
             // Fetch the paginated records
             $records = $recordQuery->offset($start)->limit($rowperpage)->find_many();

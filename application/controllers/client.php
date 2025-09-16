@@ -3229,7 +3229,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         $employee_timesheet = ORM::for_table('crm_timesheet')->where('date', date('Y-m-d'))->where('employee_id', $cid)->find_one();
         
         $ui->assign('APP_URL', APP_URL);
-        $ui->assign('employee_id',$employee_id);
+        $ui->assign('employee_id',$employee->id);
         $ui->assign('employee',$employee);
         $ui->assign('cid',$cid);
         $ui->assign('dashboard_summary_extras',$dashboard_summary_extras);
