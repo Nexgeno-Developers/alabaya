@@ -624,7 +624,7 @@ minHeight: 150 // pixels
             );
         }
 
-        $users_q->order_by_asc('fullname');
+        $users_q->order_by_desc('id');
         $d = $users_q->find_many();
 
         // Assign to template
@@ -726,8 +726,33 @@ minHeight: 150 // pixels
         }
 
         break;
-
+    
     case 'users-delete':
+    $id  = $routes['2'];
+
+    // Prevent self delete
+    if(($user['id']) == $id){
+        echo json_encode(['success'=>false,'message'=>"You can't delete yourself"]);
+        exit;
+    }
+
+    // Check if user has invoices
+    $hasInvoices = ORM::for_table('sys_invoices')->where('created_by', $id)->count();
+    if($hasInvoices){
+        echo json_encode(['success'=>false,'message'=>"User has invoices and cannot be deleted"]);
+        exit;
+    }
+
+    $d = ORM::for_table('sys_users')->find_one($id);
+    if($d){
+        $d->delete();
+        echo json_encode(['success'=>true,'message'=>"User deleted successfully"]);
+    } else {
+        echo json_encode(['success'=>false,'message'=>$_L['Account_Not_Found']]);
+    }
+    break;
+
+    /*case 'users-delete':
 
 
         $id  = $routes['2'];
@@ -745,7 +770,7 @@ minHeight: 150 // pixels
             r2(U . 'settings/users', 'e', $_L['Account_Not_Found']);
         }
 
-        break;
+        break;*/
 
     case 'users-post':
 
@@ -766,7 +791,7 @@ minHeight: 150 // pixels
             $user_type = $r->rname;
         }
         else{
-            $role = '';
+            $role = 'Admin';
             $roleid = 0;
             $user_type = 'Admin';
         }
@@ -843,7 +868,6 @@ minHeight: 150 // pixels
 
         $username = _post('username');
         $fullname = _post('fullname');
-        $img = _post('picture');
         $password = _post('password');
         $cpassword = _post('cpassword');
         $branch_id  = _post('branch_id');
@@ -875,7 +899,7 @@ minHeight: 150 // pixels
         else{
             $msg .= 'Username Not Found'. '<br>';
         }
-//check with same name account is exist
+        //check with same name account is exist
         if($d['username'] != $username){
             $c = ORM::for_table('sys_users')->where('username',$username)->find_one();
             if($c){
@@ -889,21 +913,20 @@ minHeight: 150 // pixels
             $msg .= 'Editing User is disabled in the Demo Mode!'. '<br>';
         }
 
-        $user_type = _post('user_type');
 
-        if ($user_type !== '') {
-            $r = Model::factory('Models_Role')->find_one($user_type);
-            if ($r) {
-                $role     = $r->rname;
-                $roleid   = $user_type;
-                $userType = $r->rname;
-            }
-        }else{
-            // Default to existing values
-            $role     = $d->role;
-            $roleid   = $d->roleid;
-            $userType = $d->user_type;
-        }
+        // if ($user_type !== '') {
+        //     $r = Model::factory('Models_Role')->find_one($user_type);
+        //     if ($r) {
+        //         $role     = $r->rname;
+        //         $roleid   = $user_type;
+        //         $userType = $r->rname;
+        //     }
+        // }else{
+        //     // Default to existing values
+        //     $role     = $d->role;
+        //     $roleid   = $d->roleid;
+        //     $userType = $d->user_type;
+        // }
 
         if($msg == ''){
 
@@ -919,14 +942,31 @@ minHeight: 150 // pixels
             $d->fullname = $fullname;
             if(($user['id']) != $id){
 
+                $userType = _post('user_type');
+
+                $r = Model::factory('Models_Role')->find_one($userType);
+
+                if($r){
+                    $role = $r->rname;
+                    $roleid = $userType;
+                    $userType = $r->rname;
+                }
+                else{
+                    $role = 'Admin';
+                    $roleid = 0;
+                    $userType = 'Admin';
+                }
+                $d->role = $role;
+                $d->roleid = $roleid;
                 $d->user_type = $userType;
             }
 
+            $img = _post('picture');
             $d->img = $img;
-            $d->branch_id = $branch_id;
-            $d->role = $role;
-            $d->roleid = $roleid;
 
+            $d->branch_id = $branch_id;
+
+            // $d->user_type = $userType;
             $d->save();
             r2(U . 'settings/users-edit/'.$id, 's', 'User Updated Successfully');
         }

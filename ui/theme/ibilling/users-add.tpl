@@ -44,6 +44,7 @@
                     <div class="form-group">
                         <label>{$_L['User']} {$_L['Type']}</label>
 
+                        {*
                         {if $user->roleid eq 0}
                             <div class="i-checks">
                                 <label>
@@ -52,6 +53,7 @@
                                 </label>
                             </div>
                         {/if}
+                        *}
 
                         {foreach $roles as $role}
                             <div class="i-checks">

@@ -53,7 +53,13 @@
                                 {/if}</td>
                             <td>{$ds['username']}</td>
                             <td>{$ds['fullname']}</td>
-                            <td>{ib_lan_get_line($ds['user_type'])}</td>
+                            <td>
+                                {if $ds['user_type'] == 'Admin'}
+                                    Super Admin
+                                {else}
+                                    {ib_lan_get_line($ds['user_type'])}
+                                {/if}
+                            </td>
                             <td>
                                 {assign var="branch" value=$ds['branch_id']}
                                 {if $branch != '' && $branch != '0'}
@@ -89,7 +95,30 @@
 
 </div>
 
+{literal}
+<script>
+$(document).ready(function(){
+$('.cdelete').off('click').on('click', function(e) {
+    e.preventDefault();
+    var row = $(this).closest('tr'); // get the table row
+    var id = $(this).attr('id').replace('iid','');
+    var csrf_token = $('#csrf_token').val();
 
-
+    bootbox.confirm("Are you sure you want to delete this user?", function(result){
+        if(result){
+            $.post(base_url + "settings/users-delete/" + id, {_token: csrf_token}, function(data){
+                if(data.success){
+                    row.remove(); // remove row from table
+                    toastr.success(data.message);
+                } else {
+                    toastr.error(data.message);
+                }
+            }, 'json');
+        }
+    });
+});
+});
+</script>
+{/literal}
 
 {include file="sections/footer.tpl"}
