@@ -33,9 +33,11 @@
 
     <li {if $_application_menu eq 'dashboard'}class="active"{/if}><a href="{$_url}{$_c['redirect_url']}/"><i class="fa fa-tachometer"></i> <span class="nav-label">{$_L['Dashboard']}</span></a></li>
 
+    {if has_access($user->roleid,'timesheet')}
     <li {if $_application_menu eq 'timesheet'}class="active"{/if}>
         <a href="{$_url}timesheet"><i class="fa fa-clock-o"></i><span class="nav-label">Timesheet</span></a>
     </li>
+    {/if}
 
 
 

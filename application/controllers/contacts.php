@@ -21,6 +21,10 @@ _L[\'Submit\'] = \''.$_L['Submit'].'\';
 switch ($action) {
     case 'add':
 
+        if(!has_access($user->roleid, 'customer')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
         Event::trigger('contacts/add/');
 
             $categories = ORM::for_table('category_employee')->find_many();
@@ -86,6 +90,9 @@ switch ($action) {
       break;
 
 case 'category-employee-list':
+    if(!has_access($user->roleid, 'contact_category')) {
+        r2(U."dashboard",'e',$_L['You do not have permission']);
+    }
     Event::trigger('contacts/category-employee-list/');
     
     // Fetch category data
@@ -112,6 +119,9 @@ case 'category-employee-list':
 
     
     case 'add-category-employee':
+        if(!has_access($user->roleid, 'contact_category')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         // Trigger event
         Event::trigger('contacts/add-category-employee/');
        
@@ -1124,6 +1134,10 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
     case 'view':
 
+        if(!has_access($user->roleid, 'customer')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
         Event::trigger('contacts/view/');
 
         $id  = $routes['2'];
@@ -1424,6 +1438,10 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
     */
 
     case 'list':
+
+    if(!has_access($user->roleid, 'customer')) {
+        r2(U."dashboard",'e',$_L['You do not have permission']);
+    }
 
     Event::trigger('contacts/list/');
 

@@ -21,6 +21,11 @@ switch ($action) {
     break;
 
     case 'add-design':
+        
+        if(!has_access($user->roleid, 'products_n_services')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
         $fabrics = ORM::for_table('sys_items')->where('product_category', 'fabric')->find_many();
         $ui->assign('fabrics', $fabrics); 
         $stones = ORM::for_table('sys_items')->where('product_category', 'stone_&_size')->find_many();
@@ -199,6 +204,9 @@ switch ($action) {
 
 
     case 'list-design':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         $d = ORM::for_table('sys_designs')->order_by_desc('id')->find_many();
         $ui->assign('d',$d);
         $ui->assign('xheader', '

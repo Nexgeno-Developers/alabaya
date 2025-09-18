@@ -73,11 +73,37 @@
                                 {/if}
                             </td>
                             <td>
-                                <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse"><i class="fa fa-pencil"></i> </a>
-                                {if ($_user['username']) neq ($ds['username'])}
-                                    <a href="{$_url}settings/users-delete/{$ds['id']}" id="{$ds['id']}" class="btn btn-danger cdelete"><i class="fa fa-trash"></i> </a>
+                                {if $user->roleid == 0}
+                                    {* Super Admin: edit anyone, delete others except self *}
+                                    <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse">
+                                        <i class="fa fa-pencil"></i>
+                                    </a>
+                                    {if $user->id neq $ds['id']}
+                                        <a href="{$_url}settings/users-delete/{$ds['id']}" id="{$ds['id']}" class="btn btn-danger cdelete">
+                                            <i class="fa fa-trash"></i>
+                                        </a>
+                                    {/if}
+                                {else}
+                                    {* Regular user *}
+                                    {if $user->id eq $ds['id']}
+                                        {* Can edit self (no delete) *}
+                                        <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                    {elseif $ds['roleid'] neq 0}
+                                        {* Can edit/delete other users, but not super admin *}
+                                        <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                        <a href="{$_url}settings/users-delete/{$ds['id']}" id="{$ds['id']}" class="btn btn-danger cdelete">
+                                            <i class="fa fa-trash"></i>
+                                        </a>
+                                    {/if}
                                 {/if}
                             </td>
+
+
+
                         </tr>
                     {/foreach}
 

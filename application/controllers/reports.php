@@ -22,7 +22,9 @@ $month_n = date('n');
 
 switch ($action) {
     case 'statement':
-
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         $d = ORM::for_table('sys_accounts')->find_many();
         $ui->assign('d', $d);
 
@@ -93,6 +95,9 @@ $(\'#dp1\').datepicker({
 
     case 'by-date':
 
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
         $d = ORM::for_table('sys_transactions')->where('date',$mdate)->order_by_desc('id')->find_many();
         $dr = ORM::for_table('sys_transactions')->where('date',$mdate)->sum('dr');
@@ -166,7 +171,9 @@ $(\'#dp1\').datepicker({
         break;
 
     case 'income':
-
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
         $d = ORM::for_table('sys_transactions')->where('type','Income')->limit(20)->order_by_desc('id')->find_many();
         $ui->assign('d',$d);
@@ -240,6 +247,9 @@ $(\'#dp1\').datepicker({
 
     case 'expense':
 
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
         $d = ORM::for_table('sys_transactions')->where('type','Expense')->limit(20)->order_by_desc('id')->find_many();
         $ui->assign('d',$d);
@@ -312,6 +322,9 @@ $(\'#dp1\').datepicker({
 
 
     case 'income-vs-expense':
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
         $ai = ORM::for_table('sys_transactions')->sum('cr');
         if($ai == ''){
