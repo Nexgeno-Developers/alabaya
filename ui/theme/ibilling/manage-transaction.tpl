@@ -45,24 +45,22 @@
                     </div>
 
                     {if $t['type'] neq 'Transfer'}
-                        <div class="form-group">
-                            <label for="cats" class="col-sm-3 control-label">{$_L['Category']}</label>
-                            <div class="col-sm-9">
-                                <select id="cats" name="cats" class="form-control">
-                                    <option value="Uncategorized">{$_L['Uncategorized']}</option>
-                                    {foreach $cats as $cat}
-                                        <option value="{$cat['name']}" {if $cat['name'] eq $t['category']}selected="selected" {/if}>{$cat['name']}</option>
-                                    {/foreach}
+                    <div class="form-group">
+                        <label for="cats" class="col-sm-3 control-label">{$_L['Category']}</label>
+                        <div class="col-sm-9">
+                            <select id="cats" name="cats" class="form-control">
+                                <option value="Uncategorized">{$_L['Uncategorized']}</option>
+                                {foreach $cats as $cat}
+                                    <option value="{$cat['name']}" {if $cat['name'] eq $t['category']}selected="selected" {/if}>{$cat['name']}</option>
+                                {/foreach}
 
 
-                                </select>
-                            </div>
+                            </select>
                         </div>
-                        {else}
-                        <input type="hidden" name="cats" id="cats" value="">
+                    </div>
+                    {else}
+                    <input type="hidden" name="cats" id="cats" value="">
                     {/if}
-
-
 
                     <div class="form-group">
                         <label for="tags" class="col-sm-3 control-label">{$_L['Tags']}</label>
@@ -75,6 +73,7 @@
                             </select>
                         </div>
                     </div>
+
                     <div class="form-group">
                         <div class="col-sm-3">
                             &nbsp;
@@ -83,38 +82,45 @@
                             <h4><a href="#" id="a_toggle">{$_L['Advanced']}</a> </h4>
                         </div>
                     </div>
+
                     <div id="a_hide">
-{if $t['type'] eq 'Income'}
-    <div class="form-group">
-        <label for="payer" class="col-sm-3 control-label">{$_L['Payer']}</label>
-        <div class="col-sm-9">
-            <select id="payer" name="payer" class="s2 form-control">
-                <option value="">{$_L['Choose Contact']}</option>
-                {foreach $p as $ps}
-                    <option value="{$ps['id']}" {if ($t['payerid']) eq ($ps['id'])}selected="selected" {/if}>{$ps['account']}</option>
-                {/foreach}
-
-
-            </select>
-            <input type="hidden" name="payee" id="payee" value="0">
-        </div>
-    </div>
-    {else}
-    <div class="form-group">
-        <label for="payee" class="col-sm-3 control-label">{$_L['Payee']}</label>
-        <div class="col-sm-9">
-            <select id="payee" name="payee" class="s2 form-control">
-                <option value="">{$_L['Choose Contact']}</option>
-                {foreach $p as $ps}
-                    <option value="{$ps['id']}" {if ($t['payeeid']) eq ($ps['id'])}selected="selected" {/if}>{$ps['account']}</option>
-                {/foreach}
-
-
-            </select>
-            <input type="hidden" name="payer" id="payer" value="0">
-        </div>
-    </div>
-{/if}
+                        {if $t['type'] eq 'Income'}
+                            <div class="form-group">
+                                <label for="payer" class="col-sm-3 control-label">{$_L['Payer']}</label>
+                                <div class="col-sm-9">
+                                    {*<select id="payer" name="payer" class="s2 form-control">
+                                        <option value="">{$_L['Choose Contact']}</option>
+                                        {foreach $p as $ps}
+                                            <option value="{$ps['id']}" {if ($t['payerid']) eq ($ps['id'])}selected="selected" {/if}>{$ps['account']}</option>
+                                        {/foreach}
+                                    </select>*}
+                                    <select id="payer" name="payer" class="form-control">
+                                        {if $contact}
+                                            <option value="{$contact.id}" selected="selected">{$contact.display_name}</option>
+                                        {/if}
+                                    </select>
+                                    <input type="hidden" name="payee" id="payee_hidden" value="0">
+                                </div>
+                            </div>
+                        {else}
+                            <div class="form-group">
+                                <label for="payee" class="col-sm-3 control-label">{$_L['Payee']}</label>
+                                <div class="col-sm-9">
+                                    {*<select id="payee" name="payee" class="s2 form-control">
+                                        <option value="">{$_L['Choose Contact']}</option>
+                                        {foreach $p as $ps}
+                                            <option value="{$ps['id']}" {if ($t['payeeid']) eq ($ps['id'])}selected="selected" {/if}>{$ps['account']}</option>
+                                        {/foreach}
+                                    </select>*}
+                                    <select id="payee" name="payee" class="form-control">
+                                        {if $contact}
+                                            <option value="{$contact.id}" selected="selected">{$contact.display_name}</option>
+                                        {/if}
+                                    </select>
+                                    <input type="hidden" name="payer" id="payer_hidden" value="0">
+                                </div>
+                            </div>
+                        {/if}
                         <div class="form-group">
                             <label for="pmethod" class="col-sm-3 control-label">{$_L['Method']}</label>
                             <div class="col-sm-9">
@@ -136,6 +142,7 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="form-group">
                         <div class="col-sm-offset-3 col-sm-9">
                             <input type="hidden" name="trid" id="trid" value="{$t['id']}">
@@ -143,6 +150,7 @@
                             <button type="submit" id="submit" class="btn btn-primary"><i class="fa fa-check"></i> {$_L['Submit']}</button>
                         </div>
                     </div>
+
                 </form>
 
             </div>

@@ -2,34 +2,35 @@ $(document).ready(function () {
 
     $('.amount').autoNumeric('init');
 
-
-
     $("#account").select2({
-        theme: "bootstrap",
+        // theme: "bootstrap",
         language: {
             noResults: function () {
                 return $("#_lan_no_results_found").val();
             }
         }
     });
+
     $("#cats").select2({
-        theme: "bootstrap",
+        // theme: "bootstrap",
         language: {
             noResults: function () {
                 return $("#_lan_no_results_found").val();
             }
         }
     });
+
     $("#pmethod").select2({
-        theme: "bootstrap",
+        // theme: "bootstrap",
         language: {
             noResults: function () {
                 return $("#_lan_no_results_found").val();
             }
         }
     });
+
     $(".s2").select2({
-        theme: "bootstrap",
+        // theme: "bootstrap",
         language: {
             noResults: function () {
                 return $("#_lan_no_results_found").val();
@@ -40,13 +41,56 @@ $(document).ready(function () {
     $('#tags').select2({
         tags: true,
         tokenSeparators: [','],
-        theme: "bootstrap",
+        // theme: "bootstrap",
         language: {
             noResults: function () {
                 return $("#_lan_no_results_found").val();
             }
         }
     });
+
+
+    var select2Config = {
+        placeholder: $("#_lan_select_payer").val() || "Select Contact...",
+        allowClear: true,
+        width: '100%',   // 👈 keeps full width
+        ajax: {
+            url: base_url + "contacts/ajax_search_contacts",
+            dataType: 'json',
+            delay: 100,
+            data: function (params) {
+                return {
+                    q: params.term || '',
+                    page: params.page || 1
+                };
+            },
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: (params.page * 20) < data.total_count
+                    }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 3,
+        language: {
+            noResults: function () {
+                return $("#_lan_no_results_found").val();
+            }
+        }
+    };
+
+    if ($("#payer").length) {
+        $("#payer").select2(select2Config);
+    }
+
+    if ($("#payee").length) {
+        $("#payee").select2(select2Config);
+    }
+
 
     $("#a_hide").hide();
     $("#emsg").hide();

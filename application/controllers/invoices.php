@@ -1268,13 +1268,14 @@ switch ($action) {
                                 
                                 $d->save(); //save
                         }
-                        
+            $branch_id = _post('company_branch_id') ? _post('company_branch_id') : 2;
             //advance amount            
             if( _post('advance_amount') ){
                 $d = ORM::for_table('sys_invoices')->find_one($invoiceid);
     			
                 //set data
-                $sys_acc = ORM::for_table('sys_accounts')->find_one(2);
+                $sys_acc = ORM::for_table('sys_accounts')->find_one($branch_id);
+                // $sys_acc = ORM::for_table('sys_accounts')->find_one(2);
                 $account     = $sys_acc['account'];
                 $date        = date('Y-m-d'); 
                 $payerid     = $d['userid'];
@@ -1295,6 +1296,7 @@ switch ($action) {
                 
                 //save in transactions
                 $t = ORM::for_table('sys_transactions')->create();
+                $t->branch_id = $branch_id;
                 $t->account = $account;
                 $t->type = 'Income';
                 $t->payerid = $payerid;

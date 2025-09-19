@@ -148,9 +148,9 @@
                     {if $_c['invoicing'] eq '1'}
                         <li><a href="{$_url}invoices/list/filter/">{$_L['Invoices']}</a></li>
 
-                        {if $user->roleid eq 0}
+                        
                         <li><a href="{$_url}invoices/add/">{$_L['Add Invoice']}</a></li>
-                        {/if}
+                        
                         <!--<li><a href="{$_url}invoices/list-proforma/filter/">Proforma</a></li>
                         
                         <li><a href="{$_url}invoices/list-recurring/">{$_L['Recurring Invoices']}</a></li>

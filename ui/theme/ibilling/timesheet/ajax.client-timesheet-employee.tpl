@@ -1,9 +1,10 @@
 <script src="https://alabaya-v2.mbills.in/ui/theme/ibilling/js/jquery-1.10.2.js"></script>
 
 <script src="https://alabaya-v2.mbills.in/ui/theme/ibilling/js/jquery-ui-1.10.4.min.js"></script>
-{if $user->roleid == 0}
+{*{if $user->roleid == 0}
 <a href="#" class="btn btn-info btn-xs salery_type_popup" data-id="{$cid}"><i class="fa fa-plus"></i> Salery Type </a>
-{/if}
+{/if}*}
+<a href="#" class="btn btn-info btn-xs salery_type_popup" data-id="{$cid}"><i class="fa fa-plus"></i> Salery Type </a>
 
 {if !empty($employee->salery_type)}
 <a href="#" class="btn btn-success btn-xs timesheet_checkin_popup" data-id="{$cid}"><i class="fa fa-plus"></i> Timesheet Entry </a>
