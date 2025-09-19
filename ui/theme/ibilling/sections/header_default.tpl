@@ -36,6 +36,7 @@
     <link href="{$_theme}/css/style.css?ver=2.0.1" rel="stylesheet">
     <link href="{$_theme}/css/component.css?ver=2.0.1" rel="stylesheet">
     <link href="{$_theme}/css/custom.css" rel="stylesheet">
+    <link href="{$_theme}/css/jquery.dataTables.css" rel="stylesheet">
 
     <link href="{$app_url}ui/lib/icons/css/ibilling_icons.css" rel="stylesheet">
     <link href="{$_theme}/css/material.css" rel="stylesheet">
@@ -61,15 +62,36 @@
     {/foreach}
 <script src="{$_theme}/js/jquery-1.10.2.js"></script>
 <script src="{$_theme}/js/jquery-ui-1.10.4.min.js"></script>
+
+
+<script>
+  const para = document.getElementById("myPara");
+  const words = para.innerText.split(" ");
+
+  if (words.length > 25) {
+    const truncated = words.slice(0, 25).join(" ") + " ...";
+    para.innerText = truncated;
+  }
+</script>
+
+
 </head>
 
 <body class="fixed-nav {if $_c['mininav']}mini-navbar{/if}">
 <style>
 .navbar-right-side-content{
-    width: 34%;
+    width: 38%;
 }
 .navbar-user-profile{
     width: 50%;
+}
+
+.truncate-alpha{
+    width: 31ch;            /* Show only 25 characters */
+    white-space: nowrap;    /* Prevent text from wrapping */
+    overflow: hidden;       /* Hide overflow text */
+    text-overflow: ellipsis;/* Add ... at the end */
+    display: inline-block;
 }
 </style>
 <section>
@@ -96,7 +118,7 @@
 
 
                         <li class="hidden-xs">
-                            <form class="navbar-form full-width" method="post" action="{$_url}contacts/list/">
+                            <form class="navbar-form full-width padding-left-right-0" method="post" action="{$_url}contacts/list/">
                                 <div class="form-group">
                                     <input type="text" class="form-control" name="name" placeholder="{$_L['Search Customers']}...">
                                     <button type="submit" class="btn btn-search"><i class="fa fa-search"></i></button>
@@ -144,7 +166,7 @@
 
                                 <span class="hidden-xs">
                                     {$_L['Welcome']} {$user['fullname']}<br>
-                                    <b style="color:#888;">{$user['branch_name']}</b>
+                                    <b class="truncate-alpha" style="color:#888; font-size: 10px;">{$user['branch_name']}</b>
                                 </span> 
                                 <b class="caret"></b>
                             </a>

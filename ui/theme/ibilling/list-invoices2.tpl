@@ -15,7 +15,7 @@
                 <!-- Filters row -->
                 <form id="invoiceFilters" style="margin-bottom:15px;">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="filter_branch">Branch</label>
                                 <select name="branch_id" id="filter_branch" class="form-control">
@@ -39,7 +39,7 @@
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="type">Date Filter By</label>
                                 <select name="type" id="type" class="form-control">
@@ -50,39 +50,35 @@
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="date_from">Date From</label>
                                 <input type="date" name="date_from" id="date_from" class="form-control">
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="date_to">Date To</label>
                                 <input type="date" name="date_to" id="date_to" class="form-control">
                             </div>
                         </div>
 
-                    </div>
-
-                    <div class="row">
-                        
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="invoice_no">Invoice Number</label>
                                 <input type="text" name="invoice_no" id="invoice_no" class="form-control" placeholder="Invoice Number">
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="customer">Customer</label>
                                 <input type="text" name="customer" id="customer" class="form-control" placeholder="Customer">
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="payment_status">Payment Status</label>
                                 <select name="payment_status" id="payment_status" class="form-control">
@@ -95,7 +91,7 @@
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="delivery_status">Invoice Status</label>
                                 <select name="delivery_status" id="delivery_status" class="form-control">
@@ -107,6 +103,7 @@
                                 </select>
                             </div>
                         </div>
+
                     </div>
 
                     <div class="row">

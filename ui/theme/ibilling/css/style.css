@@ -2,7 +2,7 @@
 
 body {
     font-family: "open sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    background-color: #2f4050;
+    background-color: black;
     font-size: 13px;
     color: #676a6c;
     overflow-x: hidden;
@@ -123,7 +123,7 @@ h5 {
 }
 
 .navbar-default {
-    background-color: transparent;
+    background-color: black;
     border-color: #2f4050;
 }
 
@@ -211,7 +211,7 @@ h5 {
 
 .nav > li.active {
 
-    background: #293846;
+    background: #d4a467;
 }
 
 .nav.nav-second-level > li.active {
@@ -237,6 +237,10 @@ h5 {
     float: left;
 }
 
+/* .navbar-right-side-content .navbar-form {
+    margin-top: 10px;
+} */
+
 .navbar-form-custom {
     float: left;
     height: 50px;
@@ -251,6 +255,7 @@ h5 {
 
 .nav.navbar-top-links a {
     font-size: 12px;
+    line-height: 1;
 }
 
 .navbar-form-custom .form-control {
@@ -534,8 +539,8 @@ body.fixed-sidebar.mini-navbar .navbar-default .nav li a span {
 }
 
 .btn-primary {
-    background-color: #2196f3;
-    border-color: #2196f3;
+    background-color: #d4a467;
+    border-color: #d4a467;
     color: #FFFFFF;
 }
 
@@ -544,8 +549,8 @@ body.fixed-sidebar.mini-navbar .navbar-default .nav li a span {
 .btn-primary:active,
 .btn-primary.active,
 .open .dropdown-toggle.btn-primary {
-    background: #2196f3;
-    border-color: #2196f3;
+    background: #d4a467;
+    border-color: #d4a467;
     color: #FFFFFF;
     box-shadow: 0 3px 6px rgba(0,0,0,.16),0 3px 6px rgba(0,0,0,.23);
 }
@@ -660,9 +665,9 @@ fieldset[disabled] .btn-info.active {
 }
 
 .btn-default {
-    background-color: #c2c2c2;
-    border-color: #c2c2c2;
-    color: #FFFFFF;
+    background-color: #222;
+    border-color: black;
+    color: #fff;
 }
 
 .btn-default:hover,
@@ -670,9 +675,9 @@ fieldset[disabled] .btn-info.active {
 .btn-default:active,
 .btn-default.active,
 .open .dropdown-toggle.btn-default {
-    background-color: #bababa;
-    border-color: #bababa;
-    color: #FFFFFF;
+    background-color: black;
+    border-color: black;
+    color: #a7b1c2;
 }
 
 .btn-default:active,
@@ -742,9 +747,9 @@ fieldset[disabled] .btn-warning.active {
 }
 
 .btn-danger {
-    background-color: #ed5565;
-    border-color: #ed5565;
-    color: #FFFFFF;
+    background-color: #000000;
+    border-color: #000000;
+    color: #a7b1c2;
 }
 
 .btn-danger:hover,
@@ -752,9 +757,9 @@ fieldset[disabled] .btn-warning.active {
 .btn-danger:active,
 .btn-danger.active,
 .open .dropdown-toggle.btn-danger {
-    background-color: #e53935;
-    border-color: #e53935;
-    color: #FFFFFF;
+    background-color: black;
+    border-color: black;
+    color: #a7b1c2;
     box-shadow: 0 10px 20px rgba(0,0,0,.19),0 6px 6px rgba(0,0,0,.23);
 }
 
@@ -1145,7 +1150,7 @@ button.dim:active:before {
 .pagination > .active > span:hover,
 .pagination > .active > a:focus,
 .pagination > .active > span:focus {
-    background-color: #f4f4f4;
+    background-color: #d4a467;
     border-color: #DDDDDD;
     color: inherit;
     cursor: default;
@@ -2705,7 +2710,7 @@ white theme  //Razib
 }
 
 .nav > li.active > ul {
-    background: none repeat scroll 0 0 #293846;
+    background: none repeat scroll 0 0 black;
 }
 
 
@@ -3158,13 +3163,13 @@ body.boxed-layout #wrapper {
 }
 
 .navbar-default .nav > li > a:hover {
-    background: none repeat scroll 0 0 #2196f3;
+    background: none repeat scroll 0 0 #d4a467;
     color: white;
     outline: none;
 }
 
 .navbar-default .nav > li > a:focus {
-    background: none repeat scroll 0 0 #eb3c00;
+    background: none repeat scroll 0 0 #d4a467;
     color: white;
     outline: none;
 }
@@ -3199,14 +3204,14 @@ body.boxed-layout #wrapper {
     float: left;
     width: 30px;
     height: 30px;
-    margin: -5px 10px 0 0;
+    margin: -5px 5px 0 0;
     -webkit-border-radius: 30px;
     -moz-border-radius: 30px;
     border-radius: 30px;
 }
 
 .navbar-form .form-control {
-    width: 200px;
+    width: 180px;
     padding: 5px 15px;
     height: 30px;
     -webkit-border-radius: 30px;
@@ -3216,7 +3221,7 @@ body.boxed-layout #wrapper {
 
 .navbar-form .btn-search {
     position: absolute;
-    right: 15px;
+    right: 0px;
     top: 8px;
     height: 30px;
     padding-top: 5px;
@@ -3379,7 +3384,7 @@ body.boxed-layout #wrapper {
 .navbar-top-links > li > a {
     color: #a7b1c2;
     font-weight: 600;
-    padding: 14px 5px 14px 11px;
+    padding: 14px 0px 14px 5px;
 }
 
 #right-sidebar {
@@ -3803,4 +3808,82 @@ address.ib.mr-xlg.pddd_20 {
 .modal-header h3 {
     margin-top: 0px !important;
     padding-top: 12px !important;
+}
+
+
+.padding-left-right-0{
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+
+}
+
+.dataTables_length label{
+    margin-right: 10px !important;
+}
+
+.dt-buttons button {
+    margin-top: 2px !important;
+    background-color: #d4a467 !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border: 1px solid #d4a467 !important;
+}
+
+#invoice-datatable_wrapper .dt-buttons .buttons-csv {
+    margin-right: 15px;
+}
+
+  .table-responsive {
+    width: 100%;
+    margin-bottom: 15px;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    /* border: 1px solid #dddddd; */
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (min-width: 992px) {
+    .invoice-main-div-dropdown {
+        width: 12.5% !important;
+    }
+}
+
+
+.dropdown-menu>.active>a,.dropdown-menu>.active>a:hover,.dropdown-menu>.active>a:focus {
+    color: #fff !important;
+    text-decoration: none;
+    background-color: black !important;
+    outline: 0;
+}
+
+.dt-button-collection li a.active,
+.dt-button-collection li a.focus{
+    background: #d4a467 !important;
+    color: #fff !important;
+}
+
+#invoice-datatable tbody tr td:nth-child(1) a {
+    color: #d4a467 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  box-sizing: border-box;
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 2px 2px !important;
+  margin-left: 2px;
+  text-align: center;
+  text-decoration: none !important;
+  cursor: pointer;
+  cursor: pointer;
+  color: #333 !important;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  color: #333 !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px;
 }
