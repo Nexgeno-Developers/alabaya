@@ -1,6 +1,7 @@
 
 <p>
 
+    <strong>Branch Name: </strong> {$d['branch_name']} <br>
     <strong>{$_L['Full Name']}: </strong> {$d['account']} <br>
    {if ($d['company']) neq ''}
        <strong>{$_L['Company Name']}: </strong> {$d['company']} <br>
