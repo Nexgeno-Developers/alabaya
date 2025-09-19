@@ -1,8 +1,8 @@
 <?php
 _auth();
 
-$ui->assign('_title', $_L['Timesheet'].'- '. $config['CompanyName']);
-$ui->assign('_st', $_L['Timesheet']);
+$ui->assign('_title', 'Timesheet'.'- '. $config['CompanyName']);
+$ui->assign('_st', 'Timesheet');
 $user = User::_info();
 $ui->assign('user',$user);
 
@@ -19,6 +19,9 @@ if($action == ''){
 
 }
 
+if(!has_access($user->roleid, 'timesheet')) {
+    r2(U."dashboard",'e',$_L['You do not have permission']);
+}
 
 switch($action){
    

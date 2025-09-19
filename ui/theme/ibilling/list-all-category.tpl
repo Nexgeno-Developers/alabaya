@@ -16,7 +16,7 @@
                                     <th>Price</th>
                                     <th>Status</th>
                                     <th>Edit</th>
-                                    <th>Delete</th>
+                                    {*<th>Delete</th>*}
                                 </tr>
                             </thead>
                             <tbody>
@@ -26,7 +26,7 @@
                                         <td>{$category.price}</td>
                                         <td>{if $category.status == 1}Active{else}Inactive{/if}</td>
                                         <td>{$category.edit_button}</td>
-                                        <td>{$category.delete_button}</td>
+                                        {*<td>{$category.delete_button}</td>*}
                                     </tr>
                                 {/foreach}
                             </tbody>

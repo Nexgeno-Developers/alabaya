@@ -578,10 +578,11 @@ case 'set_view_mode':
 
 
     case 'list':
-        // Permission check (keep)
-        if(!has_access($user->roleid, 'transactions')) {
+
+        if(!(has_access($user->roleid, 'transactions') || has_access($user->roleid, 'reports'))) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
+
         Event::trigger('transactions/list/');
 
         // Load branches for dropdown
@@ -936,7 +937,9 @@ case 'set_view_mode':
         break;
 
     case 'list-income':
-
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         Event::trigger('transactions/list-income/');
 
         $ui->assign('_application_menu', 'reports');
@@ -964,7 +967,9 @@ case 'set_view_mode':
         break;
 
     case 'list-expense':
-
+        if(!has_access($user->roleid, 'reports')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         Event::trigger('transactions/list-expense/');
 
         $ui->assign('_application_menu', 'reports');

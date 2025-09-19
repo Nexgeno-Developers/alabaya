@@ -1591,7 +1591,7 @@ $(".cdelete").click(function (e) {
         }
 
         if (!empty($request['delivery_status'])) {
-            $base_q->where('t.delivery_status', $request['delivery_status'] || $request['invoice_status']);
+            $base_q->where('t.delivery_status', $request['delivery_status']);
         }
 
         // --- get filtered count (clone query to avoid mutation)

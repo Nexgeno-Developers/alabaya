@@ -53,7 +53,13 @@
                                 {/if}</td>
                             <td>{$ds['username']}</td>
                             <td>{$ds['fullname']}</td>
-                            <td>{ib_lan_get_line($ds['user_type'])}</td>
+                            <td>
+                                {if $ds['user_type'] == 'Admin'}
+                                    Super Admin
+                                {else}
+                                    {ib_lan_get_line($ds['user_type'])}
+                                {/if}
+                            </td>
                             <td>
                                 {assign var="branch" value=$ds['branch_id']}
                                 {if $branch != '' && $branch != '0'}
@@ -67,11 +73,37 @@
                                 {/if}
                             </td>
                             <td>
-                                <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse"><i class="fa fa-pencil"></i> </a>
-                                {if ($_user['username']) neq ($ds['username'])}
-                                    <a href="{$_url}settings/users-delete/{$ds['id']}" id="{$ds['id']}" class="btn btn-danger cdelete"><i class="fa fa-trash"></i> </a>
+                                {if $user->roleid == 0}
+                                    {* Super Admin: edit anyone, delete others except self *}
+                                    <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse">
+                                        <i class="fa fa-pencil"></i>
+                                    </a>
+                                    {if $user->id neq $ds['id']}
+                                        <a href="{$_url}settings/users-delete/{$ds['id']}" id="{$ds['id']}" class="btn btn-danger cdelete">
+                                            <i class="fa fa-trash"></i>
+                                        </a>
+                                    {/if}
+                                {else}
+                                    {* Regular user *}
+                                    {if $user->id eq $ds['id']}
+                                        {* Can edit self (no delete) *}
+                                        <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                    {elseif $ds['roleid'] neq 0}
+                                        {* Can edit/delete other users, but not super admin *}
+                                        <a href="{$_url}settings/users-edit/{$ds['id']}" class="btn btn-inverse">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                        <a href="{$_url}settings/users-delete/{$ds['id']}" id="{$ds['id']}" class="btn btn-danger cdelete">
+                                            <i class="fa fa-trash"></i>
+                                        </a>
+                                    {/if}
                                 {/if}
                             </td>
+
+
+
                         </tr>
                     {/foreach}
 
@@ -89,7 +121,30 @@
 
 </div>
 
+{literal}
+<script>
+$(document).ready(function(){
+$('.cdelete').off('click').on('click', function(e) {
+    e.preventDefault();
+    var row = $(this).closest('tr'); // get the table row
+    var id = $(this).attr('id').replace('iid','');
+    var csrf_token = $('#csrf_token').val();
 
-
+    bootbox.confirm("Are you sure you want to delete this user?", function(result){
+        if(result){
+            $.post(base_url + "settings/users-delete/" + id, {_token: csrf_token}, function(data){
+                if(data.success){
+                    row.remove(); // remove row from table
+                    toastr.success(data.message);
+                } else {
+                    toastr.error(data.message);
+                }
+            }, 'json');
+        }
+    });
+});
+});
+</script>
+{/literal}
 
 {include file="sections/footer.tpl"}

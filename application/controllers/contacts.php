@@ -21,6 +21,10 @@ _L[\'Submit\'] = \''.$_L['Submit'].'\';
 switch ($action) {
     case 'add':
 
+        if(!has_access($user->roleid, 'customer')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
         Event::trigger('contacts/add/');
 
             $categories = ORM::for_table('category_employee')->find_many();
@@ -86,6 +90,9 @@ switch ($action) {
       break;
 
 case 'category-employee-list':
+    if(!has_access($user->roleid, 'contact_category')) {
+        r2(U."dashboard",'e',$_L['You do not have permission']);
+    }
     Event::trigger('contacts/category-employee-list/');
     
     // Fetch category data
@@ -112,6 +119,9 @@ case 'category-employee-list':
 
     
     case 'add-category-employee':
+        if(!has_access($user->roleid, 'contact_category')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         // Trigger event
         Event::trigger('contacts/add-category-employee/');
        
@@ -213,6 +223,9 @@ case 'category-employee-list':
         $d = ORM::for_table('crm_accounts')->find_one($cid);
 				//var_dump($d);
         if($d){
+            // Get branch name
+            $branch = ORM::for_table('sys_accounts')->find_one($d['branch_id']);
+            $d['branch_name'] = $branch ? $branch->account : '';
             $ti = ORM::for_table('sys_transactions')
                 ->where('payerid',$cid)
                 ->sum('cr');
@@ -1124,6 +1137,10 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
     case 'view':
 
+        if(!has_access($user->roleid, 'customer')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
         Event::trigger('contacts/view/');
 
         $id  = $routes['2'];
@@ -1425,6 +1442,10 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
     case 'list':
 
+    if(!has_access($user->roleid, 'customer')) {
+        r2(U."dashboard",'e',$_L['You do not have permission']);
+    }
+
     Event::trigger('contacts/list/');
 
     // Page data
@@ -1537,10 +1558,11 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
         // assemble data in display order: id, branch, name, phone, group, manage
         $data = [];
-        $baseUrl = rtrim(U, '/') . 'contacts/';
+        $baseUrl = rtrim(U, '/');
+
         foreach ($rows as $r) {
-            $view = '<a href="'. $baseUrl . 'view/' . $r->id . '/" class="btn btn-primary btn-xs"><i class="fa fa-search"></i> ' . $_L['View'] . '</a>';
-            $del  = '<a href="delete/crm-user/' . $r->id . '/" class="btn btn-danger btn-xs cdelete" id="uid' . $r->id . '"><i class="fa fa-trash"></i> ' . $_L['Delete'] . '</a>';
+            $view = '<a href="'. $baseUrl . 'contacts/view/' . $r->id . '/" class="btn btn-primary btn-xs"><i class="fa fa-search"></i> ' . $_L['View'] . '</a>';
+            $del  = '<a href="'. $baseUrl . 'delete/crm-user/' . $r->id . '/" class="btn btn-danger btn-xs cdelete" id="uid' . $r->id . '"><i class="fa fa-trash"></i> ' . $_L['Delete'] . '</a>';
             $data[] = [
                 intval($r->id),
                 htmlspecialchars($branch_map[$r->branch_id] ?? '', ENT_QUOTES, 'UTF-8'),

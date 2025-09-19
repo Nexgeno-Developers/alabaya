@@ -107,6 +107,9 @@ switch ($action) {
 
     case 'p-new':
 
+        if(!has_access($user->roleid, 'products_n_services')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
 
         $ui->assign('type','Product');
@@ -341,6 +344,11 @@ switch ($action) {
         break;
 
     case 'p-list':
+        
+        if(!has_access($user->roleid, 'products_n_services')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+        
         //$paginator = Paginator::bootstrap('sys_items','type','Product');
         $product_type = (!empty($_GET['product_type'])) ? $_GET['product_type'] : 'readymade';
         //var_dump($product_type);

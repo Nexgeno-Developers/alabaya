@@ -33,15 +33,42 @@
 
     <li {if $_application_menu eq 'dashboard'}class="active"{/if}><a href="{$_url}{$_c['redirect_url']}/"><i class="fa fa-tachometer"></i> <span class="nav-label">{$_L['Dashboard']}</span></a></li>
 
+    {if has_access($user->roleid,'timesheet')}
     <li {if $_application_menu eq 'timesheet'}class="active"{/if}>
         <a href="{$_url}timesheet"><i class="fa fa-clock-o"></i><span class="nav-label">Timesheet</span></a>
     </li>
+    {/if}
 
 
 
 
     {$admin_extra_nav[1]}
 
+    {if has_access($user->roleid,'customers') || has_access($user->roleid,'contact_category')}
+        <li class="{if $_application_menu eq 'contacts'}active{/if}">
+            <a href="#"><i class="icon-users"></i> <span class="nav-label">Contacts</span><span class="fa arrow"></span></a>
+            <ul class="nav nav-second-level">
+
+                {* Contacts submenu *}
+                {if has_access($user->roleid,'customers')}
+                    <li><a href="{$_url}contacts/add/">Add Contact</a></li>
+                    <li><a href="{$_url}contacts/list/">List Contacts</a></li>
+                {/if}
+
+                {* Category submenu *}
+                {if has_access($user->roleid,'contact_category')}
+                    <li><a href="{$_url}contacts/add-category-employee/">Add Category</a></li>
+                    <li><a href="{$_url}contacts/category-employee-list/">List Category</a></li>
+                {/if}
+
+                {foreach $sub_menu_admin['crm'] as $sm_crm}
+                    {$sm_crm}
+                {/foreach}
+
+            </ul>
+        </li>
+    {/if}
+{*
     {if has_access($user->roleid,'customers')}
     <li class="{if $_application_menu eq 'contacts'}active{/if}">
         <a href="#"><i class="icon-users"></i> <span class="nav-label">Contacts</span><span class="fa arrow"></span></a>
@@ -61,6 +88,7 @@
         </ul>
     </li>
     {/if}
+*}
     <!--{*<li {if $_application_menu eq 'contacts'}class="active"{/if}><a href="{$_url}contacts/list/customers/"><i class="icon-users"></i> <span class="nav-label">{$_L['Customers']}</span></a></li>*}
     {if has_access($user->roleid,'companies','view')}
     <li class="{if $_application_menu eq 'accounts'}active{/if}">

@@ -14,10 +14,13 @@ $ui->assign('_user', $user);
 
 switch ($action) {
     case 'expense-categories':
-        $ui->assign('content_inner',inner_contents($config['c_cache']));
-        if($user['user_type'] != 'Admin'){
+        if(!has_access($user->roleid, 'settings')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
+        $ui->assign('content_inner',inner_contents($config['c_cache']));
+        // if($user['user_type'] != 'Admin'){
+        //     r2(U."dashboard",'e',$_L['You do not have permission']);
+        // }
 
         $d = ORM::for_table('sys_cats')->where('type','Expense')->order_by_asc('sorder')->find_many();
         $ui->assign('d',$d);
@@ -55,11 +58,14 @@ switch ($action) {
         break;
 
     case 'income-categories':
-        $ui->assign('content_inner',inner_contents($config['c_cache']));
-
-        if($user['user_type'] != 'Admin'){
+        if(!has_access($user->roleid, 'settings')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
+        $ui->assign('content_inner',inner_contents($config['c_cache']));
+
+        // if($user['user_type'] != 'Admin'){
+        //     r2(U."dashboard",'e',$_L['You do not have permission']);
+        // }
 
         $d = ORM::for_table('sys_cats')->where('type','Income')->order_by_asc('sorder')->find_many();
         $ui->assign('d',$d);
@@ -516,6 +522,9 @@ switch ($action) {
 
 
     case 'app':
+        if(!has_access($user->roleid, 'settings')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         $ui->assign('content_inner',inner_contents($config['c_cache']));
         //find current invoice increment
         $tblsts = ORM::for_table('sys_invoices')->raw_query("show table status like 'sys_invoices'")->find_one();
@@ -523,9 +532,9 @@ switch ($action) {
         $ui->assign('ai',$ai);
 
 
-        if($user['user_type'] != 'Admin'){
-            r2(U."dashboard",'e',$_L['You do not have permission']);
-        }
+        // if($user['user_type'] != 'Admin'){
+        //     r2(U."dashboard",'e',$_L['You do not have permission']);
+        // }
         $timezonelist = Timezone::timezoneList();
         $ui->assign('tlist',$timezonelist);
 
@@ -582,7 +591,268 @@ minHeight: 150 // pixels
 
         break;
 
+    // 1) Page: show user management page (renders users2.tpl)
     case 'users':
+
+        // Permission check: keep your original logic
+        if(!has_access($user->roleid, 'staff')) {
+            r2(U . "dashboard", 'e', $_L['You do not have permission']);
+        }
+
+        // Branch & search defaults (the page will send these via AJAX too)
+        $branch_id = isset($_GET['branch_id']) ? trim($_GET['branch_id']) : '';
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+        // Prepare branches for dropdown (admins see all branches, others only their branch)
+        if ($user->roleid == 0) {
+            $branches = ORM::for_table('sys_accounts')->order_by_asc('account')->find_array();
+        } else {
+            $branches = ORM::for_table('sys_accounts')->where('id', $user->branch_id)->find_array();
+            // force branch filter for non-admins
+            $branch_id = $user->branch_id;
+        }
+
+        $mode_js = Asset::js(array('datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'numeric','footable/js/footable.all.min'));
+
+        // load DataTables css/js assets
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
+        $ui->assign('xfooter', $mode_js);
+
+        // Assign template variables
+        $ui->assign('branches', $branches);
+        $ui->assign('branch_id', $branch_id);
+        $ui->assign('q', $q);
+
+        $ui->assign('_application_menu', 'user_management');
+        $ui->assign('_application_menu_staff', 'staff');
+
+        // Render the AJAX-enabled users page
+        $ui->display('users2.tpl');
+        break;
+
+
+    // 2) AJAX: DataTables server-side endpoint for users
+    case 'users-table':
+
+        header('Content-Type: application/json');
+
+        // Permission check
+        if(!has_access($user->roleid, 'staff')) {
+            echo json_encode([
+                "draw" => isset($_POST['draw']) ? intval($_POST['draw']) : 0,
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => []
+            ]);
+            exit;
+        }
+
+        // DataTables params
+        $draw = isset($_POST['draw']) ? intval($_POST['draw']) : 0;
+        $start = isset($_POST['start']) ? intval($_POST['start']) : 0;
+        $length = isset($_POST['length']) ? intval($_POST['length']) : 10;
+
+        // Our custom filters
+        $branch_id = isset($_POST['branch_id']) ? trim($_POST['branch_id']) : '';
+        $q = isset($_POST['q']) ? trim($_POST['q']) : '';
+
+        // --- Total records (no filters)
+        $totalRecords = (int) ORM::for_table('sys_users')->count();
+
+        // --- Build filtered count query
+        $count_q = ORM::for_table('sys_users');
+
+        // branch restrictions
+        if ($user->roleid == 0) {
+            if ($branch_id !== '' && $branch_id !== 'all') {
+                $count_q->where('branch_id', (int)$branch_id);
+            }
+        } else {
+            // non-admins can only see their own branch
+            $count_q->where('branch_id', $user->branch_id);
+        }
+
+        // search filter
+        if ($q !== '') {
+            $like = "%{$q}%";
+            $count_q->where_raw('(username LIKE ? OR fullname LIKE ? OR email LIKE ?)', [$like, $like, $like]);
+        }
+
+        $recordsFiltered = (int) $count_q->count();
+
+        // --- Fetch paginated rows (apply same filters again)
+        $data_q = ORM::for_table('sys_users');
+
+        if ($user->roleid == 0) {
+            if ($branch_id !== '' && $branch_id !== 'all') {
+                $data_q->where('branch_id', (int)$branch_id);
+            }
+        } else {
+            $data_q->where('branch_id', $user->branch_id);
+        }
+
+        if ($q !== '') {
+            $like = "%{$q}%";
+            $data_q->where_raw('(username LIKE ? OR fullname LIKE ? OR email LIKE ?)', [$like, $like, $like]);
+        }
+
+        // ordering: map DataTables column index to DB column
+        $orderColumn = 1; // default
+        $orderDir = 'DESC';
+        if (isset($_POST['order'][0]['column'])) {
+            $orderColumn = intval($_POST['order'][0]['column']);
+            $orderDir = (isset($_POST['order'][0]['dir']) && strtolower($_POST['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+        }
+
+        $columnsMap = [
+            0 => 'username', // avatar column -> sort by username
+            1 => 'username',
+            2 => 'fullname',
+            3 => 'roleid',
+            4 => 'branch_id',
+            5 => 'id'
+        ];
+        $orderBy = isset($columnsMap[$orderColumn]) ? $columnsMap[$orderColumn] : 'id';
+
+        if (strtolower($orderDir) === 'asc') {
+            $data_q->order_by_asc($orderBy);
+        } else {
+            $data_q->order_by_desc($orderBy);
+        }
+
+        if ($length > 0) {
+            $data_q->limit($length)->offset($start);
+        }
+
+        $users = $data_q->find_array();
+
+        // Format rows for DataTables (return associative arrays)
+        $rows = [];
+        foreach ($users as $ds) {
+
+            // avatar html
+            if ($ds['img'] === 'gravatar') {
+                $avatar = '<img src="http://www.gravatar.com/avatar/' . md5($ds['username']) . '?s=40" class="img-circle" alt="">';
+            } elseif ($ds['img'] === '') {
+                $avatar = '<img src="' . APP_URL . 'ui/lib/imgs/default-user-avatar.png" style="max-height:40px;" alt="">';
+            } else {
+                $avatar = '<img src="' . $ds['img'] . '" class="img-circle" style="max-height:40px;" alt="">';
+            }
+
+            // type label
+            $type = ($ds['roleid'] == 0) ? 'Super Admin' : ib_lan_get_line($ds['user_type']);
+
+            // branch name
+            $branchName = '-';
+            if (!empty($ds['branch_id']) && $ds['branch_id'] != '0') {
+                $b = ORM::for_table('sys_accounts')->find_one($ds['branch_id']);
+                if ($b) {
+                    $branchName = $b->account;
+                }
+            }
+
+            // Manage buttons (enforce UI-level logic; server will block forbidden actions on delete/edit too)
+            $manage = '';
+            // Edit button
+            $editUrl = U . "settings/users-edit/" . $ds['id'];
+            $deleteUrl = U . "settings/users-ajax-delete/" . $ds['id'];
+
+            if ($user->roleid == 0) {
+                // super admin: edit everyone; delete others but not self
+                $manage .= '<a href="'. $editUrl .'" class="btn btn-inverse btn-sm"><i class="fa fa-pencil"></i></a> ';
+                if ($user->id != $ds['id']) {
+                    $manage .= '<button data-id="'.$ds['id'].'" class="btn btn-danger btn-sm cdelete"><i class="fa fa-trash"></i></button>';
+                }
+            } else {
+                // regular user:
+                if ($user->id == $ds['id']) {
+                    // can edit self, no delete
+                    $manage .= '<a href="'. $editUrl .'" class="btn btn-inverse btn-sm"><i class="fa fa-pencil"></i></a>';
+                } else {
+                    // can edit/delete others, but not superadmin
+                    if ($ds['roleid'] != 0) {
+                        $manage .= '<a href="'. $editUrl .'" class="btn btn-inverse btn-sm"><i class="fa fa-pencil"></i></a> ';
+                        $manage .= '<button data-id="'.$ds['id'].'" class="btn btn-danger btn-sm cdelete"><i class="fa fa-trash"></i></button>';
+                    }
+                }
+            }
+
+            $rows[] = [
+                "avatar" => $avatar,
+                "username" => $ds['username'],
+                "fullname" => $ds['fullname'],
+                "type" => $type,
+                "branch" => $branchName,
+                "manage" => $manage
+            ];
+        }
+
+        // send JSON response
+        echo json_encode([
+            "draw" => $draw,
+            "recordsTotal" => $totalRecords,
+            "recordsFiltered" => $recordsFiltered,
+            "data" => $rows
+        ]);
+
+        break;
+
+
+    // 3) AJAX delete endpoint (returns JSON)
+    case 'users-ajax-delete':
+
+        header('Content-Type: application/json');
+
+        // Permission check
+        if(!has_access($user->roleid, 'staff')) {
+            echo json_encode(['success' => false, 'message' => $_L['You do not have permission']]);
+            exit;
+        }
+
+        // Accept ID via route or POST
+        $id = route(2);
+        if (!$id) {
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        } else {
+            $id = intval($id);
+        }
+
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user id']);
+            exit;
+        }
+
+        $t = ORM::for_table('sys_users')->find_one($id);
+        if (!$t) {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+            exit;
+        }
+
+        // Deny deleting a super admin
+        if ($t->roleid == 0) {
+            echo json_encode(['success' => false, 'message' => 'Cannot delete a Super Admin.']);
+            exit;
+        }
+
+        // If current user is super admin, prevent self-delete
+        if ($user->roleid == 0 && $user->id == $id) {
+            echo json_encode(['success' => false, 'message' => 'You cannot delete yourself.']);
+            exit;
+        }
+
+        // Regular users are allowed to delete other users (but we've already blocked super admin above)
+        // Delete
+        try {
+            $t->delete();
+            echo json_encode(['success' => true, 'message' => 'User deleted']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Unable to delete user.']);
+        }
+
+        break;
+
+
+    /*case 'users':
 
         $ui->assign('content_inner', inner_contents($config['c_cache']));
 
@@ -624,7 +894,7 @@ minHeight: 150 // pixels
             );
         }
 
-        $users_q->order_by_asc('fullname');
+        $users_q->order_by_desc('id');
         $d = $users_q->find_many();
 
         // Assign to template
@@ -639,7 +909,7 @@ minHeight: 150 // pixels
 
         $ui->display('users.tpl');
         break;
-
+*/
 
 
 
@@ -726,8 +996,33 @@ minHeight: 150 // pixels
         }
 
         break;
-
+    
     case 'users-delete':
+    $id  = $routes['2'];
+
+    // Prevent self delete
+    if(($user['id']) == $id){
+        echo json_encode(['success'=>false,'message'=>"You can't delete yourself"]);
+        exit;
+    }
+
+    // Check if user has invoices
+    $hasInvoices = ORM::for_table('sys_invoices')->where('created_by', $id)->count();
+    if($hasInvoices){
+        echo json_encode(['success'=>false,'message'=>"User has invoices and cannot be deleted"]);
+        exit;
+    }
+
+    $d = ORM::for_table('sys_users')->find_one($id);
+    if($d){
+        $d->delete();
+        echo json_encode(['success'=>true,'message'=>"User deleted successfully"]);
+    } else {
+        echo json_encode(['success'=>false,'message'=>$_L['Account_Not_Found']]);
+    }
+    break;
+
+    /*case 'users-delete':
 
 
         $id  = $routes['2'];
@@ -745,7 +1040,7 @@ minHeight: 150 // pixels
             r2(U . 'settings/users', 'e', $_L['Account_Not_Found']);
         }
 
-        break;
+        break;*/
 
     case 'users-post':
 
@@ -766,7 +1061,7 @@ minHeight: 150 // pixels
             $user_type = $r->rname;
         }
         else{
-            $role = '';
+            $role = 'Admin';
             $roleid = 0;
             $user_type = 'Admin';
         }
@@ -843,7 +1138,6 @@ minHeight: 150 // pixels
 
         $username = _post('username');
         $fullname = _post('fullname');
-        $img = _post('picture');
         $password = _post('password');
         $cpassword = _post('cpassword');
         $branch_id  = _post('branch_id');
@@ -875,7 +1169,7 @@ minHeight: 150 // pixels
         else{
             $msg .= 'Username Not Found'. '<br>';
         }
-//check with same name account is exist
+        //check with same name account is exist
         if($d['username'] != $username){
             $c = ORM::for_table('sys_users')->where('username',$username)->find_one();
             if($c){
@@ -889,21 +1183,20 @@ minHeight: 150 // pixels
             $msg .= 'Editing User is disabled in the Demo Mode!'. '<br>';
         }
 
-        $user_type = _post('user_type');
 
-        if ($user_type !== '') {
-            $r = Model::factory('Models_Role')->find_one($user_type);
-            if ($r) {
-                $role     = $r->rname;
-                $roleid   = $user_type;
-                $userType = $r->rname;
-            }
-        }else{
-            // Default to existing values
-            $role     = $d->role;
-            $roleid   = $d->roleid;
-            $userType = $d->user_type;
-        }
+        // if ($user_type !== '') {
+        //     $r = Model::factory('Models_Role')->find_one($user_type);
+        //     if ($r) {
+        //         $role     = $r->rname;
+        //         $roleid   = $user_type;
+        //         $userType = $r->rname;
+        //     }
+        // }else{
+        //     // Default to existing values
+        //     $role     = $d->role;
+        //     $roleid   = $d->roleid;
+        //     $userType = $d->user_type;
+        // }
 
         if($msg == ''){
 
@@ -919,14 +1212,31 @@ minHeight: 150 // pixels
             $d->fullname = $fullname;
             if(($user['id']) != $id){
 
+                $userType = _post('user_type');
+
+                $r = Model::factory('Models_Role')->find_one($userType);
+
+                if($r){
+                    $role = $r->rname;
+                    $roleid = $userType;
+                    $userType = $r->rname;
+                }
+                else{
+                    $role = 'Admin';
+                    $roleid = 0;
+                    $userType = 'Admin';
+                }
+                $d->role = $role;
+                $d->roleid = $roleid;
                 $d->user_type = $userType;
             }
 
+            $img = _post('picture');
             $d->img = $img;
-            $d->branch_id = $branch_id;
-            $d->role = $role;
-            $d->roleid = $roleid;
 
+            $d->branch_id = $branch_id;
+
+            // $d->user_type = $userType;
             $d->save();
             r2(U . 'settings/users-edit/'.$id, 's', 'User Updated Successfully');
         }
@@ -1431,6 +1741,9 @@ minHeight: 150 // pixels
         break;
 
     case 'tags':
+        if(!has_access($user->roleid, 'settings')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         $ui->assign('content_inner',inner_contents($config['c_cache']));
 
         $d = ORM::for_table('sys_tags')->find_many();
