@@ -320,6 +320,9 @@ input[type=number]::-webkit-outer-spin-button {
 								{/foreach}
 							{/if}
 						</select>
+											
+						<!-- hidden branch id -->
+						<input type="hidden" name="company_branch_id" id="company_branch_id" value="">
 					</div>		
 					
 					<div class="form-group">

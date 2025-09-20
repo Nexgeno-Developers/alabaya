@@ -136,6 +136,20 @@ $(document).ready(function () {
 					update_address();
 	});*/
 
+	function updateBranchId() {
+		let branchId = $('#company').find(':selected').data('branch');
+		$('#company_branch_id').val(branchId);
+	}
+
+	// On page load
+	updateBranchId();
+
+	// On change
+	$('#company').on('change', function () {
+		updateBranchId();
+	});
+
+
 	$('#cid').select2({
 		// theme: 'bootstrap',
 		placeholder: $("#_lan_select_contact").val() || "Select Contact...",

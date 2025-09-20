@@ -107,6 +107,18 @@ switch ($action) {
         }
         $description = _post('description');
         $msg = '';
+        
+        // Validate date
+        if ($date == '') {
+            $msg .= 'Date is required.<br>';
+        } else {
+            // Check if date is in YYYY-MM-DD format and is a valid date
+            $d = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$d || $d->format('Y-m-d') !== $date) {
+                $msg .= 'Invalid date format. Use YYYY-MM-DD.<br>';
+            }
+        }
+        
         if ($description == '') {
             $msg .= $_L['description_error'] . '<br>';
         }
@@ -117,6 +129,8 @@ switch ($action) {
 
         if (is_numeric($amount) == false) {
             $msg .= $_L['amount_error'] . '<br>';
+        } elseif ((float)$amount < 1) {
+            $msg .= 'Amount must be at least 1.<br>';
         }
 
         if ($msg == '') {
@@ -1006,8 +1020,29 @@ case 'set_view_mode':
         $id = $routes['2'];
         $t = ORM::for_table('sys_transactions')->find_one($id);
         if ($t) {
-            $p = ORM::for_table('crm_accounts')->find_many();
-            $ui->assign('p', $p);
+            
+            $contact_id = ($t['type'] === 'Income') ? $t['payerid'] : (($t['type'] === 'Expense') ? $t['payeeid'] : 0);
+            $contact = null;
+            if ($contact_id > 0) {
+                $contact = ORM::for_table('crm_accounts')
+                    ->table_alias('c')
+                    ->select('c.*')
+                    ->select('b.alias', 'branch_alias')
+                    ->join('sys_accounts', ['c.branch_id', '=', 'b.id'], 'b')
+                    ->find_one($contact_id);
+
+                if ($contact) {
+                    $contact->display_name =
+                        $contact->account
+                        . (!empty($contact->phone) ? ' - ' . $contact->phone : '')
+                        . (!empty($contact->branch_alias) ? ' [' . $contact->branch_alias . ']' : '');
+                }
+            }
+            $ui->assign('contact', $contact);
+
+            // $p = ORM::for_table('crm_accounts')->find_many();
+            // $ui->assign('p', $p);
+
             $ui->assign('t', $t);
             $d = ORM::for_table('sys_accounts')->find_many();
             $ui->assign('d', $d);

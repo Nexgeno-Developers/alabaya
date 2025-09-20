@@ -21,7 +21,7 @@ _L[\'Submit\'] = \''.$_L['Submit'].'\';
 switch ($action) {
     case 'add':
 
-        if(!has_access($user->roleid, 'customer')) {
+        if(!has_access($user->roleid, 'customers')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
 
@@ -474,27 +474,28 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $earnAmountSumTotal += round($record->earn_amount, 2);
                     if ($record->earn_amount > 0) { // Exclude records with earn_amount = 0
                         $timesheetIds[] = $record->id; 
-                    }
-                    
-                    // Fetch invoice_alocation_id for each record
-                    $invoice_alocation = ORM::for_table('invoice_alocation')
-                        ->select('invoice_id')
-                        ->where('id', $record->invoice_alocation_id)
-                        ->find_one();
-                    
-                    // Fetch invoicenum from sys_invoices if invoice_id is available
-                    if ($invoice_alocation) {
-                        $invoice_id = $invoice_alocation->invoice_id; // Extract the invoice_id from the result
-                    
-                        // Fetch invoicenum from sys_invoices using the invoice_id
-                        $invoice = ORM::for_table('sys_invoices')
-                            ->select('invoicenum')
-                            ->where('id', $invoice_id)
+
+                        // Fetch invoice_alocation_id for each record
+                        $invoice_alocation = ORM::for_table('invoice_alocation')
+                            ->select('invoice_id')
+                            ->where('id', $record->invoice_alocation_id)
                             ->find_one();
-                    
-                        if ($invoice) {
-                            $invoiceNums[] = $invoice->invoicenum; // Store all invoice numbers
+                        
+                        // Fetch invoicenum from sys_invoices if invoice_id is available
+                        if ($invoice_alocation) {
+                            $invoice_id = $invoice_alocation->invoice_id; // Extract the invoice_id from the result
+                        
+                            // Fetch invoicenum from sys_invoices using the invoice_id
+                            $invoice = ORM::for_table('sys_invoices')
+                                ->select('invoicenum')
+                                ->where('id', $invoice_id)
+                                ->find_one();
+                        
+                            if ($invoice) {
+                                $invoiceNums[] = $invoice->invoicenum; // Store all invoice numbers
+                            }
                         }
+                        
                     }
                     
                     // Remove duplicate invoices and timesheet IDs
@@ -607,7 +608,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     "iTotalDisplayRecords" => $totalRecordCount,
                     "aaData" => $data,
                     "earnAmountSum" => ($totalRecordCount > 0) ? ($totalRecordCount < 10 ? $earnAmountSum : $earnAmountSumTotal) : 0,
-                    "payNowButton" => $payNowButton
+                    "payNowButton" => $payNowButton ?? ''
                 );
             } catch (Exception $e) {
                 // Handle any exceptions here, possibly by setting an error flag in the response
@@ -619,7 +620,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
             // Output response as JSON
             echo json_encode($response);
             $ui->assign('earnAmountSum', $totalRecordCount < 10 ? $earnAmountSum : $earnAmountSumTotal);
-            $ui->assign('payNowButton', $payNowButton);
+            $ui->assign('payNowButton', $payNowButton ?? '');
         break;
         
         
@@ -744,7 +745,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 $timesheet->updated_at = $updatedAt;
         
                 $timesheet->save();
-                _msglog('s',$_L['Timesheet_updated_successfully!']);
+                _msglog('s','Timesheet Updated Successfully!');
                 echo $timesheet->id();
             } else {
                 echo 'Timesheet not found.';
@@ -853,7 +854,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                         $d->emp_code = $empcode; // Save employee code if hourly
                     }
                     $d->save();
-                    _msglog('s',$_L['Updated_successfully!']);
+                    _msglog('s','Updated Successfully!');
                     echo $d->id();
                 }
             }
@@ -1137,7 +1138,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
     case 'view':
 
-        if(!has_access($user->roleid, 'customer')) {
+        if(!has_access($user->roleid, 'customers')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
 
@@ -1442,7 +1443,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
     case 'list':
 
-    if(!has_access($user->roleid, 'customer')) {
+    if(!has_access($user->roleid, 'customers')) {
         r2(U."dashboard",'e',$_L['You do not have permission']);
     }
 

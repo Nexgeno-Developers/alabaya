@@ -75,7 +75,7 @@
                 <div class="form-group">
                     <label for="date" class="col-sm-3 control-label">{$_L['Date']}</label>
                     <div class="col-sm-9">
-                        <input type="text" class="form-control"  value="{$mdate}" name="date" id="date" datepicker data-date-format="yyyy-mm-dd" data-auto-close="true">
+                        <input type="text" class="form-control"  value="{$mdate}" name="date" id="date" datepicker data-date-format="yyyy-mm-dd" data-auto-close="true" required>
                     </div>
                 </div>
 
@@ -90,7 +90,7 @@
                 <div class="form-group">
                     <label for="amount" class="col-sm-3 control-label">{$_L['Amount']}</label>
                     <div class="col-sm-9">
-                        <input type="text" class="form-control amount" id="amount" name="amount">
+                        <input type="text" class="form-control amount" id="amount" name="amount" required min="1" step="0.01">
                     </div>
                 </div>
 
