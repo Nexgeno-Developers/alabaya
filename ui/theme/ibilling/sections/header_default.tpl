@@ -80,11 +80,9 @@
 
 <body class="fixed-nav {if $_c['mininav']}mini-navbar{/if}">
 <style>
-.navbar-right-side-content{
-    width: 38%;
-}
+
 .navbar-user-profile{
-    width: 50%;
+    width: 235px;
 }
 
 .truncate-alpha{
@@ -134,7 +132,7 @@
                         {*</li>*}
 
                         <li class="dropdown">
-                            <a class="dropdown-toggle count-info" data-toggle="dropdown" id="get_activity" href="#" aria-expanded="true">
+                            <a class="dropdown-toggle count-info contact-info-bell" data-toggle="dropdown" id="get_activity" href="#" aria-expanded="true">
                                 <i class="fa fa-bell"></i>
                             </a><div class="dropdown-backdrop"></div>
                             <ul class="dropdown-menu dropdown-alerts" id="activity_loaded">
@@ -181,7 +179,7 @@
                             </ul>
                         </li>
 
-                        <li>
+                        <li class="right-toggle-popup">
                             <a class="right-sidebar-toggle">
                                 <i class="fa fa-tasks"></i>
                             </a>

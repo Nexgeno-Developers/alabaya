@@ -241,6 +241,18 @@ h5 {
     margin-top: 10px;
 } */
 
+.navbar-right-side-content{
+    display: flex;
+    align-items: center;
+    justify-content: end;
+}
+
+.contact-info-bell,
+.right-toggle-popup a{
+    display: flex !important;
+    align-items: center !important;
+}
+
 .navbar-form-custom {
     float: left;
     height: 50px;
@@ -326,7 +338,7 @@ body.mini-navbar .navbar-default .nav > li > .nav-second-level li a {
     position: absolute;
     left: 70px;
     top: 0px;
-    background-color: #2f4050;
+    background-color: black;
     padding: 10px 10px 10px 10px;
     font-size: 12px;
 }
@@ -3439,6 +3451,19 @@ body.boxed-layout #wrapper {
 
 }
 
+#ib_admin_notes_save{
+    background-color: #d4a467 !important;
+    border-color: #d4a467 !important;
+}
+
+.pagination>li>a:hover,.pagination>li>span:hover,.pagination>li>a:focus,.pagination>li>span:focus {
+    color: black !important;
+    background-color: #eee;
+    border-color: #ddd
+}
+
+.contact-datatable_paginate
+
 .tt-suggestion p {
     margin: 0;
 }
@@ -3488,15 +3513,15 @@ body.boxed-layout #wrapper {
     padding: 12px 10px;
     margin: 0;
     border-radius: 0;
-    background: #2f4050;
-    color: #fff;
+    background: black;
+    color: #fff !important;
     text-align: center;
-    border-right: 1px solid #334556;
+    border-right: 1px solid black;
 }
 .sidebar-container ul.nav-tabs li.active a {
     border: none;
-    background: #f9f9f9;
-    color: #676a6c;
+    background: #d4a467;
+    color: black;
     font-weight: bold;
 }
 .sidebar-container .nav-tabs > li.active > a:hover,
@@ -3708,7 +3733,7 @@ table#invoice_items {
     background: #ebebeb;
 }
 .modal-scrollable .nav-tabs > li > a:hover, .nav-tabs > li > a:focus {
-    background-color: #2196f3 !important;
+    background-color: #d4a467 !important;
  color: #fff !important;
     cursor: pointer;
  }

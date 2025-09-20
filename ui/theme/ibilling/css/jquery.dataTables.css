@@ -309,7 +309,7 @@ table.dataTable td {
   box-sizing: border-box;
   display: inline-block;
   min-width: 1.5em;
-  padding: 0.5em 1em;
+  padding: 0.5em 1em !important;
   margin-left: 2px;
   text-align: center;
   text-decoration: none !important;
@@ -321,7 +321,7 @@ table.dataTable td {
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button.current, .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
   color: #333 !important;
-  border: 1px solid #979797;
+  border: 1px solid #d4a467 !important;
   background-color: white;
   background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, white), color-stop(100%, #dcdcdc));
   /* Chrome,Safari4+ */
@@ -333,7 +333,7 @@ table.dataTable td {
   /* IE10+ */
   background: -o-linear-gradient(top, white 0%, #dcdcdc 100%);
   /* Opera 11.10+ */
-  background: linear-gradient(to bottom, white 0%, #dcdcdc 100%);
+  background: #d4a467 !important;
   /* W3C */
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button.disabled, .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover, .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:active {
@@ -343,8 +343,8 @@ table.dataTable td {
   background: transparent;
   box-shadow: none;
 }
-.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-  color: white !important;
+body .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  color: black !important;
   border: 1px solid #111;
   background-color: #585858;
   background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #585858), color-stop(100%, #111));
