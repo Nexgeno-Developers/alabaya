@@ -1341,7 +1341,7 @@ a.list-group-item.active:focus {
 
 /* PACE */
 .pace .pace-progress {
-    background: #eb3c00;
+    background: #d4a467;
     position: fixed;
     z-index: 2000;
     top: 0px;
@@ -3954,6 +3954,14 @@ address.ib.mr-xlg.pddd_20 {
     color: #d4a467 !important;
     font-weight: 700;
     text-decoration: underline;
+}
+
+#transactionTable_paginate .pagination li{
+    padding: 0px !important;
+}
+
+.login-brand img{
+    width: 100px !important;
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button {

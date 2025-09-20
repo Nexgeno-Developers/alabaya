@@ -51,6 +51,11 @@ body.light-background {
     padding-top: 80px
 }
 
+.sign-in-btn{
+    background-color: #d4a467 !important;
+    border: 1px solid #d4a467 !important;
+}
+
 @media (max-width: 481px) {
     .sign-in-wrapper {
         padding-top: 40px
@@ -73,6 +78,10 @@ body.light-background {
     font-size: 30px;
     color: #333;
     margin-bottom: 30px
+}
+
+.login-brand img {
+    width: 100px !important;
 }
 
 

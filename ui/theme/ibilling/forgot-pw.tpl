@@ -36,7 +36,7 @@
 
                 <div class="m-top-md p-top-sm">
 
-                    <button class="btn btn-success block full-width" name="login" type="submit">{$_L['Reset Password']}</button>
+                    <button class="btn btn-success block full-width sign-in-btn" name="login" type="submit">{$_L['Reset Password']}</button>
                 </div>
 
                 <div class="m-top-md p-top-sm">
