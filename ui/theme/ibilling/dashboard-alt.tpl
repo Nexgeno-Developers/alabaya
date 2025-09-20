@@ -66,18 +66,21 @@
 
 {if $user['roleid'] eq '0'}
 <div class="row">
+    <div class="col-lg-12 financial-overview">
+        <h2 class="text-left">Financial Overview</h2>
+    </div>
     <div class="col-md-12" id="ib_graph"></div>
     <div class="col-lg-3">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-teal">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-plus fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class=" text-left">
                     <span> {$_L['Income Today']} </span>
                     {*<h3 class="font-bold">{$_c['currency_code']} {number_format($ti,2,$_c['dec_point'],$_c['thousands_sep'])}</h3>*}
                     <h3 class="font-bold amount">{$ti}</h3>
-                    <a href="{$_url}transactions/deposit/" class="btn btn-success btn-xs">{$_L['Add Deposit']}</a>
+                    <a href="{$_url}transactions/deposit/" class="btn btn-success btn-xs btn-success-dashboard">{$_L['Add Deposit']}</a>
+                </div>
+                <div class="text-right">
+                    <i class="las la-plus admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -85,42 +88,42 @@
 
     <div class="col-lg-3">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-danger">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-minus fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> {$_L['Expense Today']} </span>
                     {*<h3 class="font-bold">{$_c['currency_code']} {number_format($te,2,$_c['dec_point'],$_c['thousands_sep'])}</h3>*}
                     <h3 class="font-bold amount">{$te}</h3>
-                    <a href="{$_url}transactions/expense/" class="btn btn-warning btn-xs">{$_L['Add Expense']}</a>
+                    <a href="{$_url}transactions/expense/" class="btn btn-warning btn-xs btn-success-dashboard">{$_L['Add Expense']}</a>
+                </div>
+                <div class="text-right">
+                    <i class="las la-minus admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-3">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-success">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-plus fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> {$_L['Income This Month']} </span>
                     {*<h3 class="font-bold">{$_c['currency_code']} {number_format($mi,2,$_c['dec_point'],$_c['thousands_sep'])}</h3>*}
                     <h3 class="font-bold amount">{$mi}</h3>
+                </div>
+                <div class="text-right">
+                    <i class="las la-plus admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-3">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-blue">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-minus fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> {$_L['Expense This Month']} </span>
                     <h3 class="font-bold amount">{$me}</h3>
+                </div>
+                <div class="text-right">
+                    <i class="las la-minus admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -129,19 +132,22 @@
 {/if}
 
 {$inv = json_decode(invoice_count(), true)}
-<div class="row">
+<div class="row business-operations-row">
+    <div class="col-lg-12 financial-overview">
+        <h2 class="text-left">Business Operations</h2>
+    </div>
     <div class="col-md-12" id="ib_graph"></div>
 
     <div class="col-lg-2">
         <a href="{$_url}invoices/list/filter/">
         <div class="widget style1 blue-bg info-tile info-tile-alt tile-teal">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-pencil fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span>All Invoices</span>
                     <h3 class="font-bold">{$inv['total']}</h3>
+                </div>
+                <div class="-textright">
+                    <i class="las la-file-invoice admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -151,13 +157,13 @@
     <div class="col-lg-2">
         <a href="{$_url}invoices/list/filter/delivered&count={$inv['delivered']}">
         <div class="widget style1 navy-bg info-tile info-tile-alt tile-teal">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class='fa fa-truck fa-5x'></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span>Delivered</span>
                     <h3 class="font-bold">{$inv['delivered']}</h3>
+                </div>
+                <div class="text-right">
+                    <i class='las la-truck admin-dashboard-icon'></i>
                 </div>
             </div>
         </div>
@@ -168,13 +174,13 @@
     <div class="col-lg-2">
         <a href="{$_url}invoices/list/filter/completed&count={$inv['completed']}">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-blue">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-check fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> Completed </span>
                     <h3 class="font-bold">{$inv['completed']}</h3>
+                </div>
+                <div class="text-right">
+                    <i class="las la-check-circle admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -183,13 +189,13 @@
     <div class="col-lg-2">
         <a href="{$_url}invoices/list/filter/processing&count={$inv['processing']}">
         <div class="widget style1 yellow-bg info-tile info-tile-alt tile-success">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-refresh fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> Processing </span>
                     <h3 class="font-bold">{$inv['processing']}</h3>
+                </div>
+                <div class="text-right">
+                    <i class="las la-sync admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -197,14 +203,14 @@
     </div>    
     <div class="col-lg-2">
         <a href="{$_url}invoices/list/filter/pending&count={$inv['pending']}">
-        <div class="widget style1 grey-bg info-tile info-tile-alt tile-danger">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-clock-o fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+        <div class="widget style1 purple-bg grey-bg info-tile info-tile-alt tile-danger">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> Pending </span>
                     <h3 class="font-bold">{$inv['pending']}</h3>
+                </div>
+                <div class="text-right">
+                    <i class="las la-clock admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -213,13 +219,13 @@
     <div class="col-lg-2">
         <a href="{$_url}invoices/list/filter/overdue&count={$inv['overdue']}">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-danger">
-            <div class="row">
-                <div class="col-xs-4">
-                    <i class="fa fa-warning fa-5x"></i>
-                </div>
-                <div class="col-xs-8 text-right">
+            <div class="dashboard-row">
+                <div class="text-left">
                     <span> Overdue </span>
                     <h3 class="font-bold">{$inv['overdue']}</h3>
+                </div>
+                <div class="text-right">
+                    <i class="las la-exclamation-circle admin-dashboard-icon"></i>
                 </div>
             </div>
         </div>
@@ -230,7 +236,7 @@
 {if $user['roleid'] eq '0'}
     <div class="row" id="sort_3">
         <div class="col-md-12">
-            <div class="ibox float-e-margins">
+            <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
                     <a href="{$_url}transactions/list/" class="btn btn-primary btn-xs pull-right"><i class="fa fa-list"></i> {$_L['All_Transactions']}</a>
                     <h5>{$_L['Income n Expense']} - {ib_lan_get_line(date('F'))} {date('Y')}</h5>
@@ -246,7 +252,7 @@
     </div>
     <div class="row" id="sort_2">
         <div class="col-md-6">
-            <div class="ibox float-e-margins">
+            <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
                     <a href="#" id="set_goal" class="btn btn-primary btn-xs pull-right"><i class="fa fa-bullseye"></i> {$_L['Set Goal']}</a>
                     <h5>{$_L['Net Worth n Account Balances']}</h5>
@@ -284,7 +290,7 @@
             </div>
         </div>
         <div class="col-md-6">
-            <div class="ibox float-e-margins">
+            <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
 
                     <h5>{$_L['Income vs Expense']} - {ib_lan_get_line(date('F'))} {date('Y')}</h5>
@@ -303,7 +309,7 @@
 
 
     <div class="col-md-12">
-        <div class="ibox float-e-margins">
+        <div class="ibox float-e-margins border-radius-16px">
             <div class="ibox-title">
                 <a href="{$_url}invoices/list/" class="btn btn-primary btn-xs pull-right"><i class="fa fa-list"></i> {$_L['Invoices']}</a>
                 <h5>{$_L['Recent Invoices']}</h5>
@@ -369,7 +375,7 @@
 
 
     <div class="col-md-12">
-        <div class="ibox float-e-margins">
+        <div class="ibox float-e-margins border-radius-16px">
             <div class="ibox-title">
                 <a href="{$_url}sales/list/" class="btn btn-primary btn-xs pull-right"><i class="fa fa-list"></i> Sales</a>
                 <h5>Coming Renewal Sales</h5>
@@ -420,7 +426,7 @@
 
     <div class="row" id="sort_3">
         <div class="col-md-6">
-            <div class="ibox float-e-margins">
+            <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
 
                     <h5>{$_L['Latest Income']}</h5>
@@ -450,7 +456,7 @@
 
 
         <div class="col-md-6">
-            <div class="ibox float-e-margins">
+            <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
 
                     <h5>{$_L['Latest Expense']}</h5>
