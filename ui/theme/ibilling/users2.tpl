@@ -40,23 +40,25 @@
                     </div>
                 </div>
 
-                <table id="usersTable" class="table table-striped table-bordered table-responsive">
-                    <thead>
-                        <tr>
-                            <th style="width: 60px;">{$_L['Avatar']}</th>
-                            <th>{$_L['Username']}</th>
-                            <th>{$_L['Full_Name']}</th>
-                            <th>{$_L['Type']}</th>
-                            <th>Branch</th>
-                            <th>{$_L['Manage']}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {*
-                          Rows will be loaded via AJAX by DataTables
-                        *}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table id="usersTable" class="table table-striped table-bordered table-responsive">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">{$_L['Avatar']}</th>
+                                <th>{$_L['Username']}</th>
+                                <th>{$_L['Full_Name']}</th>
+                                <th>{$_L['Type']}</th>
+                                <th>Branch</th>
+                                <th>{$_L['Manage']}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {*
+                            Rows will be loaded via AJAX by DataTables
+                            *}
+                        </tbody>
+                    </table>
+                </div>
 
             </div>
         </div>

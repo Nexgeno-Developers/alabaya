@@ -70,7 +70,7 @@
         <h2 class="text-left">Financial Overview</h2>
     </div>
     <div class="col-md-12" id="ib_graph"></div>
-    <div class="col-lg-3">
+    <div class="col-lg-3 col-md-6">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-teal">
             <div class="dashboard-row">
                 <div class=" text-left">
@@ -86,7 +86,7 @@
         </div>
     </div>
 
-    <div class="col-lg-3">
+    <div class="col-lg-3 col-md-6">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-danger">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -101,7 +101,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-3">
+    <div class="col-lg-3 col-md-6">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-success">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -115,7 +115,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-3">
+    <div class="col-lg-3 col-md-6">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-blue">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -138,7 +138,7 @@
     </div>
     <div class="col-md-12" id="ib_graph"></div>
 
-    <div class="col-lg-2">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/">
         <div class="widget style1 blue-bg info-tile info-tile-alt tile-teal">
             <div class="dashboard-row">
@@ -154,7 +154,7 @@
         </a>
     </div>
 
-    <div class="col-lg-2">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/delivered&count={$inv['delivered']}">
         <div class="widget style1 navy-bg info-tile info-tile-alt tile-teal">
             <div class="dashboard-row">
@@ -171,7 +171,7 @@
     </div>
 
 
-    <div class="col-lg-2">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/completed&count={$inv['completed']}">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-blue">
             <div class="dashboard-row">
@@ -186,7 +186,7 @@
         </div>
         </a>
     </div>
-    <div class="col-lg-2">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/processing&count={$inv['processing']}">
         <div class="widget style1 yellow-bg info-tile info-tile-alt tile-success">
             <div class="dashboard-row">
@@ -201,7 +201,7 @@
         </div>
         </a>
     </div>    
-    <div class="col-lg-2">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/pending&count={$inv['pending']}">
         <div class="widget style1 purple-bg grey-bg info-tile info-tile-alt tile-danger">
             <div class="dashboard-row">
@@ -216,7 +216,7 @@
         </div>
         </a>
     </div>
-    <div class="col-lg-2">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/overdue&count={$inv['overdue']}">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-danger">
             <div class="dashboard-row">

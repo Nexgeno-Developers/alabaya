@@ -3,7 +3,7 @@
     <div class="ibox-title">
         <h5>{$_L['Manage Tags']} </h5>
     </div>
-    <div class="ibox-content">
+    <div class="ibox-content table-responsive">
 
         <table class="table table-bordered table-hover sys_table">
             <thead>

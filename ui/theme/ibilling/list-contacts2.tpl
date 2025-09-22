@@ -2,8 +2,8 @@
 
 <div class="row">
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-body" style="padding-bottom: 0;">
+        <div class="panel panel-default border-radius-16px">
+            <div class="panel-body border-radius-16px" style="padding-bottom: 0;">
                 <form id="contacts-filters" onsubmit="return false;">
                     <div class="row">
                         <div class="col-md-3">

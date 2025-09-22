@@ -4,7 +4,7 @@
     
         <div class="col-md-12">
     
-            <div class="ibox float-e-margins">
+            <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
                     <h5>Add Category</h5>
                 </div>

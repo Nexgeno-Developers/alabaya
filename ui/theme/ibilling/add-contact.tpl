@@ -6,7 +6,7 @@
 
 
 
-        <div class="ibox float-e-margins">
+        <div class="ibox float-e-margins border-radius-16px">
             <div class="ibox-title">
                 <h5>{$_L['Add Contact']}</h5>
 

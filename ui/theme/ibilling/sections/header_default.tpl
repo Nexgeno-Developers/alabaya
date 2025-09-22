@@ -81,8 +81,18 @@
 <body class="fixed-nav {if $_c['mininav']}mini-navbar{/if}">
 <style>
 
-.navbar-user-profile{
-    width: 235px;
+
+
+@media (min-width: 768px) {
+    .navbar-user-profile{
+        width: 235px !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .navbar-user-profile{
+        max-width: 235px !important;
+    }
 }
 
 .truncate-alpha{

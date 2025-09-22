@@ -20,7 +20,8 @@
                     <hr>
                     <h4>{$_L['All Transactions at Date']}: <span id="tdate">{date( $_c['df'], strtotime($mdate))}</span> </h4>
                     <hr>
-                    <table class="table table-striped table-bordered table-responsive">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered table-responsive">
 
                         <th>{$_L['Account']}</th>
                         <th>{$_L['Type']}</th>
@@ -58,6 +59,7 @@
 
 
                     </table>
+                    </div>
                 </div>
 
 
