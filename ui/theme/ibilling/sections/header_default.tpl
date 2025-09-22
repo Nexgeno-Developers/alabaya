@@ -117,9 +117,9 @@
 
 
                         <li class="hidden-xs">
-                            <form class="navbar-form full-width padding-left-right-0" method="post" action="{$_url}contacts/list/">
+                            <form id="navbar-search" class="navbar-form full-width padding-left-right-0">
                                 <div class="form-group">
-                                    <input type="text" class="form-control" name="name" placeholder="{$_L['Search Customers']}...">
+                                    <input type="text" class="form-control" id="navbar-search-input" placeholder="{$_L['Search Customers']}...">
                                     <button type="submit" class="btn btn-search"><i class="fa fa-search"></i></button>
                                 </div>
                             </form>
@@ -205,3 +205,19 @@
                 {if isset($notify)}
                 {$notify}
 {/if}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var form = document.getElementById("navbar-search");
+    var input = document.getElementById("navbar-search-input");
+
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+        var term = input.value.trim();
+        if (term) {
+            window.location.href = base_url + "contacts/list/&search=" + encodeURIComponent(term);
+        } else {
+            window.location.href = base_url + "contacts/list/";
+        }
+    });
+});
+</script>

@@ -190,12 +190,12 @@
                                         {if $user->roleid eq 0}
                                             <option value="">Select Branch</option>
                                             {foreach $branches as $branch}
-                                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias}</option>
                                             {/foreach}
                                         {else}
                                             {foreach $branches as $branch}
                                                 {if $branch.id eq $user->branch_id}
-                                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias}</option>
                                                 {/if}
                                             {/foreach}
                                         {/if}

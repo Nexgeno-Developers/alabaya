@@ -474,15 +474,15 @@ $(document).on('click', '.timesheet-entry-post300', function(e) {
         $('#timesheet-list-table').DataTable({
             dom: 'lBfrtip',
             buttons: [
-                {
-                    extend: 'csvHtml5',
-                    filename: 'timesheet-report',
-                    text: 'Export',
-                    className: 'btn-sm btn-secondary btn-data-export',
-                    exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-                    }
-                }
+                //{
+                //    extend: 'csvHtml5',
+                //    filename: 'timesheet-report',
+                //    text: 'Export',
+                //    className: 'btn-sm btn-secondary btn-data-export',
+                //    exportOptions: {
+                //        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                //    }
+                //}
             ],
             lengthMenu: [[5, 10, 25, 50], [5, 10, 25, 50]],
             initComplete: function () {

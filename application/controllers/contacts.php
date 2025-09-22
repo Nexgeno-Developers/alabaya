@@ -1555,7 +1555,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
 
         // maps (single queries)
         $group_map  = $make_map('crm_groups', 'gname');
-        $branch_map = $make_map('sys_accounts', 'account');
+        $branch_map = $make_map('sys_accounts', 'alias');
 
         // assemble data in display order: id, branch, name, phone, group, manage
         $data = [];

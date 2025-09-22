@@ -20,7 +20,7 @@
                                         <option value="all" {if $branch_id == '' || $branch_id == 'all'}selected{/if}>All Branches</option>
                                     {/if}
                                     {foreach $branches as $branch}
-                                        <option value="{$branch.id}" {if $branch_id != '' && $branch_id == $branch.id}selected{/if}>{$branch.account}</option>
+                                        <option value="{$branch.id}" {if $branch_id != '' && $branch_id == $branch.id}selected{/if}>{$branch.alias|default:$branch.account}</option>
                                     {/foreach}
                                 </select>
                             </div>
@@ -82,14 +82,14 @@ $(document).ready(function() {
         },
         dom: 'Bfrtip',
         buttons: [
-            {
-                extend: 'csv',
-                text: 'CSV',
-                exportOptions: {
-                    // Exclude Avatar (0) and Manage (5) columns
-                    columns: [1, 2, 3, 4]
-                }
-            },
+            //{
+            //    extend: 'csv',
+            //    text: 'CSV',
+            //    exportOptions: {
+            //       // Exclude Avatar (0) and Manage (5) columns
+            //        columns: [1, 2, 3, 4]
+            //    }
+            //},
             'pageLength'
         ],
         lengthMenu: [

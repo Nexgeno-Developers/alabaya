@@ -181,7 +181,7 @@ $(function(){
         },
         dom: 'Bfrtip',
         buttons: [
-            { extend: 'csv', text: 'CSV' },
+            //{ extend: 'csv', text: 'CSV' },
             'pageLength'
         ],
         lengthMenu: [

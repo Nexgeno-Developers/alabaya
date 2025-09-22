@@ -694,13 +694,28 @@ case 'set_view_mode':
 
         // prepare response
         $data = [];
-        $total_income = 0.0;
-        $total_expense = 0.0;
+        
+        // Clone again for totals (no limit/offset, just filters)
+        $sum_q = clone $base_q;
+
+        // Calculate totals for all filtered records
+        $sum_income = (float) $sum_q->where('t.type', 'Income')->sum('amount');
+        $sum_expense = (float) $sum_q->where('t.type', 'Expense')->sum('amount');
+
+        // Reset query for Expense (because where() stays)
+        $sum_q = clone $base_q;
+        $sum_expense = (float) $sum_q->where('t.type', 'Expense')->sum('amount');
+
+        $sum_balance = $sum_income - $sum_expense;
+
+        // --- Page totals (just for current display rows) ---
+        // $page_income = 0.0;
+        // $page_expense = 0.0;
 
         foreach ($rows as $r) {
             $amount = (float)$r['amount'];
-            if ($r['type'] === 'Income') $total_income += $amount;
-            if ($r['type'] === 'Expense') $total_expense += $amount;
+            // if ($r['type'] === 'Income') $page_income += $amount;
+            // if ($r['type'] === 'Expense') $page_expense += $amount;
 
             $nested = [];
             $nested[] = date($_c['df'], strtotime($r['date']));
@@ -714,16 +729,23 @@ case 'set_view_mode':
 
             $data[] = $nested;
         }
-
+        // $page_balance = $page_income - $page_expense;
         $json_data = [
             "draw"            => intval($request['draw'] ?? 0),
             "recordsTotal"    => intval($totalData),
             "recordsFiltered" => intval($totalFiltered),
             "data"            => $data,
-            "totals"          => [
-                "income"  => number_format($total_income, 2, '.', ''), 
-                "expense" => number_format($total_expense, 2, '.', ''), 
-                "balance" => number_format($total_income - $total_expense, 2, '.', '')
+            "totals" => [
+                // "page" => [
+                //     "income"  => number_format($page_income, 2, '.', ''),
+                //     "expense" => number_format($page_expense, 2, '.', ''),
+                //     "balance" => number_format($page_balance, 2, '.', '')
+                // ],
+                "filtered" => [
+                    "income"  => number_format($sum_income, 2, '.', ''),
+                    "expense" => number_format($sum_expense, 2, '.', ''),
+                    "balance" => number_format($sum_balance, 2, '.', '')
+                ]
             ]
         ];
 

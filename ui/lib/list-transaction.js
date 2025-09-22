@@ -34,7 +34,8 @@ $(function () {
             }
         },
         dom: "Bfrtip",
-        buttons: ["csv", "pageLength"],
+        buttons: ["pageLength"],
+        // buttons: ["csv", "pageLength"],
         lengthMenu: [
             [10, 25, 50, 100, -1],
             [10, 25, 50, 100, "All"]
@@ -60,10 +61,19 @@ $(function () {
     // Update totals after draw
     table.on("xhr.dt", function (e, settings, json) {
         if (json && json.totals) {
-            $("#totals").html(
-                "Income: " + json.totals.income +
-                " | Expense: " + json.totals.expense +
-                " | Balance: " + json.totals.balance
+            let res = json.totals; // ✅ assign here
+
+            $('#totals').html(
+                'Income: ' + res.filtered.income +
+                ' | Expense: ' + res.filtered.expense +
+                ' | Balance: ' + res.filtered.balance
+                // 'Filtered → Income: ' + res.filtered.income +
+                // ' | Expense: ' + res.filtered.expense +
+                // ' | Balance: ' + res.filtered.balance +
+                // '<br>' +
+                // 'Page → Income: ' + res.page.income +
+                // ' | Expense: ' + res.page.expense +
+                // ' | Balance: ' + res.page.balance
             );
         }
     });

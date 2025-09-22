@@ -28,7 +28,7 @@
                         <select class="form-control" name="branch_id">
                             <option value="">All</option>
                             {foreach $branches as $branch}
-                                <option value="{$branch.id}">{$branch.alias}</option>
+                                <option value="{$branch.id}" {if $user.branch_id eq $branch.id}selected{/if}>{$branch.alias}</option>
                             {/foreach}
                         </select>
                     </div>
@@ -73,8 +73,8 @@
                     </thead>
                     <tfoot>
                         <tr>
-                            <th colspan="6" class="text-right">Totals</th>
-                            <th colspan="2" id="totals"></th>
+                            <th colspan="7" class="text-right">Totals</th>
+                            <th colspan="1" id="totals"></th>
                         </tr>
                     </tfoot>
                 </table>            

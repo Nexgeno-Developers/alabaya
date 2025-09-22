@@ -11,7 +11,7 @@
                             <select id="filter_branch" class="form-control">
                                 <option value="all">All Branches</option>
                                 {foreach $branches as $b}
-                                    <option value="{$b.id}" {if $user.branch_id eq $b.id}selected{/if}>{$b.account}</option>
+                                    <option value="{$b.id}" {if $user.branch_id eq $b.id}selected{/if}>{$b.alias}</option>
                                 {/foreach}
                             </select>
                         </div>
@@ -71,11 +71,26 @@
 
 <script>
     $(document).ready(function(){
+        // Vanilla JS to get query param
+        function getQueryParam(Param) {
+            var params = new URLSearchParams(window.location.search);
+            return params.get(Param) || '';
+        }
+
+        var initialSearch = getQueryParam('search');
+
+        var navbarInput = document.getElementById('navbar-search-input');
+        if(navbarInput && initialSearch) {
+            navbarInput.value = initialSearch;
+        }
+
+        console.log(initialSearch);
 
         var table = $('#contact-datatable').DataTable({
             processing: true,
             serverSide: true,
             responsive: true,
+            search: { search: initialSearch },
             ajax: {
                 url: '{$_url}contacts/list/',
                 type: 'GET',
@@ -117,14 +132,15 @@
             order: [[0, 'desc']],
             dom: 'lBfrtip',
             buttons: [
-                {
-                    extend: 'csv',
-                    text: 'Export',
-                    exportOptions: { columns: [0,1,2,3,4] }
-                }
+                //{
+                //    extend: 'csv',
+                //    text: 'Export',
+                //    exportOptions: { columns: [0,1,2,3,4] }
+                //}
             ],
             language: { processing: "<i class='fa fa-spinner fa-spin'></i> Loading..." }
         });
+
 
         // Reload table when filters change
         $('#btn_filter').on('click', function(){ table.ajax.reload(); });
