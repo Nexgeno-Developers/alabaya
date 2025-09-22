@@ -54,52 +54,52 @@ input[type=number]::-webkit-outer-spin-button {
 						</div>											
 					</div>
 					<div class="row">
-						<div class="col-md-4 col_with_21">
+						<div class="col-md-12 col-sm-12 col-xs-12 col-12">
 							<h3 style="margin-top: 25px; "><i class="fa fa-tachometer" aria-hidden="true"></i> Measurements - </h3>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="length">Length</label>
 								<input type="text" class="form-control pad-2" name="cust_length">
 							</div>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="shoulder">Shoulder</label>
 								<input type="text" class="form-control pad-2" name="cust_shoulder">
 							</div>
 						</div>	
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="sleeves">Sleeves</label>
 								<input type="text" class="form-control pad-2" name="cust_sleeves">
 							</div>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="armole">Armole</label>
 								<input type="text" class="form-control pad-2" name="cust_armole">
 							</div>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="cuff">Cuff</label>
 								<input type="text" class="form-control pad-2" name="cust_cuff">
 							</div>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="chest">Chest</label>
 								<input type="text" class="form-control pad-2" name="cust_chest">
 							</div>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="waist">Waist</label>
 								<input type="text" class="form-control pad-2" name="cust_waist">
 							</div>
 						</div>
-						<div class="col-md-1 col_with_9">
+						<div class="col-md-1 col-sm-6 col-xs-12 col_with_9 col-measurement">
 							<div class="form-group">
 								<label for="hipps">Hipps</label>
 								<input type="text" class="form-control pad-2" name="cust_hipps">
@@ -107,50 +107,64 @@ input[type=number]::-webkit-outer-spin-button {
 						</div>					
 					</div>
 					<div class="row">
-							<div class="col-md-4 col_with_21">
+							<div class="col-md-12">
 								<h3><i class="fa fa-user" aria-hidden="true"></i> Other - </h3>
 							</div>						
-							<div class="col-md-6 pdd_00">
-								<input type="checkbox" name="is_pocket" value="yes" id="is_pocket"> 
-								<label class="pd_15" for="is_pocket">Pocket</label>
+							<div class="col-md-12" style="display: flex; flex-wrap: wrap; align-items: baseline;">
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_pocket" value="yes" id="is_pocket"> 
+									<label class="pd_15" for="is_pocket">Pocket</label>
+								</div>
 								
-								<input type="checkbox" name="is_zip" value="yes" id="is_zip"> 
-								<label class="pd_15" for="is_zip">Zip</label>
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_zip" value="yes" id="is_zip"> 
+									<label class="pd_15" for="is_zip">Zip</label>
+								</div>
 
-								<input type="checkbox" name="is_beading" value="yes" id="is_beading"> 
-								<label class="pd_15" for="is_beading">Beading</label>	
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_beading" value="yes" id="is_beading"> 
+									<label class="pd_15" for="is_beading">Beading</label>	
+								</div>
 								
-								<input type="checkbox" name="is_folding" value="yes" id="is_folding"> 
-								<label class="pd_15" for="is_folding">Folding</label>
-
-								<input type="checkbox" name="is_pico" value="yes" id="is_pico"> 
-								<label class="pd_15" for="is_pico">Pico</label>
-
-								<br>
-
-								<input type="checkbox" name="is_umbrella" value="yes"> 
-								<label class="pd_10" for="umbrella_size">Umbrella</label>
-								<input style="width:100px;display: inline;" class="form-control size_width" type="text" name="umbrella_size" placeholder="Size" id="umbrella_size">	
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_folding" value="yes" id="is_folding"> 
+									<label class="pd_15" for="is_folding">Folding</label>
+								</div>
 								
-								<input type="checkbox" name="is_dupatta" value="yes"> 
-								<label class="pd_10" for="dupatta_size">Dupatta</label>
-								<input style="width:100px;display: inline;" class="form-control size_width" type="text" name="dupatta_size" placeholder="Size" id="dupatta_size">
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_pico" value="yes" id="is_pico"> 
+									<label class="pd_15" for="is_pico">Pico</label>
+								</div>
+								
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_umbrella" value="yes"> 
+									<label class="pd_10" for="umbrella_size">Umbrella</label>
+									<input style="width:100px;display: inline;" class="form-control invoice-size_width" type="text" name="umbrella_size" placeholder="Size" id="umbrella_size">	
+								</div>
+
+								<div class="margin-right-10px">
+									<input type="checkbox" name="is_dupatta" value="yes"> 
+									<label class="pd_10" for="dupatta_size">Dupatta</label>
+									<input style="width:100px;display: inline;" class="form-control invoice-size_width" type="text" name="dupatta_size" placeholder="Size" id="dupatta_size">
+								</div>
 							</div>
-							<div class="col-md-2 pdd_00 text-center" style="margin-top: 3px;">
-								 <span><b>Display Measurement</b></span><br>
+							<div class="col-md-12 "style="margin-top: 12px; margin-bottom: 6px;">
+								 <h3>Display Measurement</h3>
 								 <input type="radio" id="age1" name="d_measure" value="yes" checked>
-								 <label for="age1">Yes</label><br>
+								 <label for="age1">Yes</label>
 								 <input type="radio" id="age2" name="d_measure" value="no">
-								 <label for="age2">No</label><br>
+								 <label for="age2">No</label>
 							</div>						
 					</div>
-					<div class="row">
-						<div class="col-md-4 col_with_21">
-							<h3><i class="fa fa-user" aria-hidden="true"></i> File Upload - </h3>
-						</div>
-						<div class="col-md-4 pdd_00">
-							<input type="file" accept="image/*" name="additional_imgs[]" class="form-control" multiple>
-						</div>						
+					<div class="row" >
+						<div class="col-md-12 file-upload-main" style="display: flex; justify-content:start; align-items-center; flex-wrap: wrap;">
+							<div class="">
+								<h3><i class="fa fa-user" aria-hidden="true"></i> File Upload - </h3>
+							</div>
+							<div class="">
+								<input type="file" accept="image/*" name="additional_imgs[]" class="form-control" multiple>
+							</div>	
+						</div>					
 					</div>
 				</div>
 			</div>

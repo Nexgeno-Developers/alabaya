@@ -132,7 +132,7 @@ h5 {
 }
 
 .navbar-top-links li:last-child {
-    margin-right: 15px;
+    margin-right: 17px;
 }
 
 .navbar-top-links li a {
@@ -603,6 +603,7 @@ fieldset[disabled] .btn-primary.active {
     border-color: #ffffff00 !important;
     color: #FFFFFF !important;
     opacity: 0.8 !important;
+    padding-left: 0px !important;
 }
 
 .btn-success-dashboard:hover,
@@ -2690,7 +2691,11 @@ body.skin-1 {
     }
 
     .nav.navbar-top-links li.dropdown {
-        display: none;
+        /* display: none; */
+    }
+
+    .contact-info-bell{
+        display: none !important;
     }
 }
 
@@ -2717,7 +2722,7 @@ body.skin-1 {
 
 
 .select2-container {
-    width: 100%;
+    width: 100% !important;
 }
 
 /*
@@ -3776,11 +3781,31 @@ padding-left: 15px;
    width:21%;
 }
 
+.invoice-size_width{
+    width: 50px !important;
+}
+
+.margin-right-10px{
+    margin-right: 10px !important;
+}
+
+body #invoice-datatable_paginate .pagination .paginate_button {
+    padding: 0px !important;
+}
+
 .col_with_9
 {
-   width: 9.8% !important;
-    padding: 4px 9px 4px 0px !important;
+    
+   /* width: 9.8% !important;
+    padding: 4px 9px 4px 0px !important; */
 }
+
+@media (min-width: 991px) {
+    .col-measurement{
+    width: 12.333333% !important;
+}
+}
+
 .pdd_00
 {
    padding:0px !important;
@@ -4028,4 +4053,18 @@ address.ib.mr-xlg.pddd_20 {
 
 .border-radius-16px .ibox-content{
     border-radius: 0px 0px 16px 16px !important;
+}
+
+#usersTable_wrapper .dt-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.navbar-right .dropdown-menu{
+    left: auto;
+    right: 0;
+}
+
+#filterForm .form-group{
+    margin-right: 10px;
 }

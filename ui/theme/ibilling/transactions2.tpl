@@ -14,16 +14,16 @@
                 <h5>{$_L['Records']}</h5>
             </div>
             <div class="ibox-content">  
-                <form id="filterForm" class="row" style="margin-bottom: 20px;align-items: center;display: flex;">
-                    <div class="form-group col-md-2">
+                <form id="filterForm" class="row" style="margin-bottom: 20px;align-items: center;display: flex; flex-wrap: wrap;">
+                    <div class="form-group">
                         <label>Date From</label>
                         <input type="date" class="form-control" name="date_from">
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group">
                         <label>Date To</label>
                         <input type="date" class="form-control" name="date_to">
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group">
                         <label>Branch</label>
                         <select class="form-control" name="branch_id">
                             <option value="">All</option>
@@ -32,7 +32,7 @@
                             {/foreach}
                         </select>
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group">
                         <label>Type</label>
                         <select class="form-control" name="type">
                             <option value="">All</option>
@@ -40,15 +40,15 @@
                             <option value="Expense">Expense</option>
                         </select>
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group">
                         <label>Method</label>
                         <input type="text" class="form-control" name="method">
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group">
                         <label>Category</label>
                         <input type="text" class="form-control" name="category">
                     </div>
-                    <div class="col-md-2" style="display: flex;justify-content: flex-end; gap:10px;">
+                    <div class="" style="display: flex; gap:10px; margin-top: 5px;">
                         <button type="submit" class="btn btn-primary btn-block" style="margin-top:5px;">
                             <i class="fa fa-search" aria-hidden="true"></i> Filter
                         </button>
@@ -58,26 +58,28 @@
                     </div>
                 </form>
 
-                <table id="transactionTable" class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>{$_L['Date']}</th>
-                            <th>{$_L['Account']}</th>
-                            <th>{$_L['Type']}</th>
-                            <th>{$_L['Description']}</th>
-                            <th>{$_L['Method']}</th>
-                            <th>{$_L['Category']}</th>
-                            <th class="text-right">{$_L['Amount']}</th>
-                            <th>{$_L['Manage']}</th>
-                        </tr>
-                    </thead>
-                    <tfoot>
-                        <tr>
-                            <th colspan="6" class="text-right">Totals</th>
-                            <th colspan="2" id="totals"></th>
-                        </tr>
-                    </tfoot>
-                </table>            
+                <div class="table-responsive">
+                    <table id="transactionTable" class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>{$_L['Date']}</th>
+                                <th>{$_L['Account']}</th>
+                                <th>{$_L['Type']}</th>
+                                <th>{$_L['Description']}</th>
+                                <th>{$_L['Method']}</th>
+                                <th>{$_L['Category']}</th>
+                                <th class="text-right">{$_L['Amount']}</th>
+                                <th>{$_L['Manage']}</th>
+                            </tr>
+                        </thead>
+                        <tfoot>
+                            <tr>
+                                <th colspan="6" class="text-right">Totals</th>
+                                <th colspan="2" id="totals"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>            
             </div>
         </div>
     </div>

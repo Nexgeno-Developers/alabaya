@@ -7,7 +7,7 @@
                 <div class="ibox-title">
                     <h5>Category List</h5>
                 </div>
-                <div class="ibox-content">
+                <div class="ibox-content table-responsive">
                     {if $categories}
                         <table class="table">
                             <thead>

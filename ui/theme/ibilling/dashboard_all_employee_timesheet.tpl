@@ -29,8 +29,8 @@ table#timesheet-list-table {
 
 <div class="row">
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-body" id="timesheet-from-body300">
+        <div class="panel panel-default border-radius-16px">
+            <div class="panel-body border-radius-16px" id="timesheet-from-body300">
                 <h2>Bulk Attendance</h2>
                 <!--<h2>Employee Holiday days Form</h2>-->
                 <div id="nonInsertedDataSection"></div>
@@ -232,8 +232,8 @@ $(document).ready(function() {
 </script>
 <div class="row" id="application_ajaxrender">
 	<div class="col-md-12">
-		<div class="panel panel-default">
-		    <div class="panel-body" id="timesheet-from-body">
+		<div class="panel panel-default border-radius-16px">
+		    <div class="panel-body border-radius-16px" id="timesheet-from-body">
                     <div class="row">
                         <input type="hidden" id="total_earn_amount" name="total_earn_amount" value="{$earnAmountSum}">
                         <input type="hidden" id="employee_id2" name="employee_id2" value="{$employee->id}">
