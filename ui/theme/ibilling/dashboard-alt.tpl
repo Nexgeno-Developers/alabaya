@@ -64,6 +64,34 @@
 
 {*</div>*}
 
+<form method="post" class="form-inline" style="margin-bottom:15px;">
+    <div class="form-group">
+        <label for="branch_id">Branch:</label>
+        {if $user->roleid eq 0}
+            <select name="branch_id" id="filter_branch" class="form-control">
+                <option value="all" {if $selected_branch eq 'all'}selected{/if}>All</option>
+                {foreach $branches as $branch}
+                    <option value="{$branch.id}" {if $branch.id eq $selected_branch}selected{/if}>
+                        {$branch.alias|default:$branch.account}
+                    </option>
+                {/foreach}
+            </select>
+        {else}
+            <input type="hidden" name="branch_id" value="{$user->branch_id}">
+            <span class="form-control-static">
+                {foreach $branches as $branch}
+                    {if $branch.id eq $user->branch_id}
+                        {$branch.alias|default:$branch.account}
+                    {/if}
+                {/foreach}
+            </span>
+        {/if}        
+    </div>
+    {if $user->roleid eq 0}
+        <button type="submit" class="btn btn-primary">Filter</button>
+    {/if}
+</form>
+
 {if $user['roleid'] eq '0'}
 <div class="row">
     <div class="col-lg-12 financial-overview">
@@ -131,7 +159,7 @@
 </div>
 {/if}
 
-{$inv = json_decode(invoice_count(), true)}
+{$inv = json_decode(invoice_count($selected_branch), true)}
 <div class="row business-operations-row">
     <div class="col-lg-12 financial-overview">
         <h2 class="text-left">Business Operations</h2>

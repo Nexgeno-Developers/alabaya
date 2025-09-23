@@ -1185,9 +1185,16 @@ function SMS($phone, $message)
 }
 
 
-function invoice_count()
+function invoice_count($branch_id = '')
 {
-    $invoice = ORM::for_table('sys_invoices')->select('duedate')->select('delivery_status')->find_many();
+    $query = ORM::for_table('sys_invoices')->select('duedate')->select('delivery_status');
+
+    // If branch is not 'all' and not empty, filter by branch
+    if (!empty($branch_id) && $branch_id != 'all') {
+        $query->where('company_id', $branch_id);
+    }
+
+    $invoice = $query->find_many();
 
     $pending    = 0;
     $processing = 0;
@@ -1370,4 +1377,12 @@ function send_email_brevo_api($to, $username, $subject, $txt, $headers) {
     
     // Output response
     //echo $response;    
+}
+
+function filter_by_branch($table, $branch_id) {
+    $q = ORM::for_table($table);
+    if (!empty($branch_id) && $branch_id !== 'all') {
+        $q->where('branch_id', $branch_id);
+    }
+    return $q;
 }
