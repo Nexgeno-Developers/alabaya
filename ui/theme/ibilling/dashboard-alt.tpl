@@ -1,6 +1,4 @@
 {include file="sections/header.tpl"}
-
-
 {*<div class="row">*}
     {*<div class="col-lg-12">*}
         {*<div class="chart-statistic-box">*}
@@ -57,13 +55,9 @@
             {*</div>*}
         {*</div>*}
     {*</div>*}
-
     {*<div class="col-lg-6">*}
-
     {*</div>*}
-
 {*</div>*}
-
 <form method="post" class="form-inline" style="margin-bottom:15px;">
     <div class="form-group">
         <label for="branch_id">Branch:</label>
@@ -91,8 +85,6 @@
         <button type="submit" class="btn btn-primary">Filter</button>
     {/if}
 </form>
-
-{if $user['roleid'] eq '0'}
 <div class="row">
     <div class="col-lg-12 financial-overview">
         <h2 class="text-left">Financial Overview</h2>
@@ -113,7 +105,6 @@
             </div>
         </div>
     </div>
-
     <div class="col-lg-3 col-md-6">
         <div class="widget style1 red-bg info-tile info-tile-alt tile-danger">
             <div class="dashboard-row">
@@ -157,15 +148,12 @@
         </div>
     </div>
 </div>
-{/if}
-
 {$inv = json_decode(invoice_count($selected_branch), true)}
 <div class="row business-operations-row">
     <div class="col-lg-12 financial-overview">
         <h2 class="text-left">Business Operations</h2>
     </div>
     <div class="col-md-12" id="ib_graph"></div>
-
     <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/">
         <div class="widget style1 blue-bg info-tile info-tile-alt tile-teal">
@@ -181,7 +169,6 @@
         </div>
         </a>
     </div>
-
     <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/delivered&count={$inv['delivered']}">
         <div class="widget style1 navy-bg info-tile info-tile-alt tile-teal">
@@ -197,8 +184,6 @@
         </div>
         </a>
     </div>
-
-
     <div class="col-lg-2 col-md-4 col-sm-6">
         <a href="{$_url}invoices/list/filter/completed&count={$inv['completed']}">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-blue">
@@ -260,8 +245,6 @@
         </a>
     </div>    
 </div>
-
-{if $user['roleid'] eq '0'}
     <div class="row" id="sort_3">
         <div class="col-md-12">
             <div class="ibox float-e-margins border-radius-16px">
@@ -273,12 +256,11 @@
                     <div id="chart"></div>
                 </div>
             </div>
-
         </div>
         <!-- Widget-5 end-->
-
     </div>
     <div class="row" id="sort_2">
+        {if $user['roleid'] eq '0'}
         <div class="col-md-6">
             <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
@@ -292,13 +274,10 @@
                             <span class="amount">{$net_worth}</span> {$_L['of']} <span class="amount">{$_c['networth_goal']}</span>
                             <small class="pull-right"><span class="amount">{$pg}</span>%</small>
                         </div>
-
-
                         <div class="progress progress-small">
                             <div style="width: {$pgb}%;" class="progress-bar progress-bar-{$pgc}"></div>
                         </div>
                     </div>
-                    
                     <div class="table-responsive"> 
                     <table class="table table-striped table-bordered" style="margin-top: 26px;">
                         <th>{$_L['Account']}</th>
@@ -309,33 +288,25 @@
                                 <td class="text-right"><span class="amount{if $ds['balance'] < 0} text-red{/if}">{$ds['balance']}</span></td>
                             </tr>
                         {/foreach}
-
-
-
                     </table>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        {/if}
+        <div class="col-md-{if $user['roleid'] eq '0'}6{else}12{/if}">
             <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
-
                     <h5>{$_L['Income vs Expense']} - {ib_lan_get_line(date('F'))} {date('Y')}</h5>
                 </div>
                 <div class="ibox-content">
                     <div id="dchart"></div>
                 </div>
             </div>
-
         </div>
     </div>
-
     <!-- Row end-->
-
 <div class="row" id="sort_4">
-
-
     <div class="col-md-12">
         <div class="ibox float-e-margins border-radius-16px">
             <div class="ibox-title">
@@ -358,7 +329,6 @@
                     </tr>
                     </thead>
                     <tbody>
-
                     {foreach $invoices as $ds}
                         <tr>
                             <td><a href="{$_url}invoices/view/{$ds['id']}/">{$ds['invoicenum']}{if $ds['cn'] neq ''} {$ds['cn']} {else} {$ds['id']} {/if}</a> </td>
@@ -368,7 +338,6 @@
                             <td>{date( $_c['df'], strtotime($ds['duedate']))}</td>
                             <td>
                                 {ib_lan_get_line($ds['status'])}
-
                             </td>
                             <td>
                                 {if $ds['r'] eq '0'}
@@ -383,25 +352,14 @@
                             </td>
                         </tr>
                     {/foreach}
-
                     </tbody>
                 </table>
                 </div>
             </div>
         </div>
-
     </div>
-
-
 </div>
-
-
-
-
-
 <!--<div class="row" id="renewal">
-
-
     <div class="col-md-12">
         <div class="ibox float-e-margins border-radius-16px">
             <div class="ibox-title">
@@ -419,7 +377,6 @@
                         <th>Duration</th>
                         <th>Amount</th>
                         <th>Expiry Date</th>
-                        
                     </tr>
                     </thead>
                     <tbody>
@@ -432,31 +389,19 @@
                             <td>{$record['duration']} {$record['duration_type']}</td>
                             <td>{$record['amount']}</td>
                             <td>{$record['expire_date']}</td>
-
                         </tr>
                     {/foreach}
-
                     </tbody>
                 </table>
                 </div>
             </div>
         </div>
-
     </div>
-
-
 </div>-->
-
-
-
-
-
-
     <div class="row" id="sort_3">
         <div class="col-md-6">
             <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
-
                     <h5>{$_L['Latest Income']}</h5>
                 </div>
                 <div class="ibox-content">
@@ -472,21 +417,14 @@
                                 <td class="text-right amount">{$incs['amount']}</td>
                             </tr>
                         {/foreach}
-
-
-
                     </table>
                     </div>
                 </div>
             </div>
-
         </div>
-
-
         <div class="col-md-6">
             <div class="ibox float-e-margins border-radius-16px">
                 <div class="ibox-title">
-
                     <h5>{$_L['Latest Expense']}</h5>
                 </div>
                 <div class="ibox-content">
@@ -502,21 +440,10 @@
                                 <td class="text-right amount">{$exps['amount']}</td>
                             </tr>
                         {/foreach}
-
-
-
                     </table>
                     </div>
                 </div>
             </div>
-
         </div>
-
-
     </div>
-
-    {/if}
-
-
-
 {include file="sections/footer.tpl"}

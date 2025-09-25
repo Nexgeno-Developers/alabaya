@@ -568,8 +568,12 @@ echo '
 
         // ---------------- BRANCH FILTER -----------------
         // Get selected branch from POST (or GET)
-        $branch_id = $_POST['branch_id'] ?? 'all';
-        if ($branch_id === '' || $branch_id === null) {
+        if ($user->roleid == 0) {
+            $branch_id = $_POST['branch_id'] ?? 'all';
+            if ($branch_id === '' || $branch_id === null) {
+                $branch_id = $user->branch_id;
+            }
+        }else{
             $branch_id = $user->branch_id;
         }
         // Load branch list for dropdown (only for superadmin)
