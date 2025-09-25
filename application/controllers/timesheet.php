@@ -319,7 +319,7 @@ switch($action){
             if (!empty($_POST['branch_id'])) {
                 $branch_id = (int) $_POST['branch_id']; // cast to int for safety
                 if ($branch_id > 0) {
-                    $totalRecordQuery->where('crm_accounts.branch_id', $branch_id);
+                    $totalRecordQuery->where('crm_timesheet.branch_id', $branch_id);
                 }
             }
 
@@ -329,7 +329,8 @@ switch($action){
             // Query 1: Calculate total earnings without pagination
             $earnAmountSumTotal = ORM::for_table('crm_timesheet')
                 ->select_expr('SUM(earn_amount)', 'total_earnings')  // Calculate sum of earn_amount
-                ->left_outer_join('crm_accounts', ['crm_timesheet.employee_id', '=', 'crm_accounts.id']);  // Join with crm_accounts
+                ->left_outer_join('crm_accounts', ['crm_timesheet.employee_id', '=', 'crm_accounts.id'])  // Join with crm_accounts
+                ->left_outer_join('sys_accounts', ['crm_timesheet.branch_id', '=', 'sys_accounts.id']); // join branch using crm_timesheet.branch_id
             
             // Apply conditions (same conditions as the second query)
             if ($employee_id) {
@@ -351,7 +352,7 @@ switch($action){
             if (!empty($_POST['branch_id'])) {
                 $branch_id = (int) $_POST['branch_id'];
                 if ($branch_id > 0) {
-                    $earnAmountSumTotal->where('crm_accounts.branch_id', $branch_id);
+                    $earnAmountSumTotal->where('crm_timesheet.branch_id', $branch_id);
                 }
             }
 
@@ -365,7 +366,9 @@ switch($action){
                 ->select('crm_accounts.account')  // Select crm_accounts.account
                 ->select('crm_accounts.salery_type')  // Select crm_accounts.salery_type
                 ->selectExpr("CASE WHEN crm_timesheet.invoice_alocation_id IS NOT NULL THEN 'per_piece' ELSE crm_accounts.salery_type END AS salery_type")  // Set salery_type to per_piece if invoice_allocation_id is present
-                ->left_outer_join('crm_accounts', ['crm_timesheet.employee_id', '=', 'crm_accounts.id']);  // Join with crm_accounts
+                ->selectExpr('sys_accounts.alias', 'branch') // branch name
+                ->left_outer_join('crm_accounts', ['crm_timesheet.employee_id', '=', 'crm_accounts.id'])  // Join with crm_accounts
+                ->left_outer_join('sys_accounts', ['crm_timesheet.branch_id', '=', 'sys_accounts.id']);
 
             // Apply the same conditions to fetch paginated records
             if ($employee_id) {
@@ -387,7 +390,7 @@ switch($action){
             if (!empty($_POST['branch_id'])) {
                 $branch_id = (int) $_POST['branch_id'];
                 if ($branch_id > 0) {
-                    $recordQuery->where('crm_accounts.branch_id', $branch_id);
+                    $recordQuery->where('crm_timesheet.branch_id', $branch_id);
                 }
             }
 
@@ -430,7 +433,8 @@ switch($action){
                 }
                 $employee_name = $record->account ?? '';
                 $salery_type = $record->salery_type ?? '';
-                
+                $branch_name = $record->branch ?? '';
+                $branch_id_val = $record->branch_id ?? $record->branch_id;
                 // $employee = ORM::for_table('crm_accounts')->where('id', $record->employee_id)->find_one();
                 // if ($employee) {
                 // $employee_name = $employee->account;
@@ -447,6 +451,8 @@ switch($action){
                 $data[] = array( 
                 "sr"                => $sr,
                 "salery_type"       => $salery_type,
+                "branch"                => $branch_name,   // branch name (from sys_accounts.account via crm_timesheet.branch_id)
+                "branch_id"             => $branch_id_val, // branch id (from crm_timesheet.branch_id)
                 "display_employee_name"     => $employee_name,
                 "employee_id"       => $record->employee_id,
                 "checkin"           => $record->checkin,

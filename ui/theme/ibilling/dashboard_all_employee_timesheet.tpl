@@ -279,6 +279,29 @@ $(document).ready(function() {
                             <input type="text" name="display_employee_name" id="display_employee_name" class="form-control">
                         </div>
                         <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="branch_label">Branch</label>
+                                <select id="branch_select" name="branch_id" class="form-control">
+                                    {if $user->roleid eq 0}
+                                        <option value="">All</option>
+                                        {foreach $branches as $branch}
+                                            <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>
+                                                {$branch.alias|default:$branch.account}
+                                            </option>
+                                        {/foreach}
+                                    {else}
+                                        <option value="{$user->branch_id}" selected>
+                                            {foreach $branches as $branch}
+                                                {if $branch.id eq $user->branch_id}
+                                                    {$branch.alias|default:$branch.account}
+                                                {/if}
+                                            {/foreach}
+                                        </option>
+                                    {/if}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <label id="salery_type_label">Salary Type</label>
                             <select name="salery_type" id="salery_type" class="form-control">
                                 <option value="">Select Salary Type</option>
@@ -312,6 +335,7 @@ $(document).ready(function() {
                         <thead>
                             <tr>
                                 <th>Sr.</th>
+                                <th>Branch</th>
                                 <th>Employee Name</th>
                                 <th>Check In</th>
                                 <th>Check Out</th>
@@ -326,7 +350,7 @@ $(document).ready(function() {
                         </thead>
                         <tfoot>
                             <tr>
-                                <td colspan="6"></td>
+                                <td colspan="7"></td>
                                 <td id="sum-earn-amt" colspan="1"></td>
                             </tr>
                         </tfoot>
@@ -562,6 +586,7 @@ $(document).on('click', '.timesheet-entry-post300', function(e) {
             },
             "columns": [
                 { "data": "sr" },
+                { "data": "branch" },  
                 { "data": "display_employee_name" },
                 { "data": "checkin" },
                 { "data": "checkout" },
