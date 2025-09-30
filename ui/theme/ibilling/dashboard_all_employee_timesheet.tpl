@@ -1,13 +1,12 @@
 {include file="sections/header.tpl"}
 
-
 <style>
-    .width_200
-    {
-        width:160px;
-        margin-top:5px;
-    }
-    .dataTables_wrapper .dataTables_length select {
+.width_200
+{
+    width:160px;
+    margin-top:5px;
+}
+.dataTables_wrapper .dataTables_length select {
     padding: 4px 20px 4px 10px ! Important;
 }
 button.dt-button.buttons-csv.buttons-html5.btn-sm.btn-secondary.btn-data-export {
@@ -23,9 +22,9 @@ table#timesheet-list-table {
     margin-top: 10px;
 }
 </style>
+
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
 
 <div class="row">
     <div class="col-md-12">
@@ -34,25 +33,22 @@ table#timesheet-list-table {
                 <h2>Bulk Attendance</h2>
                 <!--<h2>Employee Holiday days Form</h2>-->
                 <div id="nonInsertedDataSection"></div>
-
-
-                    <form class="form-horizontal" method="post" id="edit-sale-form300">
-                        <p> <b>Select Date :</b> <input type="date" class="selectdatefortime form-control width_200" id="datepicker"></p>
-                        <div id="dynamic-inputs-container"></div>  
-                        <div class="row">
-                            <div class="col-md-12">
-                                <!--<label style="visibility:hidden">---</label>-->
-                                <button type="submit" class="width_200 btn btn-primary btn-block timesheet-entry-post300" style="background: #2196f3; float: right; margin-top: 50px;">Submit<i class="fa fa-send-o" aria-hidden="true"></i></button>
-                            </div>
+                <form class="form-horizontal" method="post" id="edit-sale-form300">
+                    <p> <b>Select Date :</b> <input type="date" class="selectdatefortime form-control width_200" id="datepicker"></p>
+                    <div id="dynamic-inputs-container"></div>  
+                    <div class="row">
+                        <div class="col-md-12">
+                            <!--<label style="visibility:hidden">---</label>-->
+                            <button type="submit" class="width_200 btn btn-primary btn-block timesheet-entry-post300" style="background: #2196f3; float: right; margin-top: 50px;">Submit<i class="fa fa-send-o" aria-hidden="true"></i></button>
                         </div>
-                    </form>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-
 $(document).ready(function() {
 
     // Bind click event to submit button
@@ -138,12 +134,12 @@ $(document).ready(function() {
                         {if $user->roleid eq 0}
                             <option value="">Select Branch</option>
                             {foreach $branches as $branch}
-                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias|default:$branch.account}</option>
                             {/foreach}
                         {else}
                             {foreach $branches as $branch}
                                 {if $branch.id eq $user->branch_id}
-                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.account}</option>
+                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias|default:$branch.account}</option>
                                 {/if}
                             {/foreach}
                         {/if}
@@ -154,6 +150,7 @@ $(document).ready(function() {
                     <label for="checkin">Check In</label>
                     <input class="checkin12 form-control" required type="datetime-local" name="checkin-holiday[]" value="` + startDateTimeLocal + `">
                 </div>
+
                 <div class="col-md-3">
                     <label for="checkout">Check Out</label>
                     <input class="checkout12 form-control" required type="datetime-local" name="checkout-holiday[]" value="` + endDateTimeLocal + `">
@@ -175,6 +172,7 @@ $(document).ready(function() {
                     <label for="remarks">Remarks</label>
                     <textarea required class="form-control remarks" placeholder="Remarks" name="remarks[]">` + dayName + `</textarea>
                 </div>
+
                 <div class="col-md-3" style="margin-top:32px;">
                     <button type="button" class="btn btn-danger remove-input-row">-</button>
                 </div>
@@ -186,6 +184,19 @@ $(document).ready(function() {
         // Initialize Select2
         var $lastSelect = $("#dynamic-inputs-container").find(".employee_id3").last();
         $lastSelect.select2();
+        
+        // Fetch and populate employees for the selected branch
+        var branchId = $lastSelect.closest('.row-form').find('.branch-select').val();
+
+        fetchBranchEmployees(branchId, function(emps) {
+            var options = '';
+            $.each(emps, function(i, emp) {
+                options += '<option value="' + emp.id + '">' + emp.account + '</option>';
+            });
+            $lastSelect.html(options);
+            $lastSelect.find('option').prop('selected', true);
+            $lastSelect.trigger('change');
+        });
 
         employeeIdIndex++;
     }
@@ -274,11 +285,7 @@ $(document).ready(function() {
                     <div class="row">
                         <input type="hidden" id="total_earn_amount" name="total_earn_amount" value="{$earnAmountSum}">
                         <input type="hidden" id="employee_id2" name="employee_id2" value="{$employee->id}">
-                        <div class="col-md-3">
-                            <label id="employee_name_label">Employee Name</label>
-                            <input type="text" name="display_employee_name" id="display_employee_name" class="form-control">
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="form-group">
                                 <label for="branch_label">Branch</label>
                                 <select id="branch_select" name="branch_id" class="form-control">
@@ -301,7 +308,11 @@ $(document).ready(function() {
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <label id="employee_name_label">Employee Name</label>
+                            <input type="text" name="display_employee_name" id="display_employee_name" class="form-control">
+                        </div>
+                        <div class="col-md-2">
                             <label id="salery_type_label">Salary Type</label>
                             <select name="salery_type" id="salery_type" class="form-control">
                                 <option value="">Select Salary Type</option>
@@ -317,7 +328,7 @@ $(document).ready(function() {
                             <label id="to_label">To Date</label>
                             <input type="date" name="todate" value="{$smarty.now|date_format:'%Y-%m-%d'}" class="form-control">
                         </div>  
-                         <div class="col-md-2" style="align-self: flex-end;    display: flex; justify-content: flex-end;">
+                        <div class="col-md-2" style="align-self: flex-end;    display: flex; justify-content: flex-end;">
                             <div class="col-md-6">
                                 <label style="visibility:hidden">---</label>
                                 <button class="btn btn-primary btn-block" onclick="submit();"><i class="fa fa-search" aria-hidden="true"></i></button>
@@ -563,7 +574,7 @@ $(document).on('click', '.timesheet-entry-post300', function(e) {
                     search_param.employee_id = $('input[name="employee_id"]').val();
                     search_param.fromdate = $('input[name="fromdate"]').val();
                     search_param.todate = $('input[name="todate"]').val();
-                    search_param.branch_id = $('select[name="branch_id"]').val() || $('select#branch_select').val() || '';
+                    search_param.branch_id = $('select#branch_select').val() || '';
                 }
             },
             drawCallback: function(settings) {

@@ -87,6 +87,7 @@ switch($action){
             $emps = ORM::for_table('crm_accounts')
                 ->select('id')
                 ->select('account')
+                ->where('gid', 3)
                 ->where('salery_type', 'per_hour')
                 ->where('branch_id', $branch_id)
                 ->order_by_asc('account')
@@ -96,6 +97,7 @@ switch($action){
             $emps = ORM::for_table('crm_accounts')
                 ->select('id')
                 ->select('account')
+                ->where('gid', 3)
                 ->where('salery_type', 'per_hour')
                 ->order_by_asc('account')
                 ->find_array();
@@ -243,8 +245,10 @@ switch($action){
                 $employee = ORM::for_table('crm_accounts')
                     ->select('salery_type')
                     ->select('salery_amt')
+                    ->select('branch_id')
                     ->find_one($employee_id);
 
+                $insert->branch_id = $employee->branch_id ?? null;
                 $insert->amount = $employee->salery_amt ?? 0;
                 $insert->qty = ($employee->salery_type == 'per_hour') ? $hours : 1; // Default 1 for full day
                 $insert->earn_amount = $insert->qty * $insert->amount;

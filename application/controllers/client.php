@@ -3194,6 +3194,8 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         $cf = ORM::for_table('crm_customfields')->where('ctype','crm')->order_by_asc('id')->find_many();
         $ui->assign('cf',$cf);
 
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
         $ui->assign('user',$c);
 
         $cid = $c->id;
@@ -3553,7 +3555,8 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         $ui->assign('_title', $config['CompanyName'].' - '.$_L['Invoices']);
 
         $c = Contacts::details();
-
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
         $ui->assign('user',$c);
 
         $d = ORM::for_table('sys_invoices')->where('userid',$c->id)->find_array();
@@ -3592,6 +3595,8 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         
         // Fetch the current user's details
         $c = Contacts::details();
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
         // Assign current user's data to UI
         $ui->assign('user', $c);
     
@@ -3719,7 +3724,8 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         $ui->assign('_title', $config['CompanyName'].' - '.$_L['Quotes']);
 
         $c = Contacts::details();
-
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
         $ui->assign('user',$c);
 
         $d = ORM::for_table('sys_quotes')->where('userid',$c->id)->find_array();
@@ -3753,7 +3759,8 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         $c = Contacts::details();
 
         $cid = $c->id;
-
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
         $ui->assign('user',$c);
 
         $d = ORM::for_table('sys_transactions')
@@ -3804,7 +3811,8 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         $ui->assign('_title', $config['CompanyName'].' - '.$_L['Profile']);
 
         $c = Contacts::details();
-
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
         $ui->assign('user',$c);
 
         $ui->assign('d',$c);
