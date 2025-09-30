@@ -95,6 +95,14 @@
 
             </div>
         </nav>
+        <style>
+            .navbar-user-profile {
+                width: 100%;
+            }
+            .navbar-right-user-profile {
+                width: 20%;
+            }
+        </style>
         <div id="page-wrapper" class="gray-bg">
             <div class="row border-bottom">
                 <nav class="navbar navbar-fixed-top white-bg" role="navigation" style="margin-bottom: 0">
@@ -105,13 +113,9 @@
                         <a class="navbar-minimalize minimalize-styl-2 btn btn-primary btn-flat" href="#"><i class="fa fa-dedent"></i> </a>
 
                     </div>
-                    <ul class="nav navbar-top-links navbar-right hidden-xs">
+                    <ul class="nav navbar-top-links navbar-right navbar-right-user-profile hidden-xs">
 
-
-
-
-
-                        <li class="dropdown navbar-user">
+                        <li class="dropdown navbar-user navbar-user-profile">
 
                             <a href="javascript:;" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="true">
 
@@ -123,7 +127,11 @@
                                     <img src="{$user['img']}" class="img-circle" alt="{$user['account']}">
                                 {/if}
 
-                                <span class="hidden-xs">{$_L['Welcome']} {$user['account']}</span> <b class="caret"></b>
+                                <span class="hidden-xs">
+                                    {$_L['Welcome']} {$user['account']}<br>
+                                    <b style="color:#888;">{$branch_name}</b>
+                                </span>
+                                <b class="caret"></b>
                             </a>
                             <ul class="dropdown-menu animated fadeIn">
                                 <li class="arrow"></li>

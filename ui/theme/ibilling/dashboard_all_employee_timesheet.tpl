@@ -1,13 +1,12 @@
 {include file="sections/header.tpl"}
 
-
 <style>
-    .width_200
-    {
-        width:160px;
-        margin-top:5px;
-    }
-    .dataTables_wrapper .dataTables_length select {
+.width_200
+{
+    width:160px;
+    margin-top:5px;
+}
+.dataTables_wrapper .dataTables_length select {
     padding: 4px 20px 4px 10px ! Important;
 }
 button.dt-button.buttons-csv.buttons-html5.btn-sm.btn-secondary.btn-data-export {
@@ -23,9 +22,9 @@ table#timesheet-list-table {
     margin-top: 10px;
 }
 </style>
+
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
 
 <div class="row">
     <div class="col-md-12">
@@ -34,25 +33,22 @@ table#timesheet-list-table {
                 <h2>Bulk Attendance</h2>
                 <!--<h2>Employee Holiday days Form</h2>-->
                 <div id="nonInsertedDataSection"></div>
-
-
-                    <form class="form-horizontal" method="post" id="edit-sale-form300">
-                        <p> <b>Select Date :</b> <input type="date" class="selectdatefortime form-control width_200" id="datepicker"></p>
-                        <div id="dynamic-inputs-container"></div>  
-                        <div class="row">
-                            <div class="col-md-12">
-                                <!--<label style="visibility:hidden">---</label>-->
-                                <button type="submit" class="width_200 btn btn-primary btn-block timesheet-entry-post300" style="background: #2196f3; float: right; margin-top: 50px;">Submit<i class="fa fa-send-o" aria-hidden="true"></i></button>
-                            </div>
+                <form class="form-horizontal" method="post" id="edit-sale-form300">
+                    <p> <b>Select Date :</b> <input type="date" class="selectdatefortime form-control width_200" id="datepicker"></p>
+                    <div id="dynamic-inputs-container"></div>  
+                    <div class="row">
+                        <div class="col-md-12">
+                            <!--<label style="visibility:hidden">---</label>-->
+                            <button type="submit" class="width_200 btn btn-primary btn-block timesheet-entry-post300" style="background: #2196f3; float: right; margin-top: 50px;">Submit<i class="fa fa-send-o" aria-hidden="true"></i></button>
                         </div>
-                    </form>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-
 $(document).ready(function() {
 
     // Bind click event to submit button
@@ -113,82 +109,134 @@ $(document).ready(function() {
     
     // Initialize Select2 for existing select elements
     $(".select2").select2();
+    var baseUrl = "{$APP_URL}";
+    let APP_URL = baseUrl+'/?ng=';
 
-    let employeeIdIndex = 0; // Initialize index counter for employee_id[]
+    var employeeIdIndex = 0;
+    // global helper: fetch employees for branch
+    function fetchBranchEmployees(branchId, cb) {
+        $.post(APP_URL + "timesheet/timesheet-ajax-employees", { branch_id: branchId }, function(resp) {
+            cb(resp || []);
+        }, 'json');
+    }
 
     function addInputRow(formattedDate2, dayName, startDateTimeLocal, endDateTimeLocal) {
         var message = "On " + formattedDate2 + ", all selected employees will be marked present.";
+
         var inputRow = `
-            <div class="row row-form">
-                <div class="toaster" id="toaster" style="position: relative; margin: 10px 0 10px;
-                background-color: #51A351; color: #fff; padding: 10px;">` + message + `</div>
-                <div class="col-md-4" style="padding:0px;">
-                    <div class="input-row">
-                        <div class="col-md-6">
-                            <div class="">
-                                <label for="checkin">Check In</label>
-                                <input class="checkin12 form-control" required type="datetime-local" name="checkin-holiday[]" value="` + startDateTimeLocal + `">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="">
-                                <label for="checkout">Check Out</label>
-                                <input class="checkout12 form-control" required type="datetime-local" name="checkout-holiday[]" value="` + endDateTimeLocal + `">
-                            </div>
-                        </div>
-                    </div>
+            <div class="row row-form" data-row-index="` + employeeIdIndex + `">
+                <div class="toaster" style="position: relative; margin: 10px 0;
+                    background-color: #51A351; color: #fff; padding: 10px;">` + message + `</div>
+
+                <div class="col-md-3">
+                    <label>Branch</label>
+                    <select name="branch_id" id="branch_id" class="branch-select form-control" required>
+                        {if $user->roleid eq 0}
+                            <option value="">Select Branch</option>
+                            {foreach $branches as $branch}
+                                <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias|default:$branch.account}</option>
+                            {/foreach}
+                        {else}
+                            {foreach $branches as $branch}
+                                {if $branch.id eq $user->branch_id}
+                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>{$branch.alias|default:$branch.account}</option>
+                                {/if}
+                            {/foreach}
+                        {/if}
+                    </select>
                 </div>
-                <div class="col-md-4">
+
+                <div class="col-md-3">
+                    <label for="checkin">Check In</label>
+                    <input class="checkin12 form-control" required type="datetime-local" name="checkin-holiday[]" value="` + startDateTimeLocal + `">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="checkout">Check Out</label>
+                    <input class="checkout12 form-control" required type="datetime-local" name="checkout-holiday[]" value="` + endDateTimeLocal + `">
+                </div>
+
+                <div class="col-md-3">
+                    <label>Employees</label>
                     <div class="row">
-                        <div class="col-md-12">
-                            <label id="employee_name_label` + employeeIdIndex + `">Employee Name</label>
-                        </div>
                         <div class="col-md-8">
-                            <select required multiple name="employee_id_` + employeeIdIndex + `[]" class="employee_id3 select2 form-control">
-                                {foreach $hourly_employee_name as $employee}
-                                <option value="{$employee.id}">{$employee.account}</option>
-                                {/foreach}
-                            </select>
+                            <select required multiple name="employee_id_` + employeeIdIndex + `[]" class="employee_id3 select2 form-control"></select>
                         </div>
                         <div class="col-md-4">
-                            <button class="btn btn-primary select-all-btn2" id="select-all-btn">Select All</button>
+                            <button type="button" class="btn btn-primary select-all-btn2">Select All</button>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <label for="remarks">Remarks</label>
-                        </div>
-                        <div class="col-md-9">
-                            <textarea required class="form-control remarks" placeholder="Remarks" name="remarks[]">`+ dayName +` </textarea>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-danger remove-input-row">-</button>
-                        </div>
-                    </div>
+
+                <div class="col-md-9" style="margin-top:10px;">
+                    <label for="remarks">Remarks</label>
+                    <textarea required class="form-control remarks" placeholder="Remarks" name="remarks[]">` + dayName + `</textarea>
+                </div>
+
+                <div class="col-md-3" style="margin-top:32px;">
+                    <button type="button" class="btn btn-danger remove-input-row">-</button>
                 </div>
             </div>
         `;
+
         $("#dynamic-inputs-container").append(inputRow);
-        // Initialize Select2 for newly added select element
-        $("#dynamic-inputs-container").find(".select2").last().select2();
+
+        // Initialize Select2
+        var $lastSelect = $("#dynamic-inputs-container").find(".employee_id3").last();
+        $lastSelect.select2();
         
-        // Increment the index for the next employee_id[]
+        // Fetch and populate employees for the selected branch
+        var branchId = $lastSelect.closest('.row-form').find('.branch-select').val();
+
+        fetchBranchEmployees(branchId, function(emps) {
+            var options = '';
+            $.each(emps, function(i, emp) {
+                options += '<option value="' + emp.id + '">' + emp.account + '</option>';
+            });
+            $lastSelect.html(options);
+            $lastSelect.find('option').prop('selected', true);
+            $lastSelect.trigger('change');
+        });
+
         employeeIdIndex++;
     }
+
+    // EVENT: branch change inside row → load employees
+    $("#dynamic-inputs-container").on('change', '.branch-select', function() {
+        var $row = $(this).closest('.row-form');
+        var branchId = $(this).val();
+        var $empSelect = $row.find('.employee_id3');
+
+        if (!branchId) {
+            $empSelect.html('<option value="">No employees</option>').trigger('change');
+            return;
+        }
+
+        fetchBranchEmployees(branchId, function(emps) {
+            var options = '';
+            $.each(emps, function(i, emp) {
+                options += '<option value="' + emp.id + '">' + emp.account + '</option>';
+            });
+            $empSelect.html(options);
+            // preselect all employees
+            $empSelect.find('option').prop('selected', true);
+            $empSelect.trigger('change');
+        });
+    });
+
+    // EVENT: per-row select all
+    $("#dynamic-inputs-container").on('click', '.select-all-btn2', function(e) {
+        e.preventDefault();
+        var $row = $(this).closest('.row-form');
+        var $sel = $row.find('.employee_id3');
+        $sel.find('option').prop('selected', true);
+        $sel.trigger('change');
+    });
 
     $("#dynamic-inputs-container").on("click", ".remove-input-row", function (e) {
         e.preventDefault();
         $(this).closest(".row-form").remove();
         toggleSubmitButton();
-    });
-
-    $('#dynamic-inputs-container').on('click', '.select-all-btn2', function(e) {
-        e.preventDefault();
-        var rowForm = $(this).closest('.row-form');
-        rowForm.find('.employee_id3').find('option').prop('selected', true);
-        rowForm.find('.employee_id3').trigger('change');
     });
 
     $("#datepicker").on("change", function() {
@@ -237,11 +285,34 @@ $(document).ready(function() {
                     <div class="row">
                         <input type="hidden" id="total_earn_amount" name="total_earn_amount" value="{$earnAmountSum}">
                         <input type="hidden" id="employee_id2" name="employee_id2" value="{$employee->id}">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="branch_label">Branch</label>
+                                <select id="branch_select" name="branch_id" class="form-control">
+                                    {if $user->roleid eq 0}
+                                        <option value="">All</option>
+                                        {foreach $branches as $branch}
+                                            <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>
+                                                {$branch.alias|default:$branch.account}
+                                            </option>
+                                        {/foreach}
+                                    {else}
+                                        <option value="{$user->branch_id}" selected>
+                                            {foreach $branches as $branch}
+                                                {if $branch.id eq $user->branch_id}
+                                                    {$branch.alias|default:$branch.account}
+                                                {/if}
+                                            {/foreach}
+                                        </option>
+                                    {/if}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
                             <label id="employee_name_label">Employee Name</label>
                             <input type="text" name="display_employee_name" id="display_employee_name" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label id="salery_type_label">Salary Type</label>
                             <select name="salery_type" id="salery_type" class="form-control">
                                 <option value="">Select Salary Type</option>
@@ -257,7 +328,7 @@ $(document).ready(function() {
                             <label id="to_label">To Date</label>
                             <input type="date" name="todate" value="{$smarty.now|date_format:'%Y-%m-%d'}" class="form-control">
                         </div>  
-                         <div class="col-md-2" style="align-self: flex-end;    display: flex; justify-content: flex-end;">
+                        <div class="col-md-2" style="align-self: flex-end;    display: flex; justify-content: flex-end;">
                             <div class="col-md-6">
                                 <label style="visibility:hidden">---</label>
                                 <button class="btn btn-primary btn-block" onclick="submit();"><i class="fa fa-search" aria-hidden="true"></i></button>
@@ -275,6 +346,7 @@ $(document).ready(function() {
                         <thead>
                             <tr>
                                 <th>Sr.</th>
+                                <th>Branch</th>
                                 <th>Employee Name</th>
                                 <th>Check In</th>
                                 <th>Check Out</th>
@@ -289,7 +361,7 @@ $(document).ready(function() {
                         </thead>
                         <tfoot>
                             <tr>
-                                <td colspan="6"></td>
+                                <td colspan="7"></td>
                                 <td id="sum-earn-amt" colspan="1"></td>
                             </tr>
                         </tfoot>
@@ -502,6 +574,7 @@ $(document).on('click', '.timesheet-entry-post300', function(e) {
                     search_param.employee_id = $('input[name="employee_id"]').val();
                     search_param.fromdate = $('input[name="fromdate"]').val();
                     search_param.todate = $('input[name="todate"]').val();
+                    search_param.branch_id = $('select#branch_select').val() || '';
                 }
             },
             drawCallback: function(settings) {
@@ -524,6 +597,7 @@ $(document).on('click', '.timesheet-entry-post300', function(e) {
             },
             "columns": [
                 { "data": "sr" },
+                { "data": "branch" },  
                 { "data": "display_employee_name" },
                 { "data": "checkin" },
                 { "data": "checkout" },

@@ -1386,3 +1386,17 @@ function filter_by_branch($table, $branch_id) {
     }
     return $q;
 }
+
+function get_branch_name($branch_id) {
+    // Fetch branch info using ORM
+    $branch = ORM::for_table('sys_accounts')
+        ->select('account', 'branch_name')
+        ->where('id', $branch_id)
+        ->find_one();
+
+    if ($branch) {
+        return $branch->branch_name; // Return branch name
+    } else {
+        return null; // Return null if branch not found
+    }
+}
