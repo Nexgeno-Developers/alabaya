@@ -11,7 +11,7 @@
             </div>
             <div class="ibox-content">
 
-
+                <strong>Branch Name: </strong> {$branch_name} <br>
                 <address>
                     {if $user->company neq ''}
                         {$user->company}
