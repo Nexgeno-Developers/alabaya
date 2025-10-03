@@ -47,7 +47,13 @@ $(document).ready(function () {
             }
         }
     );*/
+    let preselectedId = getUrlParam('employee_id'); // grab from querystring
 
+    if (preselectedId) {
+        // Create an <option> with just the ID (no text yet)
+        let option = new Option(preselectedId, preselectedId, true, true);
+        $('#payee').append(option).trigger('change');
+    }
     $("#payee").select2({
         // theme: "bootstrap",
         placeholder: $("#_lan_select_payer").val() || "Select Payer...",

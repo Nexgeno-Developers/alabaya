@@ -262,6 +262,14 @@ switch ($action) {
 
         $ui->assign('tr', $tr);
 
+        $employee_id = _get('employee_id');
+        $ui->assign('employee_id', $employee_id);
+                
+        if($employee_id){
+            $employee = ORM::for_table('crm_accounts')->find_one($employee_id);
+            $ui->assign('employee', $employee);
+        }
+
         $ui->display('expense.tpl');
 
         break;

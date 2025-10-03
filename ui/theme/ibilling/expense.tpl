@@ -125,6 +125,11 @@
                                 </select>*}
                                 <select id="payee" name="payee" class="form-control">
                                     <option value="">{$_L['Choose Contact']}...</option>
+                                    {if isset($employee)}
+                                        <option value="{$employee->id}" selected>
+                                            {$employee->account} / {$employee->phone}
+                                        </option>
+                                    {/if}
                                 </select>
                             </div>
                         </div>
