@@ -14,22 +14,41 @@
                 <h5>{$_L['Records']}</h5>
             </div>
             <div class="ibox-content">  
-                <form id="filterForm" class="row" style="margin-bottom: 20px;align-items: center;display: flex; flex-wrap: wrap;">
-                    <div class="form-group">
-                        <label>Date From</label>
-                        <input type="date" class="form-control" name="date_from">
+                <form id="filterForm" class="row" style="margin: 10px 0;align-items: center;display: flex; flex-wrap: wrap;">
+
+                    <div class="date-range">
+                        <div class="date-range" style="display: flex; align-items: center;">
+                            <div class="form-group">
+                                <label>Date From</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from">
+                            </div>
+                            <div class="form-group">
+                                <label>Date To</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to">
+                            </div>
+                        </div>
+                        <div id="dateError" style="color:red;margin-top:5px;"></div>
                     </div>
-                    <div class="form-group">
-                        <label>Date To</label>
-                        <input type="date" class="form-control" name="date_to">
-                    </div>
+
                     <div class="form-group">
                         <label>Branch</label>
-                        <select class="form-control" name="branch_id">
-                            <option value="">All</option>
-                            {foreach $branches as $branch}
-                                <option value="{$branch.id}" {if $user.branch_id eq $branch.id}selected{/if}>{$branch.alias}</option>
-                            {/foreach}
+                        <select name="branch_id" id="filter_branch" class="form-control">
+                            {if $user->roleid eq 0}
+                                <option value="">All</option>
+                                {foreach $branches as $branch}
+                                    <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>
+                                        {$branch.alias|default:$branch.account}
+                                    </option>
+                                {/foreach}
+                            {else}
+                                {foreach $branches as $branch}
+                                    {if $branch.id eq $user->branch_id}
+                                        <option value="{$branch.id}" selected>
+                                            {$branch.alias|default:$branch.account}
+                                        </option>
+                                    {/if}
+                                {/foreach}
+                            {/if}
                         </select>
                     </div>
                     <div class="form-group">

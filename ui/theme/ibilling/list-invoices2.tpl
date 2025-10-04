@@ -15,6 +15,7 @@
                 <!-- Filters row -->
                 <form id="invoiceFilters" style="margin-bottom:15px;">
                     <div class="row">
+                    <div id="dateError" style="display:none; position: relative;margin: 30px 0 10px;background-color: #904141;color: #fff;padding: 10px;"></div>
                         <div class="col-md-3 invoice-main-div-dropdown">
                             <div class="form-group">
                                 <label for="filter_branch">Branch</label>
@@ -229,7 +230,9 @@ $(function(){
     // Filter button
     $('#btnInvoiceFilter').on('click', function(e){
         e.preventDefault();
-        table.ajax.reload();
+        if (validateDates()) {
+            table.ajax.reload();
+        }
     });
 
     // Reset filters
@@ -242,9 +245,43 @@ $(function(){
     $('#invoiceFilters input').on('keypress', function(e){
         if (e.which == 13) {
             e.preventDefault();
-            table.ajax.reload();
+            if (validateDates()) {
+                table.ajax.reload();
+            }
         }
     });
+
+    function validateDates() {
+        const from = document.getElementById("date_from").value;
+        const to = document.getElementById("date_to").value;
+
+        // Use existing error div
+        const errorDiv = document.getElementById("dateError");
+        errorDiv.textContent = "";       // Clear previous error
+        errorDiv.style.display = "none"; // Hide by default
+
+        // Case 1: both empty → valid
+        if (!from && !to) {
+            return true;
+        }
+
+        // Case 2: one filled, one empty → invalid
+        if ((from && !to) || (!from && to)) {
+            errorDiv.textContent = "Please select both dates or leave both empty.";
+            errorDiv.style.display = "block"; // Show error
+            return false;
+        }
+
+        // Case 3: both filled but 'to' < 'from' → invalid
+        if (new Date(to) < new Date(from)) {
+            errorDiv.textContent = "‘Date To’ cannot be earlier than ‘Date From’.";
+            errorDiv.style.display = "block"; // Show error
+            return false;
+        }
+
+        // Case 4: valid
+        return true;
+    }
 
 });
 </script>

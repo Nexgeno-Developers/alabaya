@@ -49,6 +49,8 @@ $(function () {
     // On filter submit, reload table
     $("#filterForm").on("submit", function (e) {
         e.preventDefault();
+        // alert("Filter form submitted");
+        validateDates();
         table.ajax.reload();
     });
 
@@ -95,3 +97,41 @@ $.fn.serializeObject = function(){
     });
     return o;
 };
+
+function validateDates() {
+    // alert("validateDates called");
+    const from = document.getElementById("date_from").value;
+    const to = document.getElementById("date_to").value;
+
+    // Create or reuse error div
+    let errorDiv = document.getElementById("dateError");
+    if (!errorDiv) {
+        errorDiv = document.createElement("div");
+        errorDiv.id = "dateError";
+        errorDiv.style.color = "red";
+        errorDiv.style.marginTop = "5px";
+        document.querySelector("#filterForm").appendChild(errorDiv);
+    }
+
+    errorDiv.textContent = ""; // Clear previous error
+
+    // ✅ Case 1: both empty → valid
+    if (!from && !to) {
+        return true;
+    }
+
+    // ✅ Case 2: one filled, one empty → invalid
+    if ((from && !to) || (!from && to)) {
+        errorDiv.textContent = "Please select both dates or leave both empty.";
+        return false;
+    }
+
+    // ✅ Case 3: both filled but 'to' < 'from' → invalid
+    if (new Date(to) < new Date(from)) {
+        errorDiv.textContent = "‘Date To’ cannot be earlier than ‘Date From’.";
+        return false;
+    }
+
+    // ✅ Case 4: valid
+    return true;
+}

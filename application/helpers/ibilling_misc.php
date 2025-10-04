@@ -1,5 +1,5 @@
-<?php
-
+<?php 
+require_once dirname(__DIR__, 2) . '/system_log.php';
 
 function get_client_ip(){
     if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
@@ -1398,5 +1398,18 @@ function get_branch_name($branch_id) {
         return $branch->branch_name; // Return branch name
     } else {
         return null; // Return null if branch not found
+    }
+}
+
+function get_branch_id($table, $id) {
+    $record = ORM::for_table($table)->find_one($id);
+
+    if ($record) {
+        $branch_id = $record->branch_id;
+        // system_log("Found branch_id={$branch_id} for {$table}.id={$id}");
+        return $branch_id;
+    } else {
+        // system_log("No record found in {$table} for id={$id}");
+        return null;
     }
 }

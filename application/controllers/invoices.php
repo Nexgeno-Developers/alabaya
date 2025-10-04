@@ -3463,7 +3463,7 @@ function showDiv(elem){
             }
         } else {
             // Create a new record only if 'id' is not provided
-            $newRecord = $invoice_alocation->create();
+            $newRecord = ORM::for_table('invoice_alocation')->create();
             $newRecord->invoice_id = $invoiceId;
             $newRecord->category_id = $categoryId;
             $newRecord->employee_id = $employeeId;
@@ -3520,9 +3520,12 @@ function showDiv(elem){
         // Calculate earn amount
         $earnAmount = $quantity * $price;
 
+        $branch_id = get_branch_id('crm_accounts', $employeeId);
+
         // Insert data into crm_timesheet table
         $timesheetEntry = ORM::for_table('crm_timesheet')->create();
         $timesheetEntry->invoice_alocation_id = $allocationId; // Map allocation ID
+        $timesheetEntry->branch_id = $branch_id;
         $timesheetEntry->employee_id = $employeeId;
         // $timesheetEntry->date = date('Y-m-d'); // Assuming today's date
         $timesheetEntry->date = $createdAtDate; // Use extracted date
