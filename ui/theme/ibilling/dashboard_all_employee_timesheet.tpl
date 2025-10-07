@@ -120,7 +120,7 @@ $(document).ready(function() {
         }, 'json');
     }
 
-    function addInputRow(formattedDate2, dayName, startDateTimeLocal, endDateTimeLocal) {
+    function addInputRow(formattedDate2, dayName, defaultCheckIn, defaultCheckOut, dateOnly) {
         var message = "On " + formattedDate2 + ", all selected employees will be marked present.";
 
         var inputRow = `
@@ -146,14 +146,20 @@ $(document).ready(function() {
                     </select>
                 </div>
 
-                <div class="col-md-3">
-                    <label for="checkin">Check In</label>
-                    <input class="checkin12 form-control" required type="datetime-local" name="checkin-holiday[]" value="` + startDateTimeLocal + `">
+                <div class="col-md-2">
+                    <label>Date</label>
+                    <input type="text" class="form-control" readonly value="` + dateOnly + `">
+                    <input type="hidden" name="date[]" value="` + dateOnly + `">
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="checkin">Check In</label>
+                    <input class="checkin12 form-control" required type="time" name="checkin-holiday[]" value="` + defaultCheckIn + `">
+                </div>
+
+                <div class="col-md-2">
                     <label for="checkout">Check Out</label>
-                    <input class="checkout12 form-control" required type="datetime-local" name="checkout-holiday[]" value="` + endDateTimeLocal + `">
+                    <input class="checkout12 form-control" required type="time" name="checkout-holiday[]" value="` + defaultCheckOut + `">
                 </div>
 
                 <div class="col-md-3">
@@ -246,7 +252,7 @@ $(document).ready(function() {
         var inputDate = new Date($(this).val());
         var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         var dayName = dayNames[inputDate.getDay()];
-
+        
         var selectedDate = new Date(inputDate);
         if (!isNaN(selectedDate.getTime())) {
             selectedDate.setHours(9, 0, 0);
@@ -263,7 +269,11 @@ $(document).ready(function() {
             var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             var formattedDate2 = new Intl.DateTimeFormat('en-US', options).format(date);
 
-            addInputRow(formattedDate2, dayName, startDateTimeLocal, endDateTimeLocal);
+            var defaultCheckIn = "09:00";
+            var defaultCheckOut = "18:00";
+
+            addInputRow(formattedDate2, dayName, defaultCheckIn, defaultCheckOut, firstSelectedDate);
+            // addInputRow(formattedDate2, dayName, startDateTimeLocal, endDateTimeLocal);
             
             // Select all options for the newly added select element
             var newlyAddedSelect = $(".row-form").find(".employee_id3").last();

@@ -101,6 +101,7 @@
                                     <option value="processing">Processing</option>
                                     <option value="completed">Completed</option>
                                     <option value="delivered">Delivered</option>
+                                    <option value="overdue">Overdue</option>
                                 </select>
                             </div>
                         </div>
@@ -151,6 +152,29 @@
 {literal}
 <script>
 $(function(){
+
+    // On page load, if ?delivery_status is present, apply it to filter dropdown
+    const urlParams = new URLSearchParams(window.location.search);
+    const deliveryStatus = urlParams.get('delivery_status');
+    var $select = $('#delivery_status');
+
+    if (deliveryStatus) {
+        toastr.info('Showing ' + deliveryStatus + ' invoices');
+        if ($select.find('option[value="' + deliveryStatus + '"]').length > 0) {
+            $select.val(deliveryStatus);
+        }
+    }
+        
+    const branchIdParam = urlParams.get('branch_id');
+    var $branchSelect = $('#filter_branch');
+
+    if (branchIdParam) {
+        if ($branchSelect.find('option[value="' + branchIdParam + '"]').length > 0) {
+            $branchSelect.val(branchIdParam);
+        }else if(branchIdParam === '' || branchIdParam === 'all'){
+            $branchSelect.val('');
+        }        
+    }
 
     // helper: serialize form to object
     $.fn.serializeObject = function(){
@@ -226,6 +250,10 @@ $(function(){
 
         }
     });
+
+    // if (branchIdParam || deliveryStatus) {
+    //     table.ajax.reload();
+    // }
 
     // Filter button
     $('#btnInvoiceFilter').on('click', function(e){

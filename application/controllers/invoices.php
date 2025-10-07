@@ -1554,8 +1554,22 @@ $(".cdelete").click(function (e) {
         }
 
         // --- filters from the form
-        if (!empty($request['branch_id'])) {
-            $base_q->where('t.company_id', $request['branch_id']);
+        // if (!empty($request['branch_id'])) {
+        //     $base_q->where('t.company_id', $request['branch_id']);
+        // }
+
+        // Assume $user is current logged-in user object
+        $branch_id = $request['branch_id'];
+
+        // Admin: allow any branch (or 'all')
+        if ($user->roleid == 0) {
+            if (!empty($branch_id) && $branch_id != 'all') {
+                $base_q->where('t.company_id', $branch_id);
+            }
+        } else {
+            // Non-admin: override branch_id to user's branch, ignore request value
+            $branch_id = $user->branch_id;
+            $base_q->where('t.company_id', $branch_id);
         }
 
         // invoice number exact or partial
@@ -1593,8 +1607,17 @@ $(".cdelete").click(function (e) {
         }
 
         if (!empty($request['delivery_status'])) {
-            $base_q->where('t.delivery_status', $request['delivery_status']);
+            if ($request['delivery_status'] === 'overdue') {
+                $today = date('Y-m-d');
+                $base_q->where_raw('(
+                    t.duedate < ? 
+                    AND (t.delivery_status = "pending" OR t.delivery_status = "processing")
+                )', [$today]);
+            } else {
+                $base_q->where('t.delivery_status', $request['delivery_status']);
+            }
         }
+
 
         // --- get filtered count (clone query to avoid mutation)
         $count_q = clone $base_q;

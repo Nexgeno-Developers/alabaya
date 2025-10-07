@@ -203,8 +203,21 @@ switch($action){
     case 'holiday-timesheet-ajax':
     Event::trigger('timesheet/holiday-timesheet-ajax');
 
-    $checkins = isset($_POST['checkin-holiday']) ? $_POST['checkin-holiday'] : [];
-    $checkouts = isset($_POST['checkout-holiday']) ? $_POST['checkout-holiday'] : [];
+    // $dates = isset($_POST['date']) ? $_POST['date'] : [];
+    // $checkins = isset($_POST['checkin-holiday']) ? $_POST['checkin-holiday'] : [];
+    // $checkouts = isset($_POST['checkout-holiday']) ? $_POST['checkout-holiday'] : [];
+    $dates = $_POST['date'] ?? [];
+    $checkin_times = $_POST['checkin-holiday'] ?? [];
+    $checkout_times = $_POST['checkout-holiday'] ?? [];
+
+    $checkins = [];
+    $checkouts = [];
+
+    foreach ($dates as $i => $date) {
+        $checkins[] = $date . ' ' . ($checkin_times[$i] ?? '00:00') . ':00';
+        $checkouts[] = $date . ' ' . ($checkout_times[$i] ?? '00:00') . ':00';
+    }
+
     $remarks = isset($_POST['remarks']) ? $_POST['remarks'] : [];
 
     $inserted_data = [];

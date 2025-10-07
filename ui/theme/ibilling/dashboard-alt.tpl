@@ -170,7 +170,7 @@
         </a>
     </div>
     <div class="col-lg-2 col-md-4 col-sm-6">
-        <a href="{$_url}invoices/list/filter/delivered&count={$inv['delivered']}">
+        <a href="{$_url}invoices/list/filter&branch_id={$selected_branch}&delivery_status=delivered">
         <div class="widget style1 navy-bg info-tile info-tile-alt tile-teal">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -185,7 +185,7 @@
         </a>
     </div>
     <div class="col-lg-2 col-md-4 col-sm-6">
-        <a href="{$_url}invoices/list/filter/completed&count={$inv['completed']}">
+        <a href="{$_url}invoices/list/filter/&branch_id={$selected_branch}&delivery_status=completed">
         <div class="widget style1 lazur-bg info-tile info-tile-alt tile-blue">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -200,7 +200,7 @@
         </a>
     </div>
     <div class="col-lg-2 col-md-4 col-sm-6">
-        <a href="{$_url}invoices/list/filter/processing&count={$inv['processing']}">
+        <a href="{$_url}invoices/list/filter/&branch_id={$selected_branch}&delivery_status=processing">
         <div class="widget style1 yellow-bg info-tile info-tile-alt tile-success">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -215,7 +215,7 @@
         </a>
     </div>    
     <div class="col-lg-2 col-md-4 col-sm-6">
-        <a href="{$_url}invoices/list/filter/pending&count={$inv['pending']}">
+        <a href="{$_url}invoices/list/filter/&branch_id={$selected_branch}&delivery_status=pending">
         <div class="widget style1 purple-bg grey-bg info-tile info-tile-alt tile-danger">
             <div class="dashboard-row">
                 <div class="text-left">
@@ -230,7 +230,8 @@
         </a>
     </div>
     <div class="col-lg-2 col-md-4 col-sm-6">
-        <a href="{$_url}invoices/list/filter/overdue&count={$inv['overdue']}">
+        <a href="{$_url}invoices/list/filter/&branch_id={$selected_branch}&delivery_status=overdue">
+        <!--<a href="{$_url}invoices/list/filter/overdue&count={$inv['overdue']}"> -->
         <div class="widget style1 red-bg info-tile info-tile-alt tile-danger">
             <div class="dashboard-row">
                 <div class="text-left">
