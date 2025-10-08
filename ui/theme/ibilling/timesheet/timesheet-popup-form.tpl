@@ -14,6 +14,7 @@
             <input type="hidden" name="record_id" value="{(isset($timesheet->id)) ? $timesheet->id : null}">
             <input type="hidden" name="employee_id" value="{$employee->id}">
             <input type="hidden" name="amount" value="{$employee->salery_amt}">
+            <input type="hidden" name="branch_id" value="{$employee->branch_id}">
             
             {if empty($timesheet->checkin)}
                 <button type="submit" class="btn btn-success timesheet-entry-post">Check In</button>

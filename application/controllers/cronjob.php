@@ -128,6 +128,7 @@ switch ($action) {
                         $type = $account->salery_type;
                         $amount = $account->salery_amt;
                         $employee_id = $account->id;
+                        $branch_id = $account->branch_id;
                         
                         // Validate necessary fields
                         if (!empty($type) && $type === 'per_hour' && !empty($amount) && !empty($employee_id)) {
@@ -168,6 +169,7 @@ switch ($action) {
                                 // If no record exists, create a new check-in entry
                                 if ($inTime !== '--:--') {
                                     $insert = ORM::for_table('crm_timesheet')->create();
+                                    $insert->branch_id = $branch_id;
                                     $insert->employee_id = $employee_id;
                                     $insert->emp_code = $empCode;
                                     $insert->checkin = date('Y-m-d H:i:s', strtotime($inTime));

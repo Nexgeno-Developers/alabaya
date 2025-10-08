@@ -1,5 +1,11 @@
 Dropzone.autoDiscover = false;
 $(document).ready(function () {
+    // Function to get URL parameters
+    function getUrlParam(param) {
+        var urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+    }
+    
     //$('.amount').autoNumeric('init');
 
     $("#account").select2({
@@ -275,4 +281,38 @@ $(document).ready(function () {
                 }
             });
     });
+
+    
+    // Fetch GET parameters
+    var description = getUrlParam('description'); 
+    var amount = getUrlParam('total_amount'); 
+    var employeeId = getUrlParam('employee_id'); 
+    var timesheetIds = getUrlParam('timesheet_ids'); 
+
+    // Set values in the form
+    if (description) {
+        $('#description').val(decodeURIComponent(description));
+    }
+    if (amount) {
+        $('#amount').val(amount);
+    }
+    if (employeeId) {
+        $('#payee').val(employeeId).trigger('change'); // Select Payee
+    }
+    if (timesheetIds) {
+        if ($('#timesheet_ids').length === 0) {
+            $('<input>').attr({
+                type: 'hidden',
+                id: 'timesheet_ids',
+                name: 'timesheet_ids',
+                value: timesheetIds
+            }).appendTo('#tform'); // Ensure it's inside the form
+        } else {
+            $('#timesheet_ids').val(timesheetIds);
+        }
+
+        // Set category as "Salary"
+        $('#cats').val("Salary").trigger('change');
+    }
+    
 });
