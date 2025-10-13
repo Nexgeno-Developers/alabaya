@@ -360,7 +360,7 @@ switch ($action) {
         //$paginator = Paginator::bootstrap('sys_items','type','Product');
         $product_type = (!empty($_GET['product_type'])) ? $_GET['product_type'] : 'readymade';
         //var_dump($product_type);
-        $d = ORM::for_table('sys_items')->where('type','Product')->where('product_type', $product_type)->order_by_desc('id')->limit(10)->find_many();
+        $d = ORM::for_table('sys_items')->where('type','Product')->where('product_type', $product_type)->order_by_desc('id')->find_many();
         $ui->assign('d',$d);
         $ui->assign('product_type',$product_type);
         $ui->assign('type','Product');
