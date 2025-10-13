@@ -1082,6 +1082,8 @@ switch ($action) {
             $d->save(); //save
             $invoiceid = $d->id();
  
+            $branch_id = _post('company') ? _post('company') : 2;
+
 						for($i=0;$i<count($_POST['desc']);$i++ ){
 								$prod = ORM::for_table('sys_items')->where('item_number',$_POST['s_id'][$i] )->find_one();
 								
@@ -1112,7 +1114,7 @@ switch ($action) {
                                 $d->product_id = ($d->item_type == 'product') ? $_POST['p_id'][$i] : null;
                                 $d->design_id = ($d->item_type == 'design') ? $_POST['p_id'][$i] : null; 
                                 
-                                stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid); //newly added
+                                stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid, '', '', '', $branch_id); //newly added
 
                                 if(!empty($_POST['pimg'][$i]))
                                 {
@@ -2177,7 +2179,7 @@ $inv_prefix = '';
                                 'updated_at' => time()
 							));
 							$d->save(); //save
-							
+							$branch_id = _post('company_branch_id') ? _post('company_branch_id') : 2;
                             $x = ORM::for_table('sys_invoiceitems')->where('invoiceid', $iid)->delete_many();
                             $y = ORM::for_table('sys_items_stock')->where('invoice_id', $iid)->delete_many(); //newly added
 							for($i=0;$i<count($_POST['desc']);$i++ ){
@@ -2209,7 +2211,7 @@ $inv_prefix = '';
                                     $d->product_id = ($d->item_type == 'product') ? $_POST['p_id'][$i] : null;
                                     $d->design_id = ($d->item_type == 'design') ? $_POST['p_id'][$i] : null;
                                     
-                                    stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid); //newly added
+                                    stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid , '', '', '', $branch_id); //newly added
 
                                     if(!empty($_POST['pimg'][$i]))
                                     {

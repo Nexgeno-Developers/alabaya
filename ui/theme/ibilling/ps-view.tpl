@@ -11,20 +11,83 @@
             </div>
         </div>
         *}
-        <div class="ibox float-e-margins">
-            <div class="ibox-content">		
-                <h1>Product Name : <b>{$p_name}</b></h1>
-                <h3>Current Stock by Branch :</h3>
-                <ul>
-                {foreach $branch_stock as $branch_id => $stock_count}
-                    <li>
-                        {get_branch_name($branch_id, alias)} : {$stock_count} {ucfirst($item['product_stock_type'])}
-                    </li>
-                {/foreach}
-                </ul>
-            </div>
-        </div>
+        <style>
+    .ibox {
+        border: 1px solid #e7eaec;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        padding: 20px;
+        background-color: #fff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
+    .ibox-content h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #2f4050;
+        margin-bottom: 10px;
+    }
+
+    .ibox-content h1 b {
+        color: #1ab394;
+    }
+
+    .ibox-content h3 {
+        font-size: 18px;
+        font-weight: 500;
+        color: #676a6c;
+        margin-bottom: 15px;
+    }
+
+    .ibox-content ul {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .ibox-content ul li {
+        font-size: 16px;
+        line-height: 1.6;
+        padding: 6px 6px;
+        border-bottom: 1px dashed #e7eaec;
+    }
+
+    .ibox-content ul li:last-child {
+        border-bottom: none;
+    }
+
+    .ibox-content ul li span {
+        font-weight: bold;
+    }
+
+    .stock-negative {
+        color: red;
+        font-weight: bold;
+    }
+
+    .branch-name {
+        font-weight: 600;
+        color: #1c84c6;
+    }
+</style>
+<div class="ibox float-e-margins">
+    <div class="ibox-content">		
+        <h1>Product Name : <b>{$p_name}</b></h1>
+        <h3>Current Stock by Branch :</h3>
+        <ul>
+        {foreach $branch_stock as $branch_id => $stock_count}
+            <li>
+                {assign var="branch_name" value=get_branch_name($branch_id, alias)}
+                <span class="branch-name">{if $branch_name != ''}{$branch_name}{else}<i>Unknown Branch</i>{/if}</span> : 
+                {if $stock_count < 0}
+                    <span class="stock-negative">{$stock_count}</span>
+                {else}
+                    <span>{$stock_count}</span>
+                {/if} {ucfirst($item['product_stock_type'])}
+            </li>
+        {/foreach}
+        </ul>
+    </div>
+</div>
         <div class="ibox float-e-margins">
             <div class="ibox-content">			
                 <h3>Credited Stocks</h3>

@@ -1114,13 +1114,12 @@ function product_stock_info_by_branch($product_id)
         $stock_by_branch[$b] = ($stock_by_branch[$b] ?? 0) + $s;
     }
 
-    // Optional: avoid negative
-    foreach ($stock_by_branch as $b => $q) {
-        if ($q < 0) $stock_by_branch[$b] = 0;
-    }
+    // Optional: sort by branch name
+    ksort($stock_by_branch);
 
     return $stock_by_branch;
 }
+
 
  function make_thumb($src, $dest, $desired_width)
 {
