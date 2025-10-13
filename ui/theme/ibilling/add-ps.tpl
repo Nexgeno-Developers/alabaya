@@ -74,6 +74,19 @@
                            data-a-dec="{$_c['dec_point']}" data-a-sep="{$_c['thousands_sep']}" data-d-group="2">
                      </div>
                   </div>
+
+                  <div class="form-group">
+                     <label class="col-lg-2 control-label" for="sales_price">Branch</label>
+                     <div class="col-lg-10">
+                           <select name="branch_id" id="branch_id" class="form-control" required>
+                              <option value="">Select Branch</option>
+                              {foreach $branches as $branch}
+                                 <option value="{$branch.id}">{$branch.alias|default:$branch.account}</option>
+                              {/foreach}
+                           </select>
+                     </div>
+                  </div>
+
                   <div class="form-group">
                      <label class="col-lg-2 control-label" for="product_stock">Stock</label>
                      <div class="col-lg-7">

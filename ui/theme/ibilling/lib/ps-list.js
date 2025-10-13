@@ -288,10 +288,15 @@ $(document).ready(function () {
 
 
     $modal.on('click', '#update_stock', function(){
+        const form = $('#edit_form_stock')[0];
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return false; // stop if form invalid
+        }
         $modal.modal('loading');
         setTimeout(function(){
             var _url = $("#_url").val();
-            var formData = new FormData($('#edit_form_stock')[0]);
+            var formData = new FormData(form);
             $.ajax({
                 url: _url + 'ps/edit-stock-post/',
                 type: 'POST',

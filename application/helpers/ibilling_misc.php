@@ -1053,7 +1053,7 @@ function clean_url($url)
  }
 
 
- function stock_record($item_id, $stock, $type, $invoice_id = "", $parent_item_id = "", $vendor_id = "", $purchase_price = "")
+ function stock_record($item_id, $stock, $type, $invoice_id = "", $parent_item_id = "", $vendor_id = "", $purchase_price = "", $branch_id = "")
  {
     $record = ORM::for_table('sys_items_stock')->create();
 
@@ -1064,6 +1064,7 @@ function clean_url($url)
     $record->parent_item_id = $parent_item_id;
     $record->vendor_id      = $vendor_id;
     $record->purchase_price = $purchase_price;
+    $record->branch_id      = $branch_id;
     $record->timestamp      = date('Y-m-d H:i:s'); 
      
     $record->save();  
@@ -1098,6 +1099,28 @@ function clean_url($url)
 
  }
 
+function product_stock_info_by_branch($product_id)
+{
+    $rows = ORM::for_table('sys_items_stock')
+        ->select_many('branch_id', 'stock', 'type')
+        ->where('item_id', $product_id)
+        ->find_array();
+
+    $stock_by_branch = [];
+
+    foreach ($rows as $r) {
+        $b = $r['branch_id'];
+        $s = ($r['type'] == 'credit') ? $r['stock'] : -$r['stock'];
+        $stock_by_branch[$b] = ($stock_by_branch[$b] ?? 0) + $s;
+    }
+
+    // Optional: avoid negative
+    foreach ($stock_by_branch as $b => $q) {
+        if ($q < 0) $stock_by_branch[$b] = 0;
+    }
+
+    return $stock_by_branch;
+}
 
  function make_thumb($src, $dest, $desired_width)
 {
@@ -1387,10 +1410,10 @@ function filter_by_branch($table, $branch_id) {
     return $q;
 }
 
-function get_branch_name($branch_id) {
+function get_branch_name($branch_id, $account='account') {
     // Fetch branch info using ORM
     $branch = ORM::for_table('sys_accounts')
-        ->select('account', 'branch_name')
+        ->select($account, 'branch_name')
         ->where('id', $branch_id)
         ->find_one();
 

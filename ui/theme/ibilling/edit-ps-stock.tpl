@@ -4,6 +4,19 @@
 </div>
 <div class="modal-body">
 	<form class="form-horizontal" role="form" id="edit_form_stock" method="post">
+	
+		<div class="form-group">
+			<label class="col-lg-2 control-label" for="branch_id">Branch</label>
+			<div class="col-lg-10">
+				<select name="branch_id" id="branch_id" class="form-control" required>
+					<option value="">Select Branch</option>
+					{foreach $branches as $branch}
+						<option value="{$branch.id}">{$branch.alias|default:$branch.account}</option>
+					{/foreach}
+				</select>
+			</div>
+		</div>
+
 	    {if $d['product_type'] eq 'customize'}
 		<div class="form-group">
 			<label class="col-lg-2 control-label" for="product_stock">Vendor</label>
@@ -26,7 +39,7 @@
 		<div class="form-group">
 			<label class="col-lg-2 control-label" for="product_stock">Stock</label>
 			<div class="col-lg-10">
-				<input type="number" name="product_stock" class="form-control" value="" autocomplete="off" placeholder="e.g : 10">
+				<input type="number" name="product_stock" id="product_stock" class="form-control" value="" autocomplete="off" placeholder="e.g : 10" required min="0.1" step="0.1">
 			</div>
 		</div>
 

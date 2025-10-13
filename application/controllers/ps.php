@@ -111,6 +111,8 @@ switch ($action) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
 
+        $branches = ORM::for_table('sys_accounts')->order_by_asc('account')->find_array();
+        $ui->assign('branches',$branches);
 
         $ui->assign('type','Product');
         //$ui->assign('xfooter', Asset::js(array('numeric','jslib/add-ps')));
@@ -169,6 +171,7 @@ switch ($action) {
         $type = _post('type');
         $vendor_id = _post('vendor_id');
         //$product_image = _post('product_image');
+        $branch_id = _post('branch_id');
 
         $msg = '';
        
@@ -233,12 +236,11 @@ switch ($action) {
             $id = $d->id(); 
             
             if($product_type == 'customize'){
-                stock_record($id, $d->product_stock, 'credit', '', '', $vendor_id, $d->purchase_price);
+                stock_record($id, $d->product_stock, 'credit', '', '', $vendor_id, $d->purchase_price, $branch_id);
             }else{
-                stock_record($id, $d->product_stock, 'credit');
+                stock_record($id, $d->product_stock, 'credit', "", "", "", "", $branch_id);
             }
             
-
             //deduct substock start
             $design_id = $_POST['design_id'];
             if(!empty($design_id)){
@@ -276,7 +278,7 @@ switch ($action) {
                 $p = 0;
                 foreach($sub_product_ids as $product_id)
                 {
-                    stock_record($product_id, $sub_product_qty[$p], 'debit', '', $id);
+                    stock_record($product_id, $sub_product_qty[$p], 'debit', '', $id, "", "", $branch_id);
                     $p++;
                 }
                 //deduct substock end  
@@ -297,6 +299,12 @@ switch ($action) {
             $item = ORM::for_table('sys_items')->find_one($id);
             $credited_stock = ORM::for_table('sys_items_stock')->where('item_id', $id)->where('type', 'credit')->find_many();
             $debited_stock = ORM::for_table('sys_items_stock')->where('item_id', $id)->where('type', 'debit')->find_many();
+
+            $branch_stock = product_stock_info_by_branch($id);
+            // var_dump($branch_stock);
+            // exit;
+            $ui->assign('branch_stock', $branch_stock);
+
             //var_dump($sys_invoiceitems);
             $ui->assign('_title', 'Stock');
             $ui->assign('_st', 'Stock History');      
@@ -352,7 +360,7 @@ switch ($action) {
         //$paginator = Paginator::bootstrap('sys_items','type','Product');
         $product_type = (!empty($_GET['product_type'])) ? $_GET['product_type'] : 'readymade';
         //var_dump($product_type);
-        $d = ORM::for_table('sys_items')->where('type','Product')->where('product_type', $product_type)->order_by_desc('id')->find_many();
+        $d = ORM::for_table('sys_items')->where('type','Product')->where('product_type', $product_type)->order_by_desc('id')->limit(10)->find_many();
         $ui->assign('d',$d);
         $ui->assign('product_type',$product_type);
         $ui->assign('type','Product');
@@ -450,6 +458,7 @@ switch ($action) {
         $purchase_price = _post('purchase_price');
         $product_stock  = _post('product_stock');
         $product_type   = _post('product_type');
+        $branch_id   = _post('branch_id');
         
         if($product_type == 'customize'){
             if(empty($vendor_id)){
@@ -473,12 +482,12 @@ switch ($action) {
                 if($product_stock > 0)
                 {
                     //stock_record($id, abs($product_stock), 'credit');
-                    stock_record($id, abs($product_stock), 'credit', '', '', $vendor_id, $purchase_price);
+                    stock_record($id, abs($product_stock), 'credit', '', '', $vendor_id, $purchase_price, $branch_id);
                 }
                 else
                 {
                     //stock_record($id, abs($product_stock), 'debit');
-                    stock_record($id, abs($product_stock), 'debit', '', '', $vendor_id, $purchase_price);
+                    stock_record($id, abs($product_stock), 'debit', '', '', $vendor_id, $purchase_price, $branch_id);
                 }                
 
 
@@ -527,11 +536,11 @@ switch ($action) {
 
                         if($product_stock < 0)
                         {
-                            stock_record($product_id, abs($sub_product_qty[$p]), 'credit', '', $main_product_id);
+                            stock_record($product_id, abs($sub_product_qty[$p]), 'credit', '', $main_product_id, "", "", $branch_id);
                         }
                         else
                         {
-                            stock_record($product_id, abs($sub_product_qty[$p]), 'debit', '', $main_product_id);
+                            stock_record($product_id, abs($sub_product_qty[$p]), 'debit', '', $main_product_id, "", "", $branch_id);
                         }
 
 
@@ -651,6 +660,9 @@ switch ($action) {
             $vendorList = ORM::for_table('crm_accounts')->where('gid', 2)->find_many();
             if($d)
             {
+                $branches = ORM::for_table('sys_accounts')->order_by_asc('account')->find_array();
+                $ui->assign('branches',$branches);
+                
                 $ui->assign('d',$d);
                 $ui->assign('vendorList',$vendorList);
                 $ui->display('edit-ps-stock.tpl');

@@ -98,27 +98,8 @@
                             </tr>
                         </tfoot>
                     </table>
-                </div>            
-                <table id="transactionTable" class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>{$_L['Date']}</th>
-                            <th>{$_L['Account']}</th>
-                            <th>{$_L['Type']}</th>
-                            <th>{$_L['Description']}</th>
-                            <th>{$_L['Method']}</th>
-                            <th>{$_L['Category']}</th>
-                            <th class="text-right">{$_L['Amount']}</th>
-                            <th>{$_L['Manage']}</th>
-                        </tr>
-                    </thead>
-                    <tfoot>
-                        <tr>
-                            <th colspan="7" class="text-right">Totals</th>
-                            <th colspan="1" id="totals"></th>
-                        </tr>
-                    </tfoot>
-                </table>            
+                </div>
+          
             </div>
         </div>
     </div>
