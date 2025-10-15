@@ -1114,7 +1114,7 @@ switch ($action) {
                                 $d->product_id = ($d->item_type == 'product') ? $_POST['p_id'][$i] : null;
                                 $d->design_id = ($d->item_type == 'design') ? $_POST['p_id'][$i] : null; 
                                 
-                                stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid, '', '', '', $branch_id); //newly added
+                                stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid, '', '', '', $branch_id, ''); //newly added
 
                                 if(!empty($_POST['pimg'][$i]))
                                 {
@@ -2211,7 +2211,7 @@ $inv_prefix = '';
                                     $d->product_id = ($d->item_type == 'product') ? $_POST['p_id'][$i] : null;
                                     $d->design_id = ($d->item_type == 'design') ? $_POST['p_id'][$i] : null;
                                     
-                                    stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid , '', '', '', $branch_id); //newly added
+                                    stock_record($d->product_id, $d->qty, 'debit', $d->invoiceid , '', '', '', $branch_id, ''); //newly added
 
                                     if(!empty($_POST['pimg'][$i]))
                                     {

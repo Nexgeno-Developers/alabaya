@@ -1053,7 +1053,7 @@ function clean_url($url)
  }
 
 
- function stock_record($item_id, $stock, $type, $invoice_id = "", $parent_item_id = "", $vendor_id = "", $purchase_price = "", $branch_id = "")
+ function stock_record($item_id, $stock, $type, $invoice_id = "", $parent_item_id = "", $vendor_id = "", $purchase_price = "", $branch_id = "", $transfer_ref = "")
  {
     $record = ORM::for_table('sys_items_stock')->create();
 
@@ -1065,6 +1065,10 @@ function clean_url($url)
     $record->vendor_id      = $vendor_id;
     $record->purchase_price = $purchase_price;
     $record->branch_id      = $branch_id;
+    // Only set transfer_ref if not empty
+    if (!empty($transfer_ref)) {
+        $record->transfer_ref = $transfer_ref;
+    }
     $record->timestamp      = date('Y-m-d H:i:s'); 
      
     $record->save();  

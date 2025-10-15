@@ -236,9 +236,9 @@ switch ($action) {
             $id = $d->id(); 
             
             if($product_type == 'customize'){
-                stock_record($id, $d->product_stock, 'credit', '', '', $vendor_id, $d->purchase_price, $branch_id);
+                stock_record($id, $d->product_stock, 'credit', '', '', $vendor_id, $d->purchase_price, $branch_id, "");
             }else{
-                stock_record($id, $d->product_stock, 'credit', "", "", "", "", $branch_id);
+                stock_record($id, $d->product_stock, 'credit', "", "", "", "", $branch_id, "");
             }
             
             //deduct substock start
@@ -278,7 +278,7 @@ switch ($action) {
                 $p = 0;
                 foreach($sub_product_ids as $product_id)
                 {
-                    stock_record($product_id, $sub_product_qty[$p], 'debit', '', $id, "", "", $branch_id);
+                    stock_record($product_id, $sub_product_qty[$p], 'debit', '', $id, "", "", $branch_id, "");
                     $p++;
                 }
                 //deduct substock end  
@@ -313,6 +313,14 @@ switch ($action) {
             $ui->assign('item', $item);
             $ui->assign('credited_stock', $credited_stock);
             $ui->assign('debited_stock', $debited_stock);
+
+            // Fetch distinct transfer references for this item
+            $transfers = ORM::for_table('sys_items_stock')->where('item_id', $id)->where_not_null('transfer_ref')->order_by_desc('timestamp')->limit(10)->find_many();
+            $ui->assign('transfers', $transfers);
+
+            $ui->assign('xheader', '<link rel="stylesheet" type="text/css" href="' . $_theme . '/css/modal.css"/>');
+            $ui->assign('xfooter', '<script type="text/javascript" src="' . $_theme . '/lib/modal.js"></script>');
+
             $ui->display('ps-view.tpl');
         break;
 
@@ -482,12 +490,12 @@ switch ($action) {
                 if($product_stock > 0)
                 {
                     //stock_record($id, abs($product_stock), 'credit');
-                    stock_record($id, abs($product_stock), 'credit', '', '', $vendor_id, $purchase_price, $branch_id);
+                    stock_record($id, abs($product_stock), 'credit', '', '', $vendor_id, $purchase_price, $branch_id, '');
                 }
                 else
                 {
                     //stock_record($id, abs($product_stock), 'debit');
-                    stock_record($id, abs($product_stock), 'debit', '', '', $vendor_id, $purchase_price, $branch_id);
+                    stock_record($id, abs($product_stock), 'debit', '', '', $vendor_id, $purchase_price, $branch_id, '');
                 }                
 
 
@@ -536,11 +544,11 @@ switch ($action) {
 
                         if($product_stock < 0)
                         {
-                            stock_record($product_id, abs($sub_product_qty[$p]), 'credit', '', $main_product_id, "", "", $branch_id);
+                            stock_record($product_id, abs($sub_product_qty[$p]), 'credit', '', $main_product_id, "", "", $branch_id, "");
                         }
                         else
                         {
-                            stock_record($product_id, abs($sub_product_qty[$p]), 'debit', '', $main_product_id, "", "", $branch_id);
+                            stock_record($product_id, abs($sub_product_qty[$p]), 'debit', '', $main_product_id, "", "", $branch_id, "");
                         }
 
 
@@ -754,6 +762,62 @@ switch ($action) {
     
         break;
 
+    case 'transfer_post':
+        $item_id = _post('item_id');
+        $from_branch = _post('from_branch');
+        $to_branch = _post('to_branch');
+        $qty = _post('qty');
+
+        $response = ['status' => 'error', 'message' => 'Unknown error'];
+
+        if(!$item_id || !$from_branch || !$to_branch || !$qty){
+            $response['message'] = "Missing input fields.";
+            echo json_encode($response);
+            exit;
+        }
+
+        if($from_branch == $to_branch){
+            $response['message'] = "From and To Branch cannot be the same.";
+            echo json_encode($response);
+            exit;
+        }
+        
+        // if(!$item_id || !$from_branch || !$to_branch || !$qty){
+        //     r2(U . 'stock/view/' . $item_id, 'e', 'Missing input fields.');
+        // }
+
+        // if($from_branch == $to_branch){
+        //     r2(U . 'stock/view/' . $item_id, 'e', 'From and To Branch cannot be the same.');
+        // }
+
+        // Check available stock in source branch
+        // $available = ORM::for_table('sys_items_stock')
+        //     ->select_expr("SUM(CASE WHEN type='credit' THEN stock ELSE 0 END) - SUM(CASE WHEN type='debit' THEN stock ELSE 0 END)", 'available')
+        //     ->where('item_id', $item_id)
+        //     ->where('branch_id', $from_branch)
+        //     ->find_one();
+
+        // $available_stock = $available ? $available->available : 0;
+
+        // if($available_stock < $qty){
+        //     r2(U . 'stock/view/' . $item_id, 'e', "Not enough stock in source branch. Available: $available_stock");
+        // }
+
+        // Generate a transfer reference
+        $transfer_ref = 'TRF-' . date('Ymd-His');
+
+        // Record Debit (from branch)
+        stock_record($item_id, $qty, 'debit', '', '', '', '', $from_branch, $transfer_ref);
+
+        // Record Credit (to branch)
+        stock_record($item_id, $qty, 'credit', '', '', '', '', $to_branch, $transfer_ref);
+
+        $response['status'] = 'success';
+        $response['message'] = "Stock transferred successfully (Ref: $transfer_ref)";
+        echo json_encode($response);
+        
+        // r2(U . 'ps/view/' . $item_id, 's', "Stock transferred successfully (Ref: $transfer_ref)");
+        break;
 
     default:
         echo 'action not defined';
