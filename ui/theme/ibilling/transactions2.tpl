@@ -5,6 +5,9 @@
     display:flex;
     gap:10px;
 }
+#totals .line { margin: 2px 0; }
+#totals .group { margin-top:4px; }
+#totals .label { font-weight:600; }
 </style>
 
 <div class="row">

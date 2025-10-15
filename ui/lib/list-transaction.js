@@ -59,7 +59,7 @@ $(function () {
         $("#filterForm")[0].reset();
         table.ajax.reload();
     });
-
+/*
     // Update totals after draw
     table.on("xhr.dt", function (e, settings, json) {
         if (json && json.totals) {
@@ -79,6 +79,39 @@ $(function () {
             );
         }
     });
+*/
+    // Update totals after draw
+    table.on("xhr.dt", function (e, settings, json) {
+        if (json && json.totals && json.totals.filtered) {
+            const res = json.totals.filtered;
+            const by = res.by_method || { income:{}, expense:{} };
+
+            const html = `
+                <div class="line"><span class="label">Overall</span> → 
+                    Income: <b>${res.income}</b> |
+                    Expense: <b>${res.expense}</b> |
+                    Balance: <b>${res.balance}</b>
+                </div>
+
+                <div class="group">
+                    <div class="line"><span class="label">Income by Method</span> → 
+                        Cash: <b>${by.income.cash || '0.00'}</b> |
+                        QR: <b>${by.income.qr || '0.00'}</b> |
+                        Other: <b>${by.income.other || '0.00'}</b>
+                    </div>
+                    <div class="line"><span class="label">Expense by Method</span> → 
+                        Cash: <b>${by.expense.cash || '0.00'}</b> |
+                        QR: <b>${by.expense.qr || '0.00'}</b> |
+                        Other: <b>${by.expense.other || '0.00'}</b>
+                    </div>
+                </div>
+            `;
+            $('#totals').html(html);
+        } else {
+            $('#totals').html('');
+        }
+    });
+
 });
 
 // Serialize form to object

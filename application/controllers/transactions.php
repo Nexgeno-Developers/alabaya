@@ -702,23 +702,6 @@ case 'set_view_mode':
 
         // prepare response
         $data = [];
-        
-        // Clone again for totals (no limit/offset, just filters)
-        $sum_q = clone $base_q;
-
-        // Calculate totals for all filtered records
-        $sum_income = (float) $sum_q->where('t.type', 'Income')->sum('amount');
-        $sum_expense = (float) $sum_q->where('t.type', 'Expense')->sum('amount');
-
-        // Reset query for Expense (because where() stays)
-        $sum_q = clone $base_q;
-        $sum_expense = (float) $sum_q->where('t.type', 'Expense')->sum('amount');
-
-        $sum_balance = $sum_income - $sum_expense;
-
-        // --- Page totals (just for current display rows) ---
-        // $page_income = 0.0;
-        // $page_expense = 0.0;
 
         foreach ($rows as $r) {
             $amount = (float)$r['amount'];
@@ -737,6 +720,25 @@ case 'set_view_mode':
 
             $data[] = $nested;
         }
+
+/*
+        // Clone again for totals (no limit/offset, just filters)
+        $sum_q = clone $base_q;
+
+        // Calculate totals for all filtered records
+        $sum_income = (float) $sum_q->where('t.type', 'Income')->sum('amount');
+        $sum_expense = (float) $sum_q->where('t.type', 'Expense')->sum('amount');
+
+        // Reset query for Expense (because where() stays)
+        $sum_q = clone $base_q;
+        $sum_expense = (float) $sum_q->where('t.type', 'Expense')->sum('amount');
+
+        $sum_balance = $sum_income - $sum_expense;
+
+        // --- Page totals (just for current display rows) ---
+        // $page_income = 0.0;
+        // $page_expense = 0.0;
+        
         // $page_balance = $page_income - $page_expense;
         $json_data = [
             "draw"            => intval($request['draw'] ?? 0),
@@ -756,7 +758,88 @@ case 'set_view_mode':
                 ]
             ]
         ];
+*/
 
+        // ---------- FILTERED TOTALS ----------
+        // Use the same filters (base_q) with *no* pagination/order to compute sums.
+        // NOTE: We'll do small helper closures to keep clones clean.
+
+        $qr_methods = [
+            'qr', 'upi', 'upi-qr', 'bhim', 'gpay', 'google pay', 'phonepe', 'paytm', 'paytm qr', 'amazon pay', 'qr-code'
+        ];
+        // Build IN list string for where_raw
+        $qr_in_sql = implode(',', array_fill(0, count($qr_methods), '?'));
+        $qr_in_params = $qr_methods; // already lowercase
+
+        $sum_base = clone $base_q;
+
+        // Overall income/expense totals
+        $sum_income_q = clone $sum_base;
+        $sum_income   = (float) $sum_income_q->where('t.type', 'Income')->sum('amount');
+
+        $sum_expense_q = clone $sum_base;
+        $sum_expense   = (float) $sum_expense_q->where('t.type', 'Expense')->sum('amount');
+
+        $sum_balance   = $sum_income - $sum_expense;
+
+        // ---- Income by method buckets ----
+        // Income Cash
+        $inc_cash_q = clone $sum_base;
+        $income_cash = (float) $inc_cash_q
+            ->where('t.type', 'Income')
+            ->where_raw('LOWER(COALESCE(t.method,"")) = ?', ['cash'])
+            ->sum('amount');
+
+        // Income QR (any QR alias)
+        $inc_qr_q = clone $sum_base;
+        $income_qr = (float) $inc_qr_q
+            ->where('t.type', 'Income')
+            ->where_raw('LOWER(COALESCE(t.method,"")) IN ('.$qr_in_sql.')', $qr_in_params)
+            ->sum('amount');
+
+        // Income Other = total income - cash - qr
+        $income_other = max(0.0, $sum_income - $income_cash - $income_qr);
+
+        // ---- Expense by method buckets ----
+        $exp_cash_q = clone $sum_base;
+        $expense_cash = (float) $exp_cash_q
+            ->where('t.type', 'Expense')
+            ->where_raw('LOWER(COALESCE(t.method,"")) = ?', ['cash'])
+            ->sum('amount');
+
+        $exp_qr_q = clone $sum_base;
+        $expense_qr = (float) $exp_qr_q
+            ->where('t.type', 'Expense')
+            ->where_raw('LOWER(COALESCE(t.method,"")) IN ('.$qr_in_sql.')', $qr_in_params)
+            ->sum('amount');
+
+        $expense_other = max(0.0, $sum_expense - $expense_cash - $expense_qr);
+
+        $json_data = [
+            "draw"            => intval($request['draw'] ?? 0),
+            "recordsTotal"    => intval($totalData),
+            "recordsFiltered" => intval($totalFiltered),
+            "data"            => $data,
+            "totals" => [
+                "filtered" => [
+                    "income"  => number_format($sum_income, 2, '.', ''),
+                    "expense" => number_format($sum_expense, 2, '.', ''),
+                    "balance" => number_format($sum_balance, 2, '.', ''),
+                    "by_method" => [
+                        "income" => [
+                            "cash"  => number_format($income_cash, 2, '.', ''),
+                            "qr"    => number_format($income_qr, 2, '.', ''),
+                            "other" => number_format($income_other, 2, '.', '')
+                        ],
+                        "expense" => [
+                            "cash"  => number_format($expense_cash, 2, '.', ''),
+                            "qr"    => number_format($expense_qr, 2, '.', ''),
+                            "other" => number_format($expense_other, 2, '.', '')
+                        ]
+                    ]
+                ]
+            ]
+        ];
         header('Content-Type: application/json');
         echo json_encode($json_data);
         break;
