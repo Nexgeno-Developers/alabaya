@@ -68,6 +68,12 @@
                 font-weight: 600;
                 color: #1c84c6;
             }
+            .transfer-list .transfer-item { padding: 12px 14px; }
+            .transfer-main { font-size: 14px; margin-bottom:6px; }
+            .transfer-arrow { margin: 0 8px; color:#999; }
+            .transfer-qty { background-color:#1ab394; color:#fff; font-size:14px; padding:6px 10px; border-radius:12px; }
+            .transfer-meta code { background:#f5f5f5; padding:2px 6px; border-radius:3px; }
+            .transfer-date { font-size:12px; }
         </style>
 
         <div class="ibox float-e-margins">
@@ -228,34 +234,43 @@
 	</div>*}
 
 
-    <div class="ibox float-e-margins">
-        <div class="ibox-content">
-            <h3>Recent Transfers</h3>
-            <table id="transferTable" class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Transfer Ref</th>
-                        <th>Branch</th>
-                        <th>Type</th>
-                        <th>Stock</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {foreach $transfers as $t}
-                    <tr>
-                        <td>{$t['transfer_ref']}</td>
-                        <td>{get_branch_name($t['branch_id'], alias)}</td>
-                        <td>{ucfirst($t['type'])}</td>
-                        <td>{$t['stock']}</td>
-                        <td>{$t['timestamp']}</td>
-                    </tr>
-                    {/foreach}
-                </tbody>
-            </table>
+<div class="ibox float-e-margins">
+    <div class="ibox-content">
+        <h3>Recent Stock Transfers</h3>
+
+        {if !empty($transfer_data)}
+        <div class="list-group transfer-list">
+            {foreach $transfer_data as $t}
+            <div class="list-group-item transfer-item">
+                <div class="row">
+                    <div class="col-sm-9">
+                        <div class="transfer-main">
+                            <strong>From:</strong> {$t.from_branch_name|default:'-'}
+                            <i class="fa fa-arrow-right transfer-arrow" aria-hidden="true"></i>
+                            <strong>To:</strong> {$t.to_branch_name|default:'-'}
+                            <span class="transfer-date text-muted small"> &nbsp; — &nbsp; {if $t.date}{$t.date}{/if}</span>
+                        </div>
+                        <div class="transfer-meta small text-muted">
+                            Ref: <code>{$t.ref}</code>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 text-right">
+                        <span class="badge transfer-qty">{$t.qty|default:'-'}</span>
+                        <button class="btn btn-xs btn-default view-transfer" data-ref="{$t.ref}" style="margin-left:8px;">
+                            <i class="fa fa-eye"></i> Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {/foreach}
         </div>
+        {else}
+            <p class="text-muted">No transfers found</p>
+        {/if}
+
     </div>
 </div>
+
 
 
 <select id="branch_options_template" style="display:none;">
@@ -268,7 +283,7 @@
 
 <script>
 $(document).ready(function() {
-    $('#creditedTable, #debitedTable, #transferTable').DataTable({
+    $('#creditedTable, #debitedTable').DataTable({
         paging: true,
         searching: true,
         ordering: true,
@@ -391,6 +406,63 @@ $(document).ready(function() {
                 }
             });
         }, 500);
+    });
+
+    // when clicking "Details" for a transfer
+    $(document).on('click', '.view-transfer', function(e){
+        e.preventDefault();
+        var ref = $(this).data('ref');
+        var _url = $('#_url').val();
+
+        // show loading modal
+        var $modal = $('#ajax-modal');
+        // $modal.html('<div class="modal-dialog"><div class="modal-content"><div class="modal-body">Loading...</div></div></div>');
+        $modal.modal('show');
+
+        // fetch entries for this transfer_ref (AJAX call to controller)
+        $.ajax({
+            url: _url + 'ps/transfer_entries/',
+            type: 'GET',
+            data: { ref: ref },
+            success: function (data) {
+                try {
+                    var res = JSON.parse(data);
+                    if (res.status === 'success') {
+                        // build simple HTML for entries
+                        var html = '<div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button>';
+                        html += '<h4 class="modal-title">Transfer: ' + ref + '</h4></div>';
+                        html += '<div class="modal-body">';
+                        html += '<p><strong>From:</strong> ' + (res.from_name || '-') + ' &nbsp; &nbsp; <strong>To:</strong> ' + (res.to_name || '-') + '</p>';
+                        html += '<p><strong>Qty:</strong> ' + (res.qty || '-') + '</p>';
+                        html += '<hr>';
+                        html += '<table class="table table-condensed"><thead><tr><th>Type</th><th>Branch</th><th>Stock</th><th>Date</th></tr></thead><tbody>';
+                        res.entries.forEach(function(en){
+                            html += '<tr>';
+                            html += '<td>' + en.type + '</td>';
+                            html += '<td>' + (en.branch_name || en.branch_id) + '</td>';
+                            html += '<td>' + en.stock + '</td>';
+                            html += '<td>' + en.timestamp + '</td>';
+                            html += '</tr>';
+                        });
+                        html += '</tbody></table>';
+                        html += '</div>';
+                        html += '<div class="modal-footer"><button data-dismiss="modal" class="btn btn-default">Close</button></div>';
+                        
+
+                        $modal.html(html);
+                        $modal.modal('show');
+                    } else {
+                        $modal.html('<div class="modal-dialog"><div class="modal-content"><div class="modal-body text-danger">'+res.message+'</div></div></div>');
+                    }
+                } catch (err) {
+                    $modal.find('.modal-body').html('Unexpected response: ' + data);
+                }
+            },
+            error: function(){
+                $modal.find('.modal-body').html('Error loading details');
+            }
+        });
+
     });
 
 });

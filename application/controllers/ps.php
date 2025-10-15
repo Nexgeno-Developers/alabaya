@@ -314,15 +314,125 @@ switch ($action) {
             $ui->assign('credited_stock', $credited_stock);
             $ui->assign('debited_stock', $debited_stock);
 
-            // Fetch distinct transfer references for this item
-            $transfers = ORM::for_table('sys_items_stock')->where('item_id', $id)->where_not_null('transfer_ref')->order_by_desc('timestamp')->limit(10)->find_many();
-            $ui->assign('transfers', $transfers);
+            // Fetch distinct transfer refs for this item
+            $refs = ORM::for_table('sys_items_stock')
+                ->select('transfer_ref')
+                ->where('item_id', $id)
+                ->where_not_null('transfer_ref')
+                ->where_not_equal('transfer_ref', '')
+                ->group_by('transfer_ref')
+                ->order_by_desc('transfer_ref') // or order_by_desc('timestamp') if available
+                ->limit(50)
+                ->find_many();
+
+            $transfer_data = [];
+
+            foreach ($refs as $r) {
+                $ref = $r->transfer_ref;
+
+                // Get all rows for this ref and this item
+                $entries = ORM::for_table('sys_items_stock')
+                    ->where('item_id', $id)
+                    ->where('transfer_ref', $ref)
+                    ->order_by_asc('id')
+                    ->find_many();
+
+                // initialize
+                $from_branch_id = $to_branch_id = null;
+                $qty = 0;
+                $date = null;
+
+                foreach ($entries as $e) {
+                    // prefer debit as from and credit as to
+                    if ($e->type == 'debit' && empty($from_branch_id)) {
+                        $from_branch_id = $e->branch_id;
+                        $qty = $e->stock; // assume debit contains qty
+                    }
+                    if ($e->type == 'credit' && empty($to_branch_id)) {
+                        $to_branch_id = $e->branch_id;
+                    }
+
+                    // pick latest timestamp available for the ref
+                    if (empty($date) || strtotime($e->timestamp) > strtotime($date)) {
+                        $date = $e->timestamp;
+                    }
+                }
+
+                // Resolve names (use your helper)
+                $from_branch_name = $from_branch_id ? get_branch_name($from_branch_id, 'alias') : '-';
+                $to_branch_name   = $to_branch_id   ? get_branch_name($to_branch_id, 'alias') : '-';
+
+                $transfer_data[] = [
+                    'ref' => $ref,
+                    'from_branch_id' => $from_branch_id,
+                    'to_branch_id' => $to_branch_id,
+                    'from_branch_name' => $from_branch_name,
+                    'to_branch_name' => $to_branch_name,
+                    'qty' => $qty,
+                    'date' => $date,
+                ];
+            }
+
+            $ui->assign('transfer_data', $transfer_data);
+
 
             $ui->assign('xheader', '<link rel="stylesheet" type="text/css" href="' . $_theme . '/css/modal.css"/>');
             $ui->assign('xfooter', '<script type="text/javascript" src="' . $_theme . '/lib/modal.js"></script>');
 
             $ui->display('ps-view.tpl');
         break;
+
+        case 'transfer_entries':
+            $ref = _get('ref');
+            if (!$ref) {
+                echo json_encode(['status' => 'error', 'message' => 'Missing ref']);
+                exit;
+            }
+
+            // fetch entries for this ref and current item(s) (optionally filter by item_id if you want)
+            $rows = ORM::for_table('sys_items_stock')
+                ->where('transfer_ref', $ref)
+                ->order_by_asc('id')
+                ->find_many();
+
+            if (!$rows) {
+                echo json_encode(['status' => 'error', 'message' => 'No entries found']);
+                exit;
+            }
+
+            $entries = [];
+            $from_name = $to_name = '';
+            $qty = 0;
+            foreach ($rows as $r) {
+                // try resolve branch name
+                $bname = get_branch_name($r->branch_id, 'alias') ?: null;
+
+                $entries[] = [
+                    'type' => $r->type,
+                    'branch_id' => $r->branch_id,
+                    'branch_name' => $bname,
+                    'stock' => $r->stock,
+                    'timestamp' => $r->timestamp,
+                ];
+
+                if ($r->type == 'debit') {
+                    $from_name = $bname ?: $r->branch_id;
+                    $qty = $r->stock;
+                }
+                if ($r->type == 'credit') {
+                    $to_name = $bname ?: $r->branch_id;
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'from_name' => $from_name,
+                'to_name' => $to_name,
+                'qty' => $qty,
+                'entries' => $entries
+            ]);
+        break;
+
 
     case 'view1':
 //        $id  = $routes['2'];
@@ -815,7 +925,7 @@ switch ($action) {
         $response['status'] = 'success';
         $response['message'] = "Stock transferred successfully (Ref: $transfer_ref)";
         echo json_encode($response);
-        
+
         // r2(U . 'ps/view/' . $item_id, 's', "Stock transferred successfully (Ref: $transfer_ref)");
         break;
 
