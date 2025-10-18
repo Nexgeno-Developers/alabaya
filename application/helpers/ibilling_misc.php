@@ -1413,6 +1413,7 @@ function filter_by_branch($table, $branch_id) {
     return $q;
 }
 
+/*
 function get_branch_name($branch_id, $account='account') {
     // Fetch branch info using ORM
     $branch = ORM::for_table('sys_accounts')
@@ -1425,6 +1426,24 @@ function get_branch_name($branch_id, $account='account') {
     } else {
         return null; // Return null if branch not found
     }
+}
+*/
+
+function get_branch_name($branch_id, $account = 'account') {
+    static $cache = [];
+
+    if (!$branch_id) return null;
+    $key = $branch_id . '|' . $account;
+
+    if (isset($cache[$key])) return $cache[$key];
+
+    $branch = ORM::for_table('sys_accounts')
+        ->select($account, 'branch_name')
+        ->where('id', $branch_id)
+        ->find_one();
+
+    $cache[$key] = $branch ? $branch->branch_name : null;
+    return $cache[$key];
 }
 
 function get_branch_id($table, $id) {
