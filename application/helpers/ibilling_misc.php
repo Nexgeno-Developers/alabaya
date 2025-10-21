@@ -1439,3 +1439,41 @@ function get_branch_id($table, $id) {
         return null;
     }
 }
+
+// function update_collection_status($collection_id) {
+//     $c = ORM::for_table('branch_collections')->find_one($collection_id);
+//     if (!$c) return;
+//     $total_handover = ORM::for_table('branch_handover_entries')
+//         ->where('collection_id', $collection_id)
+//         ->sum('amount_paid') ?: 0;
+//     if ($total_handover == 0) {
+//         $c->status = 'Pending';
+//     } elseif ($total_handover < $c->collected_amount) {
+//         $c->status = 'Partially Paid';
+//     } else {
+//         $c->status = 'Paid';
+//     }
+//     $c->updated_at = date('Y-m-d H:i:s');
+//     $c->save();
+// }
+
+function update_collection_status($collection_id) {
+    $c = ORM::for_table('branch_collections')->find_one($collection_id);
+    if (!$c) return;
+
+    $total_handover = ORM::for_table('branch_handover_entries')
+        ->where('collection_id', $collection_id)
+        ->where('status', 'Approved') // only approved handovers count
+        ->sum('amount_paid') ?: 0;
+
+    if ($total_handover == 0) {
+        $c->status = 'Pending';
+    } elseif ($total_handover < $c->collected_amount) {
+        $c->status = 'Partially Paid';
+    } else {
+        $c->status = 'Paid';
+    }
+
+    $c->updated_at = date('Y-m-d H:i:s');
+    $c->save();
+}

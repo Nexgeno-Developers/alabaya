@@ -64,7 +64,7 @@
 <script src="{$_theme}/js/jquery-1.10.2.js"></script>
 <script src="{$_theme}/js/jquery-ui-1.10.4.min.js"></script>
 
-
+{*
 <script>
   const para = document.getElementById("myPara");
   const words = para.innerText.split(" ");
@@ -74,7 +74,20 @@
     para.innerText = truncated;
   }
 </script>
+*}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const para = document.getElementById("myPara");
 
+    if (para) {
+      const words = para.innerText.split(" ");
+      if (words.length > 25) {
+        const truncated = words.slice(0, 25).join(" ") + " ...";
+        para.innerText = truncated;
+      }
+    }
+  });
+</script>
 
 </head>
 

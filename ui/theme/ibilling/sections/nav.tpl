@@ -388,6 +388,11 @@
     {/if}
 
 
+    {if has_access($user->roleid,'collection')}
+        <li {if $_application_menu eq 'collection'}class="active"{/if}>
+            <a href="{$_url}branch_collections/list/"><i class="fa fa-archive"></i><span class="nav-label">Collection</span></a>
+        </li>
+    {/if}
 
 
 </ul>
