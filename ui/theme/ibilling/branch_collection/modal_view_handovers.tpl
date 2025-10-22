@@ -7,9 +7,10 @@
   <table class="table table-striped table-bordered">
     <thead>
       <tr>
-        <th>ID</th>
+        <th>#</th>
         <th>Paid Date</th>
         <th>Amount</th>
+        <th>Type</th>
         <th>Paid By</th>
         <th>Note</th>
         <th>Status</th>
@@ -17,11 +18,12 @@
       </tr>
     </thead>
     <tbody>
-      {foreach $handovers as $h}
+      {foreach $handovers as $h name=handloop}
         <tr id="handover_row_{$h.id}">
-          <td>{$h.id}</td>
+          <td>{$smarty.foreach.handloop.index+1}</td>
           <td>{$h.paid_date}</td>
           <td>₹{$h.amount_paid}</td>
+          <td>{$h.payment_type|default:'-'}</td>
           <td>{$h.paid_by_name}</td>
           <td>{$h.note|default:'-'}</td>
           <td class="status-cell">{$h.status}</td>

@@ -23,11 +23,11 @@ tr.needs-approval > td {
       <div class="ibox-title">
         <h5>Branch Collection Records</h5>
         <div class="ibox-tools">
-        {if $user->roleid == 0}
+        {*if $user->roleid == 0*}
           <button class="btn btn-xs btn-primary add_collection" data-href="{$_url}branch_collections/modal_add_collection/">
             <i class="fa fa-plus"></i> Add Collection
           </button>
-          {/if}
+          {*/if*}
         </div>
       </div>
 
@@ -41,7 +41,7 @@ tr.needs-approval > td {
                 {if $user->roleid eq 0}
                     <option value="">All</option>
                     {foreach $branches as $branch}
-                        <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>
+                        <option value="{$branch.id}">
                             {$branch.alias|default:$branch.account}
                         </option>
                     {/foreach}

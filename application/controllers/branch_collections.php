@@ -113,13 +113,19 @@ switch ($action) {
                     $status_label .= ' <span class="label label-warning" title="Handover entries awaiting approval">Needs approval: ' . $pending_count . '</span>';
                 }
                 
+                $amount = number_format($r['collected_amount'], 2, '.', '');
+                $qr_amount = number_format($r['qr_amount'], 2, '.', '');
+                $cash_amount = number_format($r['cash_amount'], 2, '.', '');
+                // Amount cell with small QR/Cash breakdown
+                $amount_display = '₹' . $amount . '<br> <small class="text-muted">(Cash: ₹' . $cash_amount . ' | QR: ₹' . $qr_amount . ')</small>';
+
                 $id = $r['id'];
                 $sr_no = $i++;
                 $collection_id_display = $sr_no;
                 // $collection_id_display = $sr_no . ' <small>#' . $id . '</small>';
                 $branch = $r['branch_name'];
                 $date = $r['collection_date'];
-                $amount = number_format($r['collected_amount'], 2, '.', '');
+                $amount_display;
                 $handover_amount = number_format($r['handover_amount'], 2, '.', '');
                 $status_label;
                 $owner_remark = $r['owner_remark'];
@@ -145,7 +151,7 @@ switch ($action) {
                     $collection_id_display,
                     $branch,
                     $date,
-                    $amount,
+                    $amount_display,
                     $handover_amount,
                     $status_label,
                     $owner_remark,
@@ -202,13 +208,36 @@ switch ($action) {
         $collection_id = _post('collection_id');
         $branch_id = _post('branch_id');
         $collection_date = _post('collection_date');
-        $amount = floatval(_post('amount'));
+        $cash_amount     = (float) _post('cash_amount');
+        $qr_amount       = (float) _post('qr_amount');
+        // $amount = floatval(_post('amount'));
         // $reference_no = _post('reference_no');
         $note = _post('note');
+    
+        $amount = round($cash_amount + $qr_amount, 2);
 
         if (!$branch_id || !$collection_date || $amount <= 0) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Please fill all required fields']);
+            exit;
+        }
+
+        $collection_date = date('Y-m-d', strtotime($collection_date));
+
+        $exists_q = ORM::for_table('branch_collections')
+            ->where('branch_id', $branch_id)
+            ->where('collection_date', $collection_date);
+
+        if (!empty($collection_id)) {
+            $exists_q->where_not_equal('id', $collection_id);
+        }
+
+        if ((int)$exists_q->count() > 0) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'A collection for this branch and date already exists.'
+            ]);
             exit;
         }
 
@@ -228,6 +257,8 @@ switch ($action) {
 
         $collection->branch_id = $branch_id;
         $collection->collection_date = $collection_date;
+        $collection->cash_amount      = $cash_amount;
+        $collection->qr_amount        = $qr_amount;
         $collection->collected_amount = $amount;
         $collection->owner_remark = $note;
         // $collection->reference_no = $reference_no;
@@ -258,70 +289,129 @@ switch ($action) {
             exit;
         }
 
-        $cap = (float)$collection->collected_amount;
-        $current_total_all = (float) ORM::for_table('branch_handover_entries')->where('collection_id', $collection_id)->sum('amount_paid');
+        // --- NEW: per-type caps from collection
+        $cap_total = (float)$collection->collected_amount;
+        $cap_cash  = (float)$collection->cash_amount;
+        $cap_qr    = (float)$collection->qr_amount;
 
-        $remaining = $cap - $current_total_all;
+        // --- NEW: sum ALL handovers (pending + approved) per type
+        $paid_all_total = (float) ORM::for_table('branch_handover_entries')
+            ->where('collection_id', $collection_id)
+            ->sum('amount_paid');
+
+        $paid_cash_all = (float) ORM::for_table('branch_handover_entries')
+            ->where('collection_id', $collection_id)
+            ->where('payment_type', 'Cash')
+            ->sum('amount_paid');
+
+        $paid_qr_all = (float) ORM::for_table('branch_handover_entries')
+            ->where('collection_id', $collection_id)
+            ->where('payment_type', 'QR')
+            ->sum('amount_paid');
+
+        // Remaining (overall + per type)
+        $remain_total = max(0, $cap_total - $paid_all_total);
+        $remain_cash  = max(0, $cap_cash  - $paid_cash_all);
+        $remain_qr    = max(0, $cap_qr    - $paid_qr_all);
+
         // Optional hard block if already fully handed over or final
         $final_statuses = ['Paid','Confirmed'];
-        $can_add = ($remaining > 0) && !in_array($collection->status, $final_statuses, true);
+        $can_add = ($remain_total > 0) && !in_array($collection->status, $final_statuses, true);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Save handover
-            $amount_paid = floatval(_post('amount_paid'));
-            $paid_date = _post('paid_date');
-            $note = _post('note');
+            $amount_paid  = (float) _post('amount_paid');
+            $paid_date    = _post('paid_date');
+            $note         = _post('note');
+            $payment_type = _post('payment_type'); // NEW
 
-            // var_dump($remaining); // debug
-            if ($remaining <= 0) {
+            if (!in_array($payment_type, ['Cash','QR'], true)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid payment type']);
+                exit;
+            }
+
+            // Recalculate fresh (safety against race conditions)
+            $paid_all_total = (float) ORM::for_table('branch_handover_entries')
+                ->where('collection_id', $collection_id)
+                ->sum('amount_paid');
+
+            $remain_total = $cap_total - $paid_all_total;
+
+            $paid_this_type = (float) ORM::for_table('branch_handover_entries')
+                ->where('collection_id', $collection_id)
+                ->where('payment_type', $payment_type)
+                ->sum('amount_paid');
+
+            $cap_this_type = ($payment_type === 'Cash') ? $cap_cash : $cap_qr;
+            $remain_this   = $cap_this_type - $paid_this_type;
+
+            if ($remain_total <= 0) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'Full amount already handed over. No further handovers allowed.']);
                 exit;
             }
-            // exit;
-            if ($amount_paid > ($remaining + 0.0001)) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'You can handover at most ₹' . number_format($remaining, 2) . ' for this collection.'
-                ]);
-                exit;
-            }
-
             if ($amount_paid <= 0 || !$paid_date) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'Please provide valid inputs']);
                 exit;
             }
+            // Per-type cap
+            if ($amount_paid > ($remain_this + 0.0001)) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Max allowed for ' . $payment_type . ' is ₹' . number_format(max(0,$remain_this), 2)
+                ]);
+                exit;
+            }
+            // Overall cap
+            if ($amount_paid > ($remain_total + 0.0001)) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'You can handover at most ₹' . number_format(max(0,$remain_total), 2) . ' in total for this collection.'
+                ]);
+                exit;
+            }
 
             $handover = ORM::for_table('branch_handover_entries')->create();
             $handover->collection_id = $collection_id;
-            $handover->amount_paid = $amount_paid;
-            $handover->paid_by = $user->id;
-            $handover->paid_date = $paid_date;
-            $handover->note = $note;
-            $handover->status = 'Pending';
-            $handover->created_at = date('Y-m-d H:i:s');
-            $handover->updated_at = date('Y-m-d H:i:s');
+            $handover->amount_paid   = $amount_paid;
+            $handover->payment_type  = $payment_type;   // NEW
+            $handover->paid_by       = $user->id;
+            $handover->paid_date     = $paid_date;
+            $handover->note          = $note;
+            $handover->status        = 'Pending';
+            $handover->created_at    = date('Y-m-d H:i:s');
+            $handover->updated_at    = date('Y-m-d H:i:s');
             $handover->save();
 
-            // Update collection status based on handovers
             update_collection_status($collection_id);
 
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
         } else {
-            // Show modal form
-            $ui->assign('cap', $cap);
-            $ui->assign('paid_all', $current_total_all);
-            $ui->assign('remaining', $remaining);
-            $ui->assign('can_add', $can_add);
+            // Show modal form with per-type summary
+            $ui->assign('cap_total',   $cap_total);
+            $ui->assign('cap_cash',    $cap_cash);
+            $ui->assign('cap_qr',      $cap_qr);
 
-            $ui->assign('collection', $collection);
-            $ui->assign('today', date('Y-m-d'));
+            $ui->assign('paid_all',    $paid_all_total);
+            $ui->assign('paid_cash',   $paid_cash_all);
+            $ui->assign('paid_qr',     $paid_qr_all);
+
+            $ui->assign('remain_total',$remain_total);
+            $ui->assign('remain_cash', $remain_cash);
+            $ui->assign('remain_qr',   $remain_qr);
+
+            $ui->assign('can_add',     $can_add);
+            $ui->assign('collection',  $collection);
+            $ui->assign('today',       date('Y-m-d'));
             $ui->display('branch_collection/modal_add_handover.tpl');
         }
         break;
+
 
 
     # ------------------------
@@ -389,7 +479,7 @@ switch ($action) {
         update_collection_status($handover->collection_id);
 
         echo json_encode(['success' => true]);
-        exit;
+        break;
         
     # ------------------------
     # Delete handover (AJAX POST)
@@ -419,56 +509,119 @@ switch ($action) {
         break;
 
 
-        # ------------------------
-        # Delete collection (AJAX POST) + delete children
-        # ------------------------
-        case 'delete_collection':
-            header('Content-Type: application/json; charset=utf-8');
+    # ------------------------
+    # Delete collection (AJAX POST) + delete children
+    # ------------------------
+    case 'delete_collection':
+        header('Content-Type: application/json; charset=utf-8');
 
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                echo json_encode(['success' => false, 'message' => 'Invalid request']); exit;
-            }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']); exit;
+        }
 
-            // Allow only super admin (roleid==0). Adjust if you want branch admins to delete their own.
-            if ($user->roleid != 0) {
-                echo json_encode(['success' => false, 'message' => 'Unauthorized']); exit;
-            }
+        // Allow only super admin (roleid==0). Adjust if you want branch admins to delete their own.
+        if ($user->roleid != 0) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']); exit;
+        }
 
-            $id = (int) _post('id');
-            if (!$id) {
-                echo json_encode(['success' => false, 'message' => 'Missing collection id']); exit;
-            }
+        $id = (int) _post('id');
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Missing collection id']); exit;
+        }
 
-            $c = ORM::for_table('branch_collections')->find_one($id);
-            if (!$c) {
-                echo json_encode(['success' => false, 'message' => 'Collection not found']); exit;
-            }
+        $c = ORM::for_table('branch_collections')->find_one($id);
+        if (!$c) {
+            echo json_encode(['success' => false, 'message' => 'Collection not found']); exit;
+        }
 
-            // (Optional) If you want to enforce branch-scope even for non-owners, add a check here.
-            // if ($user->roleid != 0 && (int)$c->branch_id !== (int)$user->branch_id) { ... }
+        // (Optional) If you want to enforce branch-scope even for non-owners, add a check here.
+        // if ($user->roleid != 0 && (int)$c->branch_id !== (int)$user->branch_id) { ... }
 
-            try {
-                $db = ORM::get_db();
-                $db->beginTransaction();
+        try {
+            $db = ORM::get_db();
+            $db->beginTransaction();
 
-                // Delete children first (in case your DB doesn't have ON DELETE CASCADE)
-                ORM::for_table('branch_handover_entries')
-                    ->where('collection_id', $id)
-                    ->delete_many();
+            // Delete children first (in case your DB doesn't have ON DELETE CASCADE)
+            ORM::for_table('branch_handover_entries')
+                ->where('collection_id', $id)
+                ->delete_many();
 
-                // Delete parent
-                $c->delete();
+            // Delete parent
+            $c->delete();
 
-                $db->commit();
-                echo json_encode(['success' => true, 'message' => 'Collection deleted']);
-            } catch (Exception $e) {
-                if (isset($db) && $db->inTransaction()) $db->rollBack();
-                echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
-            }
-            exit;
+            $db->commit();
+            echo json_encode(['success' => true, 'message' => 'Collection deleted']);
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
+        }
+        break;
 
 
+    # ------------------------
+    # AJAX: totals from sys_transactions for branch+date
+    # ------------------------
+    case 'ajax_tx_totals':
+        header('Content-Type: application/json; charset=utf-8');
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'POST required']); exit;
+        }
+
+        // inputs via POST
+        $branch_id_param = (int) _post('branch_id');
+        $collection_date = _post('collection_date');
+
+        // effective branch (admins can choose; non-admin forced)
+        $effective_branch_id = ($user->roleid == 0) ? $branch_id_param : (int) $user->branch_id;
+
+        if (!$effective_branch_id) {
+            echo json_encode(['success' => false, 'message' => 'Branch is required (user not assigned to a branch).']); exit;
+        }
+        if (empty($collection_date)) {
+            echo json_encode(['success' => false, 'message' => 'Date is required.']); exit;
+        }
+
+        $ts = strtotime($collection_date);
+        if ($ts === false) {
+            echo json_encode(['success' => false, 'message' => 'Invalid date format.']); exit;
+        }
+        $collection_date = date('Y-m-d', $ts);
+
+        // Cash = method='Cash'
+        $cash = (float) ORM::for_table('sys_transactions')
+            ->where('branch_id', $effective_branch_id)
+            ->where('type', 'Income')
+            ->where('date', $collection_date)
+            ->where('method', 'Cash')
+            ->sum('amount');
+
+        // QR = NOT Cash (includes NULL)
+        $qr = (float) ORM::for_table('sys_transactions')
+            ->where('branch_id', $effective_branch_id)
+            ->where('type', 'Income')
+            ->where('date', $collection_date)
+            ->where_raw("(method IS NULL OR method <> 'Cash')")
+            ->sum('amount');
+
+        $cash  = round($cash ?: 0, 2);
+        $qr    = round($qr   ?: 0, 2);
+        $total = round($cash + $qr, 2);
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'branch_id'       => $effective_branch_id,
+                'collection_date' => $collection_date,
+                'cash'            => $cash,
+                'qr'              => $qr,
+                'total'           => $total
+            ]
+        ]);
+        break;
+
+    # ------------------------
+    # Default: action not defined
     # ------------------------
     default:
         echo 'action not defined';
