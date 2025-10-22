@@ -238,14 +238,14 @@
 
 
                 <li><a href="{$_url}reports/statement/">{$_L['Account Statement']}</a></li>
-                <li><a href="{$_url}reports/income/">{$_L['Income Reports']}</a></li>
-                <li><a href="{$_url}reports/expense/">{$_L['Expense Reports']}</a></li>
+                <!--<li><a href="{$_url}reports/income/">{$_L['Income Reports']}</a></li>-->
+                <!--<li><a href="{$_url}reports/expense/">{$_L['Expense Reports']}</a></li>-->
                 <li><a href="{$_url}reports/income-vs-expense/">{$_L['Income Vs Expense']}</a></li>
 
-                <li><a href="{$_url}reports/by-date/">{$_L['Reports by Date']}</a></li>
+                <li><a href="{$_url}reports/by-date/">{$_L['Reports by Date']}</a></li>-->
                 {*<li><a href="{$_url}reports/cats/">{$_L['Reports by Category']}</a></li>*}
-                <li><a href="{$_url}transactions/list-income/">{$_L['All Income']}</a></li>
-                <li><a href="{$_url}transactions/list-expense/">{$_L['All Expense']}</a></li>
+                <!--<li><a href="{$_url}transactions/list-income/">{$_L['All Income']}</a></li>-->
+                <!--<li><a href="{$_url}transactions/list-expense/">{$_L['All Expense']}</a></li>-->
                 <li><a href="{$_url}transactions/list/">{$_L['All Transactions']}</a></li>
                 <!--<li><a href="{$_url}reports/gst-reports/">GST Reports</a></li>-->
 
