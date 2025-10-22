@@ -8,11 +8,19 @@ if($do == ''){
 }
 switch($do){
     case 'post':
+/*
         $username = _post('username');
         $username = filter_var($username, FILTER_SANITIZE_STRING);
         $username = addslashes($username);
         $password = _post('password');
         $password = addslashes($password);
+*/
+        $username = _post('username');
+        // Avoid FILTER_SANITIZE_STRING (deprecated) & addslashes on credentials
+        $username = trim((string)$username);
+
+        $password = _post('password');
+        $password = (string)$password; // NO addslashes; keep raw input
 
         $after = route(2);
         $rd = U.$config['redirect_url'].'/';
@@ -30,13 +38,26 @@ switch($do){
             $d = ORM::for_table('sys_users')->where('username',$username)->find_one();
             if($d){
                 $d_pass = $d['password'];
-                if(Password::_verify($password,$d_pass) == true){
+                                // Verify with new Password helper (supports old+new)
+                if (Password::_verify($password, $d_pass) === true) {
+
+                    // Optional seamless migration: if the hash is old/weak, upgrade it now.
+                    if (Password::needsRehash($d_pass)) {
+                        try {
+                            $d->password = Password::_crypt($password);
+                            $d->save();
+                        } catch (Exception $e) {
+                            // If rehash save fails, still allow login but log it.
+                            _log('Password rehash failed for user '.$username.' : '.$e->getMessage(), 'Admin', $d['id']);
+                        }
+                    }
+                // if(Password::_verify($password,$d_pass) == true){
                     //Now check if OTP is enabled
                     if($d['otp'] == 'Yes'){
-//                Otp::make($d['id']);
-//                $_SESSION['tuid'] = $d['id'];
-//
-//                r2(U.'otp');
+                        // Otp::make($d['id']);
+                        // $_SESSION['tuid'] = $d['id'];
+
+                        // r2(U.'otp');
                     }
                     else{
                         $_SESSION['uid'] = $d['id'];

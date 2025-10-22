@@ -38,58 +38,55 @@
 
 // *************************************************************************
 
-Class Password{
+class Password
+{
+    // Use strong bcrypt for new/rehash
+    private const ALG = PASSWORD_BCRYPT;
+    private const OPTIONS = ['cost' => 12];
 
-
-
-    public static function _crypt($password) {
-
-
-
-        return crypt($password,'ib_salt');
-
-
-
+    // Identify whether a hash is modern (bcrypt/argon) vs old crypt()
+    public static function isModernHash(string $hash): bool
+    {
+        // Modern PHP hashes start with $2y$, $2a$, $2b$, $argon2i$, $argon2id$, etc.
+        return (strpos($hash, '$2y$') === 0)      ||
+               (strpos($hash, '$2a$') === 0)      ||
+               (strpos($hash, '$2b$') === 0)      ||
+               (strpos($hash, '$argon2') === 0);
     }
 
+    // Create a modern hash
+    public static function _crypt(string $password): string
+    {
+        return password_hash($password, self::ALG, self::OPTIONS);
+    }
 
-
-    public static function _verify($user_input, $hashed_password){
-
-        if (crypt($user_input, $hashed_password) == $hashed_password) {
-
-            return true;
-
+    // Verify against either modern or legacy hash
+    public static function _verify(string $user_input, string $stored_hash): bool
+    {
+        if (self::isModernHash($stored_hash)) {
+            // Modern path
+            return password_verify($user_input, $stored_hash);
         }
 
-        return false;
-
+        // Legacy path (old crypt with fixed/short salt). IMPORTANT:
+        // Old DES-based crypt uses ONLY the first 8 chars -> your bug.
+        // We must still support it for existing users, but we will migrate on success.
+        // For verification, provide the *stored hash* as the salt parameter as before.
+        return (crypt($user_input, $stored_hash) === $stored_hash);
     }
 
-
-
-
-
-
-
-    //
-
-
-
-    public static function _gen(){
-
-        $pass = substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#!123456789', 8)), 0, 8);
-
-        return $pass;
-
+    // Whether the stored hash should be rehashed to modern
+    public static function needsRehash(string $stored_hash): bool
+    {
+        if (!self::isModernHash($stored_hash)) {
+            return true;
+        }
+        return password_needs_rehash($stored_hash, self::ALG, self::OPTIONS);
     }
 
-
-
-
-
-
-
-
-
+    // Generate an 8-char strong-ish random password (kept as-is from your code)
+    public static function _gen(): string
+    {
+        return substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#!123456789', 8)), 0, 8);
+    }
 }

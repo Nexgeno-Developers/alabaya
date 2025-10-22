@@ -62,14 +62,26 @@ switch ($action){
             $d = ORM::for_table('sys_users')->where('username',$username)->find_one();
             if($d){
                 $d_pass = $d['password'];
-                if(Password::_verify($password,$d_pass) == true){
 
-                        $_SESSION['uid'] = $d['id'];
-                        $d->last_login = date('Y-m-d H:i:s');
-                        $d->save();
-                        //login log
+                if(Password::_verify($password,$d_pass) === true){
 
-                        _log('API: '.$_L['Login Successful'].' '.$username,'Admin',$d['id']);
+                    // Seamless one-time migration to bcrypt if needed
+                    if (Password::needsRehash($d_pass)) {
+                        try {
+                            $d->password = Password::_crypt($password); // rehash SAME password
+                            $d->save();
+                        } catch (Exception $e) {
+                            _log('Password rehash failed for user '.$username.' : '.$e->getMessage(), 'Admin', $d->id);
+                            // continue login even if rehash save fails
+                        }
+                    }
+
+                    $_SESSION['uid'] = $d['id'];
+                    $d->last_login = date('Y-m-d H:i:s');
+                    $d->save();
+                    //login log
+
+                    _log('API: '.$_L['Login Successful'].' '.$username,'Admin',$d['id']);
 
 
                     if($d->at == ''){
@@ -84,16 +96,9 @@ switch ($action){
 
                     }
 
-
-
-
-
                     $data['msg'] = 'Login Successful';
                     $data['success'] = true;
                     $data['token'] = $str;
-
-
-
 
                 }
                 else{
@@ -104,15 +109,9 @@ switch ($action){
             else{
                 $data['msg'] = 'Invalid Username or Password';
                 _log('API Login: Invalid Username or Password');
-
-
             }
 
             echo json_encode($data);
-
-
-      
-
         break;
 
 

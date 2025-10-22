@@ -172,6 +172,18 @@ Class Contacts
 
             if(Password::_verify($password,$db_password) == true){
 
+            
+                // Seamless one-time migration to bcrypt if needed
+                if (Password::needsRehash($db_password)) {
+                    try {
+                        $d->password = Password::_crypt($password); // rehash SAME password
+                        $d->save();
+                    } catch (Exception $e) {
+                        _log('Password rehash failed for user '.$email.' : '.$e->getMessage(), 'Admin', $d->id);
+                        // continue login even if rehash save fails
+                    }
+                }
+                
                $auth_key = Ib_Str::random_string(20).md5(time());
 
                 $d->token = $auth_key;

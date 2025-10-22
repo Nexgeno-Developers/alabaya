@@ -1563,7 +1563,18 @@ minHeight: 150 // pixels
             $d = ORM::for_table('sys_users')->where('username',$user['username'])->find_one();
             if($d){
                 $d_pass = $d['password'];
-                if(Password::_verify($password,$d_pass) == true){
+                if(Password::_verify($password,$d_pass) === true){
+
+                    // Seamless one-time migration to bcrypt if needed
+                    if (Password::needsRehash($d_pass)) {
+                        try {
+                            $d->password = Password::_crypt($password); // rehash SAME password
+                            $d->save();
+                        } catch (Exception $e) {
+                            // _log('Password rehash failed for user '.$username.' : '.$e->getMessage(), 'Admin', $d->id);
+                            // continue login even if rehash save fails
+                        }
+                    }
 
                     $npass = _post('npass');
                     $cnpass = _post('cnpass');
