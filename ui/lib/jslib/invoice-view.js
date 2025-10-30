@@ -223,6 +223,7 @@ $(document).ready(function () {
         $modal.modal('loading');
         var _url = $("#_url").val();
         $.post(_url + 'invoices/add-payment-post', {
+            branch_id: $('#branch_id').val(),
             account: $('#account').val(),
             date: $('#date').val(),
             iid: $('#iid').val(),
