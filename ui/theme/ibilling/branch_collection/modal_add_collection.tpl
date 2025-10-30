@@ -16,9 +16,21 @@
       <label class="col-lg-4 control-label">Branch <small class="red">*</small></label>
       <div class="col-lg-8">
         <select name="branch_id" id="branch_id" class="form-control" required>
-          {foreach $branches as $b}
-            <option value="{$b.id}" {if $collection && $collection.branch_id == $b.id}selected{/if}>{$b.alias|default:$b.account}</option>
-          {/foreach}
+          {if $user->roleid eq 0}
+              {foreach $branches as $branch}
+                  <option value="{$branch.id}">
+                      {$branch.alias|default:$branch.account}
+                  </option>
+              {/foreach}
+          {else}
+              {foreach $branches as $branch}
+                  {if $branch.id eq $user->branch_id}
+                      <option value="{$branch.id}" selected>
+                          {$branch.alias|default:$branch.account}
+                      </option>
+                  {/if}
+              {/foreach}
+          {/if}
         </select>
       </div>
     </div>
