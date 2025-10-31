@@ -1,7 +1,9 @@
 var _url = $("#_url").val();
+
 $(function () {
-    console.log('reports-pl-products.js loaded');
-  var table = $("#plpTable").DataTable({
+  console.log('reports-pl-invoices.js loaded');
+
+  var table = $("#pliTable").DataTable({
     searching: false,
     processing: true,
     serverSide: true,
@@ -9,7 +11,7 @@ $(function () {
       url: _url + "reports/pl-products-dt",
       type: "POST",
       data: function (d) {
-        return $.extend({}, d, $("#plpFilterForm").serializeObject());
+        return $.extend({}, d, $("#pliFilterForm").serializeObject());
       }
     },
     dom: "Bfrtip",
@@ -18,23 +20,22 @@ $(function () {
       [10, 25, 50, 100, -1],
       [10, 25, 50, 100, "All"]
     ],
-    order: [[1, "asc"]], // Branch
+    order: [[6, "desc"]], // profit desc by default
     columnDefs: [
-      { targets: [3,4,5,6,7], className: "text-right" },
+      { targets: [3,4,5,6], className: "text-right" },
       { targets: [0], orderable: false }
     ]
-
   });
 
-  $("#plpFilterForm").on("submit", function (e) {
+  $("#pliFilterForm").on("submit", function (e) {
     e.preventDefault();
-    if (!validatePLPDates()) return;
+    if (!validatePLIDates()) return;
     table.ajax.reload();
   });
 
-  $("#plp_reset").on("click", function () {
-    $("#plpFilterForm")[0].reset();
-    $("#plp_date_error").text('');
+  $("#pli_reset").on("click", function () {
+    $("#pliFilterForm")[0].reset();
+    $("#pli_date_error").text('');
     table.ajax.reload();
   });
 
@@ -43,14 +44,17 @@ $(function () {
       const t = json.totals.filtered;
       const html = `
         <div class="line"><span class="label">TOTALS</span> →
-          Revenue: <b>${t.revenue}</b> |
+          Invoice: <b>${t.invoice}</b> |
           COGS: <b>${t.cogs}</b> |
+          Emp. Expense: <b>${t.emp_expense}</b> |
           Profit: <b>${t.profit}</b>
         </div>`;
       $("#totals").html(html);
-    } else { $("#totals").html(''); }
+    } else {
+      $("#totals").html('');
+    }
   });
-  
+
 });
 
 // Helpers
@@ -68,10 +72,10 @@ $.fn.serializeObject = function(){
   return o;
 };
 
-function validatePLPDates() {
-  const from = document.getElementById("plp_date_from").value;
-  const to   = document.getElementById("plp_date_to").value;
-  const err  = document.getElementById("plp_date_error");
+function validatePLIDates() {
+  const from = document.getElementById("pli_date_from").value;
+  const to   = document.getElementById("pli_date_to").value;
+  const err  = document.getElementById("pli_date_error");
   err.textContent = "";
 
   if (!from && !to) return true;

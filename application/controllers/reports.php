@@ -859,10 +859,11 @@ var dchart = c3.generate({
 
     // ========================== VIEW ==========================
     case 'pl-products':
-        if(!(has_access($user->roleid, 'reports'))) {
-            r2(U."dashboard",'e',$_L['You do not have permission']);
+        if (!(has_access($user->roleid, 'reports'))) {
+            r2(U . "dashboard", 'e', $_L['You do not have permission']);
         }
 
+        // branches (same as before)
         $branches = ORM::for_table('sys_accounts')
             ->select('id')
             ->select('alias')
@@ -870,196 +871,200 @@ var dchart = c3.generate({
 
         $ui->assign('branches', $branches);
         $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
-        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min','reports-pl-products']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'reports-pl-products']));
         $ui->display('reports_pl_products.tpl');
         break;
 
 
     // ========================== DATATABLE =====================
-        case 'pl-products-dt':
-            if(!(has_access($user->roleid, 'reports'))) {
-                header('Content-Type: application/json'); echo json_encode(['error'=>'Permission denied']); break;
-            }
-            if (function_exists('ob_get_level') && ob_get_level() > 0) { @ob_clean(); }
-
-            try {
-                $req = $_REQUEST;
-
-                $length = isset($req['length']) ? (int)$req['length'] : 10;
-                $start  = isset($req['start'])  ? max(0, (int)$req['start']) : 0;
-
-                // DataTable columns: Sr, Branch, Product, Qty Sold, Avg SP, Revenue, COGS, Profit, Profit %
-                $columns = [
-                    0 => 'sr',
-                    1 => 'branch_id',
-                    2 => 'item_name',
-                    3 => 'sold_qty',
-                    4 => 'avg_sp',
-                    5 => 'revenue',
-                    6 => 'cogs',
-                    7 => 'profit'
-                ];
-                $order_index = isset($req['order'][0]['column']) ? (int)$req['order'][0]['column'] : 7; // default: Profit
-                $order_col   = isset($columns[$order_index]) ? $columns[$order_index] : 'profit';
-                $order_dir   = (isset($req['order'][0]['dir']) && strtolower($req['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
-
-                $date_from  = !empty($req['date_from']) ? $req['date_from'] : null;
-                $date_to    = !empty($req['date_to'])   ? $req['date_to']   : null;
-                $branch_id  = !empty($req['branch_id']) ? (int)$req['branch_id'] : null;
-                $q          = !empty($req['product_query']) ? trim($req['product_query']) : '';
-
-                // ---------- WHERE + PARAMS (sales only; invoices drive branch/date) ----------
-                $sWhere  = " 1=1 ";
-                $sParams = [];
-                if ($branch_id) {
-                    $sWhere   .= " AND inv.company_id = ? ";
-                    $sParams[] = $branch_id;
-                }
-                if ($date_from && $date_to) {
-                    // Your requirement: use sys_invoices.created_at_datetime
-                    $sWhere   .= " AND DATE(inv.created_at_datetime) BETWEEN ? AND ? ";
-                    $sParams[] = $date_from;
-                    $sParams[] = $date_to;
-                }
-
-                // Product filter is applied outside (needs sys_items)
-                $productWhere   = " 1=1 ";
-                $productParams  = [];
-                if ($q !== '') {
-                    $productWhere   = " (i.name LIKE ? OR i.id = ?) ";
-                    $productParams[] = '%'.$q.'%';
-                    $productParams[] = ctype_digit($q) ? (int)$q : 0;
-                }
-
-                // ---- SALES aggregate: company_id (branch) × item (qty & revenue after discount) ----
-                // We also keep avg of 'amount' (unit sell price on the line) for reference if needed.
-                $salesSQL = "
-                    SELECT
-                        inv.company_id                                   AS branch_id,
-                        CAST(ii.itemcode AS UNSIGNED)                    AS item_id,
-                        SUM(ii.qty)                                      AS sold_qty,
-                        SUM(ii.total)                                    AS revenue,
-                        -- Optional: average of line 'amount' (unit SP before qty). We won't display it, but handy to keep.
-                        CASE WHEN SUM(ii.qty) = 0 THEN 0
-                            ELSE SUM(ii.amount * ii.qty) / SUM(ii.qty)
-                        END                                              AS avg_line_rate
-                    FROM sys_invoiceitems ii
-                    JOIN sys_invoices inv ON inv.id = ii.invoiceid
-                    WHERE $sWhere
-                    AND CAST(ii.itemcode AS UNSIGNED) > 0
-                    GROUP BY inv.company_id, CAST(ii.itemcode AS UNSIGNED)
-                ";
-
-                $mainSQL = "
-                    SELECT
-                        s.branch_id,
-                        i.id                         AS item_id,
-                        i.name                       AS item_name,
-                        i.product_stock_type         AS unit_label,
-                        COALESCE(i.purchase_price,0) AS purchase_price,
-                        COALESCE(i.sales_price,0)    AS sales_price,
-                        COALESCE(s.sold_qty, 0)      AS sold_qty,
-                        COALESCE(s.revenue, 0)       AS revenue,
-                        CASE WHEN COALESCE(s.sold_qty,0) = 0 THEN 0
-                            ELSE COALESCE(s.revenue,0) / COALESCE(s.sold_qty,0)
-                        END                          AS avg_sp,
-                        (COALESCE(s.sold_qty,0) * COALESCE(i.purchase_price,0))                   AS cogs,
-                        (COALESCE(s.revenue,0) - (COALESCE(s.sold_qty,0) * COALESCE(i.purchase_price,0))) AS profit
-                    FROM ( $salesSQL ) s
-                    JOIN sys_items i ON i.id = s.item_id
-                    WHERE $productWhere
-                ";
-
-
-                // Params order: sales(where) + product(where)
-                $baseParams = array_merge($sParams, $productParams);
-
-                // Count rows
-                $countSQL = "SELECT COUNT(*) AS c FROM ( $mainSQL ) t";
-                $cnt = ORM::for_table('sys_items')->raw_query($countSQL, $baseParams)->find_one();
-                $recordsFiltered = $cnt ? (int)$cnt->c : 0;
-
-                // Ordering map
-                $orderMap = [
-                    'branch_id'  => 'branch_id',
-                    'item_name'  => 'item_name',
-                    'sold_qty'   => 'sold_qty',
-                    'avg_sp'     => 'avg_sp',
-                    'revenue'    => 'revenue',
-                    'cogs'       => 'cogs',
-                    'profit'     => 'profit'
-                ];
-                $orderBy = isset($orderMap[$order_col]) ? $orderMap[$order_col] : 'profit';
-                $orderDir = $order_dir === 'ASC' ? 'ASC' : 'DESC';
-
-                $pagedSQL = "
-                    SELECT * FROM ( $mainSQL ) t
-                    ORDER BY $orderBy $orderDir
-                    ".($length != -1 ? " LIMIT $start, $length " : "")."
-                ";
-
-                $rows = ORM::for_table('sys_items')->raw_query($pagedSQL, $baseParams)->find_array();
-
-                $totSQL = "
-                    SELECT
-                        SUM(t.revenue) AS total_revenue,
-                        SUM(t.cogs)    AS total_cogs,
-                        SUM(t.profit)  AS total_profit
-                    FROM ( $mainSQL ) t
-                ";
-                $tot = ORM::for_table('sys_items')->raw_query($totSQL, $baseParams)->find_one();
-
-                $total_revenue    = $tot ? (float)$tot->total_revenue    : 0.0;
-                $total_cogs       = $tot ? (float)$tot->total_cogs       : 0.0;
-                $total_profit     = $tot ? (float)$tot->total_profit     : 0.0;
-
-                // Build DataTable rows
-                $data = [];
-                $sr = $start + 1;
-                foreach ($rows as $r) {
-                    // human branch alias via helper
-                    $alias = get_branch_name((int)$r['branch_id'], 'alias');
-                    if (!$alias) { $alias = get_branch_name((int)$r['branch_id'], 'account') ?: ('Branch #'.(int)$r['branch_id']); }
-
-                    $unit = $r['unit_label'] ?: 'qty';
-                    $pp   = number_format((float)$r['purchase_price'], 2, '.', '');
-                    $sp   = number_format((float)$r['sales_price'],    2, '.', '');
-                    $avg  = number_format((float)$r['avg_sp'],         2, '.', '');
-
-                    $data[] = [
-                        $sr++,
-                        $alias,
-                        htmlspecialchars($r['item_name']) . ' <small class="text-muted">(#'.(int)$r['item_id'].' • PP: '.$pp.' • SP: '.$sp.')</small>',
-                        number_format((float)$r['sold_qty'], 2, '.', '') . ' <small>' . htmlspecialchars($unit) . '</small>',
-                        $avg,
-                        '<span class="amount">'.number_format((float)$r['revenue'], 2, '.', '').'</span>',
-                        '<span class="amount">'.number_format((float)$r['cogs'],    2, '.', '').'</span>',
-                        '<span class="amount">'.number_format((float)$r['profit'],  2, '.', '').'</span>',
-                    ];
-                }
-
-                $json = [
-                    'draw'            => intval($req['draw'] ?? 0),
-                    'recordsTotal'    => $recordsFiltered,
-                    'recordsFiltered' => $recordsFiltered,
-                    'data'            => $data,
-                    'totals'          => [
-                        'filtered' => [
-                            'revenue'     => number_format($total_revenue, 2, '.', ''),
-                            'cogs'        => number_format($total_cogs,    2, '.', ''),
-                            'profit'      => number_format($total_profit,  2, '.', '')
-                        ]
-                    ]
-                ];
-
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode($json);
-
-            } catch (Throwable $e) {
-                header('Content-Type: application/json; charset=utf-8', true, 500);
-                echo json_encode(['error'=>'server_error','message'=>$e->getMessage()]);
-            }
+    case 'pl-products-dt':
+        if (!(has_access($user->roleid, 'reports'))) {
+            header('Content-Type: application/json'); 
+            echo json_encode(['error' => 'Permission denied']); 
             break;
+        }
+
+        if (function_exists('ob_get_level') && ob_get_level() > 0) { @ob_clean(); }
+
+        try {
+            $req   = $_REQUEST;
+            $length = isset($req['length']) ? (int)$req['length'] : 10;
+            $start  = isset($req['start'])  ? max(0, (int)$req['start']) : 0;
+
+            // columns in DataTable
+            // 0 SR, 1 Branch, 2 Invoice#, 3 Invoice Amt, 4 COGS, 5 Emp Expense, 6 Profit
+            $columns = [
+                0 => 'sr',
+                1 => 'company_id',
+                2 => 'invoicenum',
+                3 => 'subtotal',
+                4 => 'cogs',
+                5 => 'emp_expense',
+                6 => 'profit',
+            ];
+            $order_index = isset($req['order'][0]['column']) ? (int)$req['order'][0]['column'] : 6;
+            $order_col   = isset($columns[$order_index]) ? $columns[$order_index] : 'profit';
+            $order_dir   = (isset($req['order'][0]['dir']) && strtolower($req['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+            $date_from  = !empty($req['date_from']) ? $req['date_from'] : null;
+            $date_to    = !empty($req['date_to'])   ? $req['date_to']   : null;
+            $branch_id  = !empty($req['branch_id']) ? (int)$req['branch_id'] : null;
+            $inv_query  = !empty($req['invoice_query']) ? trim($req['invoice_query']) : '';
+
+            // =============== WHERE for invoices ===================
+            // invoices table: need only Paid
+            $invWhere  = " inv.status = 'Paid' ";
+            $invParams = [];
+
+            if ($branch_id) {
+                // assuming company_id exists in sys_invoices (same as your previous code)
+                $invWhere   .= " AND inv.company_id = ? ";
+                $invParams[] = $branch_id;
+            }
+
+            if ($date_from && $date_to) {
+                // assuming created_at_datetime or date field - adapt to your schema
+                $invWhere   .= " AND DATE(inv.created_at_datetime) BETWEEN ? AND ? ";
+                $invParams[] = $date_from;
+                $invParams[] = $date_to;
+            }
+
+            if ($inv_query !== '') {
+                // allow search by invoice number or by exact invoice id
+                $invWhere   .= " AND (inv.invoicenum LIKE ? OR inv.id = ?) ";
+                $invParams[] = '%' . $inv_query . '%';
+                $invParams[] = ctype_digit($inv_query) ? (int)$inv_query : 0;
+            }
+
+            // =============== CORE QUERY ===================
+            // 1) get base invoices (paid) with branch + invoice fields
+            // 2) LEFT JOIN subquery for COGS
+            // 3) LEFT JOIN subquery for Employee Expense
+            //
+            // COGS subquery:
+            //   from sys_invoiceitems (ii)
+            //   join sys_items (it) on it.id = ii.product_id
+            //   group by ii.invoiceid
+            //
+            // Employee expense subquery:
+            //   from invoice_alocation (ia)
+            //   where status=1
+            //   group by ia.invoice_id
+
+            $mainSQL = "
+                SELECT
+                    inv.id,
+                    inv.company_id,
+                    inv.invoicenum,
+                    inv.subtotal,
+                    COALESCE(cogs_data.cogs, 0) AS cogs,
+                    COALESCE(exp_data.emp_expense, 0) AS emp_expense,
+                    (inv.subtotal - COALESCE(cogs_data.cogs,0) - COALESCE(exp_data.emp_expense,0)) AS profit
+                FROM sys_invoices inv
+                LEFT JOIN (
+                    SELECT
+                        ii.invoiceid AS invoice_id,
+                        SUM(ii.qty * COALESCE(it.purchase_price,0)) AS cogs
+                    FROM sys_invoiceitems ii
+                    LEFT JOIN sys_items it ON it.id = ii.product_id
+                    GROUP BY ii.invoiceid
+                ) AS cogs_data ON cogs_data.invoice_id = inv.id
+                LEFT JOIN (
+                    SELECT
+                        ia.invoice_id,
+                        SUM(ia.qty * ia.price) AS emp_expense
+                    FROM invoice_alocation ia
+                    WHERE ia.status = 1
+                    GROUP BY ia.invoice_id
+                ) AS exp_data ON exp_data.invoice_id = inv.id
+                WHERE $invWhere
+            ";
+
+            // count
+            $countSQL = "SELECT COUNT(*) AS c FROM ( $mainSQL ) AS t";
+            $cnt = ORM::for_table('sys_invoices')->raw_query($countSQL, $invParams)->find_one();
+            $recordsFiltered = $cnt ? (int)$cnt->c : 0;
+
+            // ordering map
+            $orderMap = [
+                'company_id'  => 'company_id',
+                'invoicenum'  => 'invoicenum',
+                'subtotal'    => 'subtotal',
+                'cogs'        => 'cogs',
+                'emp_expense' => 'emp_expense',
+                'profit'      => 'profit',
+            ];
+            $orderBy = isset($orderMap[$order_col]) ? $orderMap[$order_col] : 'profit';
+            $orderDir = $order_dir === 'ASC' ? 'ASC' : 'DESC';
+
+            $pagedSQL = "
+                SELECT * FROM ( $mainSQL ) AS t
+                ORDER BY $orderBy $orderDir
+                ".($length != -1 ? " LIMIT $start, $length " : "")."
+            ";
+
+            $rows = ORM::for_table('sys_invoices')->raw_query($pagedSQL, $invParams)->find_array();
+
+            // totals (for footer)
+            $totSQL = "
+                SELECT
+                    SUM(t.subtotal)    AS total_invoice,
+                    SUM(t.cogs)        AS total_cogs,
+                    SUM(t.emp_expense) AS total_emp_expense,
+                    SUM(t.profit)      AS total_profit
+                FROM ( $mainSQL ) AS t
+            ";
+            $tot = ORM::for_table('sys_invoices')->raw_query($totSQL, $invParams)->find_one();
+
+            $total_invoice     = $tot ? (float)$tot->total_invoice     : 0.0;
+            $total_cogs        = $tot ? (float)$tot->total_cogs        : 0.0;
+            $total_emp_expense = $tot ? (float)$tot->total_emp_expense : 0.0;
+            $total_profit      = $tot ? (float)$tot->total_profit      : 0.0;
+
+            // build DataTable data
+            $data = [];
+            $sr = $start + 1;
+            foreach ($rows as $r) {
+                // branch name from helper as earlier
+                $alias = get_branch_name((int)$r['company_id'], 'alias');
+                if (!$alias) {
+                    $alias = get_branch_name((int)$r['company_id'], 'account') ?: ('Branch #'.(int)$r['company_id']);
+                }
+
+                $data[] = [
+                    $sr++,
+                    $alias,
+                    htmlspecialchars($r['invoicenum']),
+                    '<span class="amount">'.number_format((float)$r['subtotal'], 2, '.', '').'</span>',
+                    '<span class="amount">'.number_format((float)$r['cogs'], 2, '.', '').'</span>',
+                    '<span class="amount">'.number_format((float)$r['emp_expense'], 2, '.', '').'</span>',
+                    '<span class="amount">'.number_format((float)$r['profit'], 2, '.', '').'</span>',
+                ];
+            }
+
+            $json = [
+                'draw'            => intval($req['draw'] ?? 0),
+                'recordsTotal'    => $recordsFiltered,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $data,
+                'totals'          => [
+                    'filtered' => [
+                        'invoice'      => number_format($total_invoice, 2, '.', ''),
+                        'cogs'         => number_format($total_cogs, 2, '.', ''),
+                        'emp_expense'  => number_format($total_emp_expense, 2, '.', ''),
+                        'profit'       => number_format($total_profit, 2, '.', ''),
+                    ]
+                ]
+            ];
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($json);
+
+        } catch (Throwable $e) {
+            header('Content-Type: application/json; charset=utf-8', true, 500);
+            echo json_encode(['error' => 'server_error', 'message' => $e->getMessage()]);
+        }
+        break;
 
     default:
         echo 'action not defined';
