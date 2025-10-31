@@ -3584,6 +3584,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
 
         break;
         
+/*
     case 'employee_invoices':
         // Trigger an event
         Event::trigger('employee/employee_invoices/');
@@ -3713,7 +3714,239 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         // Display the employee invoices template
         $ui->display('employee_invoices.tpl');
         break;
+*/
 
+    // ====================================================
+    // VIEW
+    // ====================================================
+    case 'employee_invoices':
+        Event::trigger('employee/employee_invoices/');
+
+        $ui->assign('_application_menu', 'employee_invoices');
+        $ui->assign('_st', 'Employee Invoices');
+        $ui->assign('_title', $config['CompanyName'].' - '.$_L['Employee Invoices']);
+
+        // current user
+        $c = Contacts::details();
+        $branch_name = get_branch_name($c->branch_id);
+        $ui->assign('branch_name', $branch_name);
+        $ui->assign('user', $c);
+
+        // we do NOT fetch invoices here – DataTable will do it
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'employee-invoices-dt']));
+
+        $ui->display('employee_invoices.tpl');
+        break;
+
+
+    // ====================================================
+    // DATATABLE (AJAX)
+    // ====================================================
+    case 'employee_invoices-dt':
+        // must be logged in contact
+        $c = Contacts::details();
+        if (!$c) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'unauthorized']);
+            break;
+        }
+
+        if (function_exists('ob_get_level') && ob_get_level() > 0) { @ob_clean(); }
+
+        try {
+            $req    = $_REQUEST;
+            $length = isset($req['length']) ? (int)$req['length'] : 10;
+            $start  = isset($req['start'])  ? max(0, (int)$req['start']) : 0;
+
+            $payment_status = isset($req['payment_status']) ? trim($req['payment_status']) : '';
+            $search_term = isset($req['search_term']) ? trim($req['search_term']) : '';
+
+            // DataTable columns
+            $columns = [
+                0 => 'sr',
+                1 => 'invoice_num',
+                2 => 'qty',
+                3 => 'amount',
+                4 => 'total_earn',
+                5 => 'order_status',
+                6 => 'payment_status',
+                7 => 'assign_date',
+                8 => 'completed_date',
+                9 => 'paid_date',
+            ];
+            $order_index = isset($req['order'][0]['column']) ? (int)$req['order'][0]['column'] : 7;
+            $order_col   = isset($columns[$order_index]) ? $columns[$order_index] : 'assign_date';
+            $order_dir   = (isset($req['order'][0]['dir']) && strtolower($req['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+            // -------- base SQL: allocations for this employee --------
+            // get allocations for this employee + invoice (not pending)
+            $timesheetAggSQL = "
+                SELECT
+                    ts.invoice_alocation_id AS alloc_id,
+                    SUM(ts.qty)                         AS ts_qty,
+                    SUM(ts.amount)                      AS ts_amount,
+                    SUM(ts.earn_amount)                 AS ts_earn,
+                    MAX(CASE WHEN ts.transaction_id IS NOT NULL AND ts.transaction_id <> '' THEN 1 ELSE 0 END) AS is_paid,
+                    MIN(CASE WHEN ts.transaction_id IS NOT NULL AND ts.transaction_id <> '' THEN ts.paid_date ELSE NULL END) AS paid_date
+                FROM crm_timesheet ts
+                GROUP BY ts.invoice_alocation_id
+            ";
+
+            $baseSQL = "
+                SELECT
+                    alloc.id,
+                    alloc.invoice_id,
+                    alloc.employee_id,
+                    alloc.qty        AS alloc_qty,
+                    alloc.price      AS alloc_price,
+                    alloc.status     AS alloc_status,
+                    alloc.created_at AS assign_date,
+                    alloc.completed_date AS completed_date,
+                    inv.invoicenum,
+                    inv.delivery_status,
+                    tsagg.ts_qty,
+                    tsagg.ts_amount,
+                    tsagg.ts_earn,
+                    tsagg.is_paid,
+                    tsagg.paid_date
+                FROM invoice_alocation alloc
+                LEFT JOIN sys_invoices inv
+                ON inv.id = alloc.invoice_id
+                LEFT JOIN ( $timesheetAggSQL ) AS tsagg
+                ON tsagg.alloc_id = alloc.id
+                WHERE alloc.employee_id = ?
+                AND (inv.id IS NULL OR inv.delivery_status <> 'pending')
+            ";
+
+            $params = [$c->id];
+
+            $allRows = ORM::for_table('invoice_alocation')
+                ->raw_query($baseSQL, $params)
+                ->find_array();
+
+            $filtered = [];
+            foreach ($allRows as $row) {
+                // compute values like old code
+                if (!empty($row['ts_qty'])) {
+                    $qty        = (float)$row['ts_qty'];
+                    $amount     = (float)$row['ts_amount'];
+                    $total_earn = (float)$row['ts_earn'];
+                    $is_paid    = (int)$row['is_paid'];
+                    $paid_date  = $row['paid_date'];
+                } else {
+                    $qty        = (float)$row['alloc_qty'];
+                    $amount     = (float)$row['alloc_price'];
+                    $total_earn = (float)$row['alloc_qty'] * (float)$row['alloc_price'];
+                    $is_paid    = 0;
+                    $paid_date  = null;
+                }
+
+                // apply filter (All / Paid / Unpaid)
+                if ($payment_status !== '' && (int)$payment_status !== $is_paid) {
+                    continue;
+                }
+
+                // 🔎 apply search (invoice, amount, dates, etc.)
+                if ($search_term !== '') {
+                    $needle = strtolower($search_term);
+                    $hay = strtolower(
+                        ($row['invoicenum'] ?? '') . ' ' .
+                        $qty . ' ' .
+                        $amount . ' ' .
+                        $total_earn . ' ' .
+                        ($row['alloc_status'] == 1 ? 'complete' : 'assigned')
+                    );
+                    if (strpos($hay, $needle) === false) {
+                        continue;
+                    }
+                }
+
+                $filtered[] = [
+                    'invoice_num'    => $row['invoicenum'] ?: 'N/A',
+                    'qty'            => $qty,
+                    'amount'         => $amount,
+                    'total_earn'     => $total_earn,
+                    'order_status'   => (int)$row['alloc_status'],
+                    'payment_status' => $is_paid,
+                    'assign_date'    => $row['assign_date'],
+                    'completed_date' => $row['completed_date'],
+                    'paid_date'      => $paid_date,
+                ];
+            }
+
+            $recordsFiltered = count($filtered);
+
+            // sort in PHP
+            usort($filtered, function($a, $b) use ($order_col, $order_dir) {
+                $dir = ($order_dir === 'ASC') ? 1 : -1;
+                $va = $a[$order_col] ?? '';
+                $vb = $b[$order_col] ?? '';
+                if ($va == $vb) return 0;
+                return ($va < $vb) ? (-1 * $dir) : (1 * $dir);
+            });
+
+            // slice
+            $paged = array_slice($filtered, $start, $length == -1 ? null : $length);
+
+            // totals
+            $totalEarnSum = 0;
+            foreach ($filtered as $f) {
+                $totalEarnSum += (float)$f['total_earn'];
+            }
+
+            // build rows
+            $data = [];
+            $sr = $start + 1;
+            foreach ($paged as $r) {
+                $orderStatusHtml = $r['order_status'] == 1
+                    ? '<span class="text-success">Complete</span>'
+                    : '<span class="text-danger">Assigned</span>';
+
+                $salaryStatusHtml = $r['payment_status'] == 1
+                    ? '<span class="badge badge-success">Paid</span>'
+                    : '<span class="badge badge-danger">Unpaid</span>';
+
+                $assign    = $r['assign_date']    ? date('j F Y', strtotime($r['assign_date'])) : '';
+                $completed = $r['completed_date'] ? date('j F Y', strtotime($r['completed_date'])) : '';
+                $paid      = $r['paid_date']      ? date('j F Y', strtotime($r['paid_date'])) : '';
+
+                $data[] = [
+                    $sr++,
+                    htmlspecialchars($r['invoice_num']),
+                    $r['qty'],
+                    $r['amount'],
+                    $r['total_earn'],
+                    $orderStatusHtml,
+                    $salaryStatusHtml,
+                    $assign,
+                    $completed,
+                    $paid,
+                ];
+            }
+
+            $json = [
+                'draw'            => intval($req['draw'] ?? 0),
+                'recordsTotal'    => $recordsFiltered,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $data,
+                'totals'          => [
+                    'total_earn' => number_format($totalEarnSum, 2, '.', ''),
+                ],
+                'total_count'     => $recordsFiltered,
+            ];
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($json);
+
+        } catch (Throwable $e) {
+            header('Content-Type: application/json; charset=utf-8', true, 500);
+            echo json_encode([
+                'error'   => 'server_error',
+                'message' => $e->getMessage(),
+            ]);
+        }
+        break;
 
 
 

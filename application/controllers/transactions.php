@@ -368,10 +368,11 @@ switch ($action) {
                 $timesheets = ORM::for_table('crm_timesheet')->where_in('id', $idsArray)->find_many();
             
                 // echo 'Found records: ' . count($timesheets) . '<br>';
-            
+                $today = date('Y-m-d H:i:s');
                 foreach ($timesheets as $ts) {
                     // echo 'Updating ID: ' . $ts->id . '<br>';
                     $ts->set('transaction_id', $tid);
+                    $ts->set('paid_date', $today);
                     $ts->save();
                 }
             

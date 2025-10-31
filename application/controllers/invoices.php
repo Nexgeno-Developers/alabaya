@@ -3527,9 +3527,10 @@ function showDiv(elem){
     $invoiceAllocations = ORM::for_table('invoice_alocation')
         ->where('invoice_id', $invoiceId)
         ->find_many();
-
+    $today = date('Y-m-d H:i:s');
     foreach ($invoiceAllocations as $allocation) {
         $allocation->status = 1;
+        $allocation->completed_date = $today;
         $allocation->save();
         
         // Get allocation details
