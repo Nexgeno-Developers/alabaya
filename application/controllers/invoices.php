@@ -3265,6 +3265,7 @@ function showDiv(elem){
     //     ];
     // }
 
+    $categoryPricing = [];
     $designItem = ORM::for_table('sys_invoiceitems')
         ->select('design_id')
         ->where('invoiceid', $invoiceId)
@@ -3281,10 +3282,15 @@ function showDiv(elem){
             ->select('category_pricing')
             ->where('id', $designId)
             ->find_one();
-        
-        // Decode category pricing JSON
-        $categoryPricing = !empty($sysDesigns->category_pricing) ? json_decode($sysDesigns->category_pricing, true) : [];
+            
+        if ($sysDesigns && !empty($sysDesigns->category_pricing)) {
+            $decoded = json_decode($sysDesigns->category_pricing, true);
 
+            // make sure decode didn’t fail
+            if (is_array($decoded)) {
+                $categoryPricing = $decoded;
+            }
+        }
     }
     
     // Fetch category employee data
@@ -3295,15 +3301,26 @@ function showDiv(elem){
     foreach ($categoryEmployees as $category) {
         $price = $category->price ?? 0; // Default price from category_employee if available
     
+        // if (!empty($categoryPricing)) {
+        //     foreach ($categoryPricing as $pricing) {
+        //         if ($pricing['category_id'] == $category->id) {
+        //             $price = $pricing['price']; // Override with design-specific price if available
+        //             break;
+        //         }
+        //     }
+        // }
+
         if (!empty($categoryPricing)) {
             foreach ($categoryPricing as $pricing) {
-                if ($pricing['category_id'] == $category->id) {
-                    $price = $pricing['price']; // Override with design-specific price if available
+                // your JSON is like {"category_id":"7","price":"180"}
+                // so compare as strings to be safe
+                if ((string)$pricing['category_id'] === (string)$category->id) {
+                    $price = $pricing['price'];
                     break;
                 }
             }
         }
-    
+
         $categoryData[] = [
             'id' => $category->id,
             'name' => $category->name,
