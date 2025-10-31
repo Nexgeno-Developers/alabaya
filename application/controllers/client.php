@@ -3747,20 +3747,32 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
         // must be logged in contact
         $c = Contacts::details();
         if (!$c) {
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['error' => 'unauthorized']);
             break;
         }
 
-        if (function_exists('ob_get_level') && ob_get_level() > 0) { @ob_clean(); }
+        // kill any previous output
+        if (function_exists('ob_get_level')) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
 
         try {
             $req    = $_REQUEST;
             $length = isset($req['length']) ? (int)$req['length'] : 10;
             $start  = isset($req['start'])  ? max(0, (int)$req['start']) : 0;
 
+            // filters from form
             $payment_status = isset($req['payment_status']) ? trim($req['payment_status']) : '';
-            $search_term = isset($req['search_term']) ? trim($req['search_term']) : '';
+            $order_status   = isset($req['order_status']) ? trim($req['order_status']) : '';
+            $search_term    = isset($req['search_term']) ? trim($req['search_term']) : '';
+            $date_type      = isset($req['date_type']) ? trim($req['date_type']) : '';
+            $date_from      = isset($req['date_from']) ? trim($req['date_from']) : '';
+            $date_to        = isset($req['date_to']) ? trim($req['date_to']) : '';
 
             // DataTable columns
             $columns = [
@@ -3779,8 +3791,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
             $order_col   = isset($columns[$order_index]) ? $columns[$order_index] : 'assign_date';
             $order_dir   = (isset($req['order'][0]['dir']) && strtolower($req['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
 
-            // -------- base SQL: allocations for this employee --------
-            // get allocations for this employee + invoice (not pending)
+            // -------- base SQL (same as before) --------
             $timesheetAggSQL = "
                 SELECT
                     ts.invoice_alocation_id AS alloc_id,
@@ -3812,22 +3823,24 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                     tsagg.paid_date
                 FROM invoice_alocation alloc
                 LEFT JOIN sys_invoices inv
-                ON inv.id = alloc.invoice_id
+                    ON inv.id = alloc.invoice_id
                 LEFT JOIN ( $timesheetAggSQL ) AS tsagg
-                ON tsagg.alloc_id = alloc.id
+                    ON tsagg.alloc_id = alloc.id
                 WHERE alloc.employee_id = ?
                 AND (inv.id IS NULL OR inv.delivery_status <> 'pending')
             ";
 
             $params = [$c->id];
 
+            // IMPORTANT: use raw_query from ORM
             $allRows = ORM::for_table('invoice_alocation')
                 ->raw_query($baseSQL, $params)
                 ->find_array();
 
             $filtered = [];
             foreach ($allRows as $row) {
-                // compute values like old code
+
+                // compute final figures
                 if (!empty($row['ts_qty'])) {
                     $qty        = (float)$row['ts_qty'];
                     $amount     = (float)$row['ts_amount'];
@@ -3842,12 +3855,45 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                     $paid_date  = null;
                 }
 
-                // apply filter (All / Paid / Unpaid)
+                $alloc_status = (int)$row['alloc_status'];
+
+                // 1) payment filter
                 if ($payment_status !== '' && (int)$payment_status !== $is_paid) {
                     continue;
                 }
 
-                // 🔎 apply search (invoice, amount, dates, etc.)
+                // 2) order status filter
+                if ($order_status !== '' && (int)$order_status !== $alloc_status) {
+                    continue;
+                }
+
+                // 3) date filter
+                if ($date_type !== '' && ($date_from !== '' || $date_to !== '')) {
+                    $row_date_raw = null;
+                    if ($date_type === 'assign_date') {
+                        $row_date_raw = $row['assign_date'];
+                    } elseif ($date_type === 'completed_date') {
+                        $row_date_raw = $row['completed_date'];
+                    } elseif ($date_type === 'paid_date') {
+                        $row_date_raw = $paid_date;
+                    }
+
+                    if (empty($row_date_raw)) {
+                        // no date -> skip
+                        continue;
+                    }
+
+                    $row_date = date('Y-m-d', strtotime($row_date_raw));
+
+                    if ($date_from !== '' && $row_date < $date_from) {
+                        continue;
+                    }
+                    if ($date_to !== '' && $row_date > $date_to) {
+                        continue;
+                    }
+                }
+
+                // 4) search
                 if ($search_term !== '') {
                     $needle = strtolower($search_term);
                     $hay = strtolower(
@@ -3855,7 +3901,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                         $qty . ' ' .
                         $amount . ' ' .
                         $total_earn . ' ' .
-                        ($row['alloc_status'] == 1 ? 'complete' : 'assigned')
+                        ($alloc_status == 1 ? 'complete' : 'assigned')
                     );
                     if (strpos($hay, $needle) === false) {
                         continue;
@@ -3863,11 +3909,11 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                 }
 
                 $filtered[] = [
-                    'invoice_num'    => $row['invoicenum'] ?: 'N/A',
+                    'invoice_num'    => !empty($row['invoicenum']) ? $row['invoicenum'] : 'N/A',
                     'qty'            => $qty,
                     'amount'         => $amount,
                     'total_earn'     => $total_earn,
-                    'order_status'   => (int)$row['alloc_status'],
+                    'order_status'   => $alloc_status,
                     'payment_status' => $is_paid,
                     'assign_date'    => $row['assign_date'],
                     'completed_date' => $row['completed_date'],
@@ -3886,7 +3932,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                 return ($va < $vb) ? (-1 * $dir) : (1 * $dir);
             });
 
-            // slice
+            // slice for paging
             $paged = array_slice($filtered, $start, $length == -1 ? null : $length);
 
             // totals
@@ -3895,7 +3941,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                 $totalEarnSum += (float)$f['total_earn'];
             }
 
-            // build rows
+            // build rows for DataTables
             $data = [];
             $sr = $start + 1;
             foreach ($paged as $r) {
@@ -3936,14 +3982,16 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
                 'total_count'     => $recordsFiltered,
             ];
 
-            header('Content-Type: application/json; charset=utf-8');
             echo json_encode($json);
 
         } catch (Throwable $e) {
-            header('Content-Type: application/json; charset=utf-8', true, 500);
+            // make sure we ALWAYS return valid JSON
             echo json_encode([
-                'error'   => 'server_error',
-                'message' => $e->getMessage(),
+                'draw'            => intval($_REQUEST['draw'] ?? 0),
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => [],
+                'error'           => $e->getMessage(),
             ]);
         }
         break;
