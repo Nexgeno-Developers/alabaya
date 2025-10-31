@@ -3222,99 +3222,65 @@ function showDiv(elem){
         break;        
         
         
-    case 'add-delivey-status2':
+   case 'add-delivey-status2':
 
     Event::trigger('invoices/add-delivey-status2/');
     $sid = $routes['2'];
     $invoiceId = $sid;
 
-    // Fetch the invoice data containing only the 'id' and 'delivery_status' columns
+    // 1) Invoice
     $invoice = ORM::for_table('sys_invoices')
         ->select('id')
         ->select('delivery_status')
         ->where('id', $invoiceId)
         ->find_one();
-        
-    // var_dump($invoiceId);
-    $deliveryStatus = $invoice ? $invoice->delivery_status : null;
-    // var_dump($deliveryStatus);
-    
-    // If you want to display it in your form within an HTML element:
-    // if ($deliveryStatus !== null) {
-    //     echo '<p>Delivery Status: <b> ' . ucfirst($deliveryStatus) . ' </b></p>';
-    // } else {
-    //     echo '<p>No delivery status found for this invoice.</p>';
-    // }
 
-    // Fetch employee names from crm_accounts and merge with invoice_alocation
+    $deliveryStatus = $invoice ? $invoice->delivery_status : null;
+
+    // 2) Allocation with employee name
     $invoice_alocation = ORM::for_table('invoice_alocation')
         ->select('invoice_alocation.*')
         ->select('crm_accounts.account', 'employee_name')
         ->join('crm_accounts', array('invoice_alocation.employee_id', '=', 'crm_accounts.id'))
         ->where('invoice_id', $invoiceId)
         ->find_array();
-        
-    // Fetch category data
-    // $categories = ORM::for_table('category_employee')->find_many();
-    // $categoryData = [];
-    // foreach ($categories as $category) {
-    //     $categoryData[] = [
-    //         'id' => $category->id,
-    //         'name' => $category->name,
-    //         'price' => $category->price,
-    //     ];
-    // }
 
-    $categoryPricing = [];
+    // 3) Get design_id from invoice items
     $designItem = ORM::for_table('sys_invoiceitems')
         ->select('design_id')
         ->where('invoiceid', $invoiceId)
         ->where('item_type', 'design')
-        ->order_by_asc('id') // Ensures the first record is selected
+        ->order_by_asc('id')
         ->find_one();
-    
+
     $designId = $designItem ? $designItem->design_id : null;
-    
-    // var_dump($designId);
-    
+
+    // 👇 IMPORTANT: always init
+    $categoryPricing = [];
+
     if ($designId) {
         $sysDesigns = ORM::for_table('sys_designs')
             ->select('category_pricing')
             ->where('id', $designId)
             ->find_one();
-            
-        if ($sysDesigns && !empty($sysDesigns->category_pricing)) {
-            $decoded = json_decode($sysDesigns->category_pricing, true);
 
-            // make sure decode didn’t fail
-            if (is_array($decoded)) {
-                $categoryPricing = $decoded;
-            }
-        }
+        $categoryPricing = !empty($sysDesigns->category_pricing)
+            ? json_decode($sysDesigns->category_pricing, true)
+            : [];
     }
-    
-    // Fetch category employee data
+
+    // 4) Base categories
     $categoryEmployees = ORM::for_table('category_employee')->find_many();
-    
-    // Prepare category data with associated pricing
+
     $categoryData = [];
     foreach ($categoryEmployees as $category) {
-        $price = $category->price ?? 0; // Default price from category_employee if available
-    
-        // if (!empty($categoryPricing)) {
-        //     foreach ($categoryPricing as $pricing) {
-        //         if ($pricing['category_id'] == $category->id) {
-        //             $price = $pricing['price']; // Override with design-specific price if available
-        //             break;
-        //         }
-        //     }
-        // }
+        // base price
+        $price = $category->price ?? 0;
 
+        // override from design JSON if present
         if (!empty($categoryPricing)) {
             foreach ($categoryPricing as $pricing) {
-                // your JSON is like {"category_id":"7","price":"180"}
-                // so compare as strings to be safe
-                if ((string)$pricing['category_id'] === (string)$category->id) {
+                if ((string)$pricing['category_id'] == (string)$category->id) {
                     $price = $pricing['price'];
                     break;
                 }
@@ -3322,8 +3288,8 @@ function showDiv(elem){
         }
 
         $categoryData[] = [
-            'id' => $category->id,
-            'name' => $category->name,
+            'id'    => $category->id,
+            'name'  => $category->name,
             'price' => $price,
         ];
     }
@@ -3334,6 +3300,7 @@ function showDiv(elem){
     $ui->assign('invoice_alocation', $invoice_alocation);
     $ui->display('select-employee-form.tpl');
     break;
+
     
     case 'add-delivey-status22333':
     Event::trigger('invoices/add-delivey-status2/');
