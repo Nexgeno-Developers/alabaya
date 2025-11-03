@@ -82,7 +82,7 @@
         {/if}        
     </div>
     {if $user->roleid eq 0}
-        <button type="submit" class="btn btn-primary">Filter</button>
+        <button type="submit" class="btn btn-primary" style="margin-bottom:0px;">Filter</button>
     {/if}
 </form>
 <div class="row">

@@ -38,12 +38,12 @@
 						</div>-->		
 						
 						
-						<button type="button" data-inv-id="{$d['id']}" data-phone="{$a['phone']}" class="btn  btn-primary btn-sm" id="delivery_status2"><i class="fa fa-ellipsis-v"></i> Select Employee</button>
+						<button type="button" data-inv-id="{$d['id']}" data-phone="{$a['phone']}" class="btn  btn-primary btn-sm" id="delivery_status2" style="margin-right: 4px;"><i class="fa fa-ellipsis-v"></i> Select Employee</button>
 						
-						<button type="button" data-inv-id="{$d['id']}" data-phone="{$a['phone']}" class="btn  btn-primary btn-sm" id="delivery_status"><i class="fa fa-ellipsis-v"></i> Delivery</button>				
+						<button type="button" data-inv-id="{$d['id']}" data-phone="{$a['phone']}" class="btn  btn-primary btn-sm" id="delivery_status" style="margin-right: 4px;"><i class="fa fa-ellipsis-v"></i> Delivery</button>				
 						
 					<div class="btn-group" role="group">
-						<button type="button" class="btn  btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+						<button type="button" class="btn  btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false" style="margin-right: 4px;">
 								<i class="fa fa-ellipsis-v"></i>  {$_L['Mark As']}
 								<span class="caret"></span>
 						</button>
@@ -63,7 +63,7 @@
 						</ul>
 					</div>
 					{if $_c['accounting'] eq '1'}
-							<button type="button" class="btn  btn-danger btn-sm" id="add_payment"><i class="fa fa-plus"></i> {$_L['Add Payment']}</button>
+							<button type="button" class="btn  btn-danger btn-sm" id="add_payment" style="margin-right: 4px;"><i class="fa fa-plus"></i> {$_L['Add Payment']}</button>
 					{/if}
 					<!--<a target="_blank" href="{$_url}transactions/expense&userid={$d['userid']}&invoiceid={$d['id']}" class="btn  btn-warning btn-sm" id="add_expense"><i class="fa fa-plus"></i> Add Expense</a>-->
 					<!-- <a href="{$_url}client/iview/{$d['id']}/token_{$d['vtoken']}" target="_blank" class="btn btn-primary  btn-sm"><i class="fa fa-paper-plane-o"></i> {$_L['Preview']}</a> -->
@@ -71,7 +71,7 @@
 					<a href="{$_url}invoices/edit/{$d['id']}" class="btn btn-warning  btn-sm"><i class="fa fa-pencil"></i> {$_L['Edit']}</a>
 					{/if}
 					<div class="btn-group" role="group">
-						<button type="button" class="btn  btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i>
+						<button type="button" class="btn  btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false" style="margin-right: 4px;"><i class="fa fa-file-pdf-o"></i>
 							Tailor PDF
 								<span class="caret"></span>
 						</button>
@@ -82,7 +82,7 @@
 					</div>
 
 					<div class="btn-group" role="group">
-						<button type="button" class="btn  btn-success btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i>
+						<button type="button" class="btn  btn-success btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false" style="margin-right: 4px;"><i class="fa fa-file-pdf-o"></i>
 								Customer PDF
 								<span class="caret"></span>
 						</button>

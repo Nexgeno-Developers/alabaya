@@ -151,6 +151,8 @@ h5 {
 .navbar-top-links .dropdown-menu li a {
     padding: 3px 20px;
     min-height: 0;
+    display: flex;
+    align-items: center;
 }
 
 .navbar-top-links .dropdown-menu li a div {
@@ -430,7 +432,8 @@ body.mini-navbar .logo-element {
 
 body.mini-navbar .nav-header {
     padding: 0;
-    background-color: #1ab394;
+    /* background-color: #1ab394; */
+    background-color: black;
 }
 
 body.mini-navbar #page-wrapper,
@@ -3467,7 +3470,25 @@ body.boxed-layout #wrapper {
     border-color: #ddd
 }
 
-.contact-datatable_paginate
+#contact-datatable_paginate .paginate_button{
+    padding: 3px 8px !important;
+    margin-left: 4px !important;
+    /* border: 0.01px solid black !important; */
+    border: 1px solid #DDDDDD;
+}
+
+#contact-datatable_paginate .paginate_button:hover{
+    border: 1px solid #DDDDDD !important;
+}
+
+#contact-datatable_paginate{
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+#usersTable_paginate .paginate_button{
+    padding: 0 !important;
+}
 
 .tt-suggestion p {
     margin: 0;
