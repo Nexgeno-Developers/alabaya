@@ -433,7 +433,18 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 $totalRecordCount = $totalRecordQuery->count();
                 
                 // Initialize the ORM query for fetching records
-                $recordQuery = ORM::for_table('crm_timesheet');
+                // $recordQuery = ORM::for_table('crm_timesheet');
+
+                // Build record query WITH joins to fetch invoicenum and completed_date
+                $recordQuery = ORM::for_table('crm_timesheet')
+                    ->select('crm_timesheet.*')
+                    ->select('crm_timesheet.paid_date', 'paid_date')
+                    ->left_outer_join('invoice_alocation', 'crm_timesheet.invoice_alocation_id = invoice_alocation.id')
+                    ->select('invoice_alocation.completed_date', 'completed_date')
+                    ->select('invoice_alocation.invoice_id', 'ia_invoice_id')
+                    ->left_outer_join('sys_invoices', 'invoice_alocation.invoice_id = sys_invoices.id')
+                    ->select('sys_invoices.invoicenum', 'invoicenum');
+                    
                 // $recordQuery = ORM::for_table('crm_timesheet')
                 //     ->select('crm_timesheet.*')
                 //     ->select('sys_invoices.invoicenum', 'invoicenum') // Fetch invoicenum if available
@@ -577,7 +588,14 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     // $invoicenum = $record->invoicenum 
                     //     ? '<a href="'.APP_URL.'/?ng=invoices/view/'.$record->invoice_id.'/" target="_blank">'.$record->invoicenum.'</a>' 
                     //     : 'N/A'; // Default to 'N/A' if invoicenum is null
-                    
+
+                    // Format paid_date and completed_date (if empty fallback to N/A)
+                    // $paid_date = !empty($record->paid_date) ? $record->paid_date : 'N/A';
+                    // $completed_date = !empty($record->completed_date) ? $record->completed_date : 'N/A';
+                    $paid_date = !empty($record->paid_date) ? date('Y-m-d', strtotime($record->paid_date)) : 'N/A';
+                    $completed_date = !empty($record->completed_date) ? date('Y-m-d', strtotime($record->completed_date)) : 'N/A';
+
+
                     $data[] = array( 
                         "sr"                => $sr,                      
                         "employee_type"     => $salery_type,                      
@@ -592,6 +610,8 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                         "payment_status"    => $payment_status_text,
                         "remarks"           => $record->remarks,
                         "date"              => $record->date,
+                        "paid_date"         => $paid_date,
+                        "completed_date"    => $completed_date,
                         "action"            => $edit,
                     ); 
                     $sr++;    

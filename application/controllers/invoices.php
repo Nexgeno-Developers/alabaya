@@ -804,7 +804,8 @@ switch ($action) {
 		case 'add-performa-post':
         Event::trigger('invoices/add-performa-post/');
         $cid = _post('cid');
-				$company = _post('company');
+        $company = _post('company');
+        $company_branch_id = _post('company_branch_id');
 				
         
         $msg = '';
@@ -861,6 +862,7 @@ switch ($action) {
             $crm_accounts->gname = 'Customer';
             $crm_accounts->gid = 1;
             $crm_accounts->measurements = json_encode($measurements);
+            $crm_accounts->branch_id = $company_branch_id;
             $crm_accounts->save();
             $cid = $crm_accounts->id();
         }

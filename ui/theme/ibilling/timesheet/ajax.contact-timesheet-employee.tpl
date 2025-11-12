@@ -83,6 +83,9 @@
                                 <th>Remarks</th>
                                 <th>Payment Status</th>
                                 <th>Date</th>
+                                <th>Completed Date</th>
+                                <th>Paid Date</th>
+
                                 <th class="text-right" data-sort-ignore="true">Manage</th>
                             </tr>
                         </thead>
@@ -167,6 +170,8 @@
             	{ data: 'remarks' },
             	{ data: 'payment_status' },
             	{ data: 'date' },
+            	{ data: 'completed_date' },
+            	{ data: 'paid_date' },
             	{ data: 'action' },
             ], 
             "columnDefs": [
