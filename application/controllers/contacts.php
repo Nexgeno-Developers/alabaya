@@ -392,10 +392,24 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 $draw = $_POST['draw'];
                 $start = $_POST['start'];
                 $rowperpage = $_POST['length'];
-                $columnIndex = $_POST['order'][0]['column'];
-                $columnName = $_POST['columns'][$columnIndex]['data'];
-                $columnSortOrder = $_POST['order'][0]['dir'];
-                
+                // $columnIndex = $_POST['order'][0]['column'];
+                // $columnName = $_POST['columns'][$columnIndex]['data'];
+                // $columnSortOrder = $_POST['order'][0]['dir'];
+                $columnIndex = $_POST['order'][0]['column'] ?? 0;
+                $columnSortOrder = $_POST['order'][0]['dir'] ?? 'desc';
+
+                $sortableColumns = [
+                    'date'           => 'crm_timesheet.date',
+                    'qty'            => 'crm_timesheet.qty',
+                    'amount'         => 'crm_timesheet.amount',
+                    'earn_amount'    => 'crm_timesheet.earn_amount',
+                    'paid_date'      => 'crm_timesheet.paid_date',
+                    'completed_date' => 'invoice_alocation.completed_date',
+                ];
+
+                $requestedColumn = $_POST['columns'][$columnIndex]['data'] ?? '';
+                $orderColumn = $sortableColumns[$requestedColumn] ?? 'crm_timesheet.date';
+
                 $employee_id =  isset($_POST['employee_id']) ? $_POST['employee_id'] : '';
                 $todate  = isset($_POST['todate']) ? $_POST['todate'] : '';
                 $fromdate  = isset($_POST['fromdate']) ? $_POST['fromdate'] : '';
@@ -436,93 +450,143 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 // $recordQuery = ORM::for_table('crm_timesheet');
 
                 // Build record query WITH joins to fetch invoicenum and completed_date
-                $recordQuery = ORM::for_table('crm_timesheet')
-                    ->select('crm_timesheet.*')
-                    ->select('crm_timesheet.paid_date', 'paid_date')
-                    ->left_outer_join('invoice_alocation', 'crm_timesheet.invoice_alocation_id = invoice_alocation.id')
-                    ->select('invoice_alocation.completed_date', 'completed_date')
-                    ->select('invoice_alocation.invoice_id', 'ia_invoice_id')
-                    ->left_outer_join('sys_invoices', 'invoice_alocation.invoice_id = sys_invoices.id')
-                    ->select('sys_invoices.invoicenum', 'invoicenum');
-                    
                 // $recordQuery = ORM::for_table('crm_timesheet')
                 //     ->select('crm_timesheet.*')
-                //     ->select('sys_invoices.invoicenum', 'invoicenum') // Fetch invoicenum if available
+                //     ->select('crm_timesheet.paid_date', 'paid_date')
                 //     ->left_outer_join('invoice_alocation', 'crm_timesheet.invoice_alocation_id = invoice_alocation.id')
-                //     ->left_outer_join('sys_invoices', 'invoice_alocation.invoice_id = sys_invoices.id'); // Use left join
+                //     ->select('invoice_alocation.completed_date', 'completed_date')
+                //     ->select('invoice_alocation.invoice_id', 'ia_invoice_id')
+                //     ->left_outer_join('sys_invoices', 'invoice_alocation.invoice_id = sys_invoices.id')
+                //     ->select('sys_invoices.invoicenum', 'invoicenum');
+                    
+                // Build record query WITH joins to fetch invoicenum and completed_date
+                $recordQuery = ORM::for_table('crm_timesheet')
+                    ->select_many([
+                        'timesheet_id'         => 'crm_timesheet.id',
+                        'employee_id'          => 'crm_timesheet.employee_id',
+                        'branch_id'            => 'crm_timesheet.branch_id',
+                        'checkin'              => 'crm_timesheet.checkin',
+                        'checkout'             => 'crm_timesheet.checkout',
+                        'qty'                  => 'crm_timesheet.qty',
+                        'amount'               => 'crm_timesheet.amount',
+                        'earn_amount'          => 'crm_timesheet.earn_amount',
+                        'remarks'              => 'crm_timesheet.remarks',
+                        'invoice_alocation_id' => 'crm_timesheet.invoice_alocation_id',
+                        'date'                 => 'crm_timesheet.date',
+                        'transaction_id'       => 'crm_timesheet.transaction_id',
+                        'paid_date'            => 'crm_timesheet.paid_date',
+                    ])
+                    ->left_outer_join('invoice_alocation', 'crm_timesheet.invoice_alocation_id = invoice_alocation.id')
+                    ->select_many([
+                        'completed_date' => 'invoice_alocation.completed_date',
+                        'ia_invoice_id'  => 'invoice_alocation.invoice_id',
+                    ])
+                    ->left_outer_join('sys_invoices', 'invoice_alocation.invoice_id = sys_invoices.id')
+                    ->select_many([
+                        'invoice_id' => 'sys_invoices.id',
+                        'invoicenum' => 'sys_invoices.invoicenum',
+                    ]);
 
-                
-                // Apply filters based on inputs
-                if(!empty($employee_id)) {
-                    $recordQuery->where('employee_id', $employee_id);
+                // Apply filters to recordQuery (same as before)
+                if (!empty($employee_id)) {
+                    $recordQuery->where('crm_timesheet.employee_id', $employee_id);
                 }
                 if (!empty($fromdate) && !empty($todate)) {
-                    $recordQuery->where_gte('date', $fromdate)->where_lte('date', $todate);
+                    $recordQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
                 }
                 if ($payment_status == 'paid') {
-                    $recordQuery->where_not_null('transaction_id');
+                    $recordQuery->where_not_null('crm_timesheet.transaction_id');
                 } elseif ($payment_status == 'unpaid') {
-                    $recordQuery->where_null('transaction_id');
+                    $recordQuery->where_null('crm_timesheet.transaction_id');
                 }
-            
                 if ($salary_type == 'per_piece') {
-                    $recordQuery->where_not_null('invoice_alocation_id');
+                    $recordQuery->where_not_null('crm_timesheet.invoice_alocation_id');
                 } elseif ($salary_type == 'per_hour') {
-                    $recordQuery->where_null('invoice_alocation_id');
+                    $recordQuery->where_null('crm_timesheet.invoice_alocation_id');
                 }
-// echo '<pre>';
-// var_dump($recordQuery);
-// echo '</pre>';
-// exit;
-                $Records = $recordQuery->find_many();
-                
-                // Initialize variables
-                $timesheetIds   = []; // Fix: Initialize array
-                $invoiceNums    = [];  // Fix: Initialize array
-                // Calculate earnAmountSum for displayed records
-                $earnAmountSumTotal = 0;
-                foreach ($Records as $record) {
-                    $earnAmountSumTotal += round($record->earn_amount, 2);
-                    if ($record->earn_amount > 0) { // Exclude records with earn_amount = 0
-                        $timesheetIds[] = $record->id; 
 
-                        // Fetch invoice_alocation_id for each record
-                        $invoice_alocation = ORM::for_table('invoice_alocation')
-                            ->select('invoice_id')
-                            ->where('id', $record->invoice_alocation_id)
-                            ->find_one();
-                        
-                        // Fetch invoicenum from sys_invoices if invoice_id is available
-                        if ($invoice_alocation) {
-                            $invoice_id = $invoice_alocation->invoice_id; // Extract the invoice_id from the result
-                        
-                            // Fetch invoicenum from sys_invoices using the invoice_id
-                            $invoice = ORM::for_table('sys_invoices')
-                                ->select('invoicenum')
-                                ->where('id', $invoice_id)
-                                ->find_one();
-                        
-                            if ($invoice) {
-                                $invoiceNums[] = $invoice->invoicenum; // Store all invoice numbers
-                            }
-                        }
-                        
-                    }
-                    
-                    // Remove duplicate invoices and timesheet IDs
-                    $invoiceNums = array_unique($invoiceNums);
-                    $timesheetIds = array_unique($timesheetIds);
-                    
-                    // Convert arrays to comma-separated values
-                    $invoiceDescription = !empty($invoiceNums) ? implode(", ", $invoiceNums) . " " . date("F Y") . " Salary" : "Salary";
-                    $timesheetIdsParam = !empty($timesheetIds) ? implode(",", $timesheetIds) : '';
+                // IMPORTANT: apply ordering to the query BEFORE executing find_many()
+                if ($columnSortOrder === 'asc') {
+                    $recordQuery->order_by_asc($orderColumn);
+                } else {
+                    $recordQuery->order_by_desc($orderColumn);
                 }
-                
-                
-                // Fetch records with pagination limits
-                $records = $recordQuery->offset($start)
-                    ->limit($rowperpage)
-                    ->find_many();
+
+                // Now fetch all rows matching filters to calculate totals / timesheet list
+                $Records = $recordQuery->find_many();
+
+                // Build totals and list of timesheet ids & invoice numbers
+                $timesheetIds = [];
+                $invoiceNums = [];
+                $earnAmountSumTotal = 0.0;
+
+                foreach ($Records as $record) {
+                    $earnAmountSumTotal += (float) round($record->earn_amount, 2);
+                    if (!empty($record->earn_amount) && (float)$record->earn_amount > 0) {
+                        if (!empty($record->timesheet_id)) {
+                            $timesheetIds[] = $record->timesheet_id;
+                        }
+                        if (!empty($record->invoicenum)) {
+                            $invoiceNums[] = $record->invoicenum;
+                        }
+                    }
+                }
+
+                $timesheetIds = array_unique($timesheetIds);
+                $invoiceNums  = array_unique($invoiceNums);
+
+                $invoiceDescription = !empty($invoiceNums) ? implode(', ', $invoiceNums) . ' ' . date("F Y") . ' Salary' : 'Salary';
+                $timesheetIdsParam = !empty($timesheetIds) ? implode(',', $timesheetIds) : '';
+
+                // ---------- Now build a FRESH paginated query (same selects/joins/filters + ordering), then apply offset/limit ----------
+                $paginatedQuery = ORM::for_table('crm_timesheet')
+                    ->select_many([
+                        'timesheet_id'         => 'crm_timesheet.id',
+                        'employee_id'          => 'crm_timesheet.employee_id',
+                        'branch_id'            => 'crm_timesheet.branch_id',
+                        'checkin'              => 'crm_timesheet.checkin',
+                        'checkout'             => 'crm_timesheet.checkout',
+                        'qty'                  => 'crm_timesheet.qty',
+                        'amount'               => 'crm_timesheet.amount',
+                        'earn_amount'          => 'crm_timesheet.earn_amount',
+                        'remarks'              => 'crm_timesheet.remarks',
+                        'invoice_alocation_id' => 'crm_timesheet.invoice_alocation_id',
+                        'date'                 => 'crm_timesheet.date',
+                        'transaction_id'       => 'crm_timesheet.transaction_id',
+                        'paid_date'            => 'crm_timesheet.paid_date',
+                    ])
+                    ->left_outer_join('invoice_alocation', 'crm_timesheet.invoice_alocation_id = invoice_alocation.id')
+                    ->select_many(['completed_date' => 'invoice_alocation.completed_date', 'ia_invoice_id' => 'invoice_alocation.invoice_id'])
+                    ->left_outer_join('sys_invoices', 'invoice_alocation.invoice_id = sys_invoices.id')
+                    ->select_many(['invoice_id' => 'sys_invoices.id', 'invoicenum' => 'sys_invoices.invoicenum']);
+
+                // apply same filters to paginatedQuery
+                if (!empty($employee_id)) {
+                    $paginatedQuery->where('crm_timesheet.employee_id', $employee_id);
+                }
+                if (!empty($fromdate) && !empty($todate)) {
+                    $paginatedQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
+                }
+                if ($payment_status == 'paid') {
+                    $paginatedQuery->where_not_null('crm_timesheet.transaction_id');
+                } elseif ($payment_status == 'unpaid') {
+                    $paginatedQuery->where_null('crm_timesheet.transaction_id');
+                }
+                if ($salary_type == 'per_piece') {
+                    $paginatedQuery->where_not_null('crm_timesheet.invoice_alocation_id');
+                } elseif ($salary_type == 'per_hour') {
+                    $paginatedQuery->where_null('crm_timesheet.invoice_alocation_id');
+                }
+
+                // apply ordering to paginated query
+                if ($columnSortOrder === 'asc') {
+                    $paginatedQuery->order_by_asc($orderColumn);
+                } else {
+                    $paginatedQuery->order_by_desc($orderColumn);
+                }
+
+                // fetch the paginated slice
+                $records = $paginatedQuery->offset($start)->limit($rowperpage)->find_many();
         
 
                 $earnAmountSum = 0;
@@ -530,12 +594,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $earnAmountSum += round($record->earn_amount, 2);
                 }
                             
-                if($columnSortOrder == 'asc') {
-                    $recordQuery->order_by_asc($columnName);
-                }
-                elseif($columnSortOrder == 'desc') {
-                    $recordQuery->order_by_desc($columnName);
-                }
+
         
                 // Prepare data for DataTables
                 $data = array();
@@ -544,7 +603,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 foreach($records as $record) {
                     $employeeId     = $record->employee_id;
                     
-                    $event1 = "edit_timesheet_modal('".$record->id."')";
+                    $event1 = "edit_timesheet_modal('".$record->timesheet_id."')";
                     $payment_status_text = !empty($record->transaction_id) ? 'Paid' : 'Unpaid';
                     $edit = '';
                     if($payment_status_text === 'Unpaid'){

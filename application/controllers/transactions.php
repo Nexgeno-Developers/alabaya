@@ -251,14 +251,17 @@ switch ($action) {
                 });
         ');
 
-        //find latest Expense
-        // $tr = ORM::for_table('sys_transactions')->where('type','Expense')->order_by_desc('id')->limit('20')->find_many();
-        $tr = ORM::for_table('sys_transactions')
+        // find latest Expense (admins see all branches)
+        $expenseQuery = ORM::for_table('sys_transactions')
             ->where('type','Expense')
-            ->where('branch_id', $user['branch_id'])
             ->order_by_desc('id')
-            ->limit(20)
-            ->find_many();
+            ->limit(20);
+
+        if($user['roleid'] != 0){
+            $expenseQuery->where('branch_id', $user['branch_id']);
+        }
+
+        $tr = $expenseQuery->find_many();
 
         $ui->assign('tr', $tr);
 
