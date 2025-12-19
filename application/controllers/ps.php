@@ -301,6 +301,13 @@ switch ($action) {
             $debited_stock = ORM::for_table('sys_items_stock')->where('item_id', $id)->where('type', 'debit')->find_many();
 
             $branch_stock = product_stock_info_by_branch($id);
+            // Ensure every branch is represented (even if zero stock) for transfer UI
+            $all_branches = ORM::for_table('sys_accounts')->order_by_asc('account')->find_array();
+            foreach ($all_branches as $branch) {
+                if (!isset($branch_stock[$branch['id']])) {
+                    $branch_stock[$branch['id']] = 0;
+                }
+            }
             // var_dump($branch_stock);
             // exit;
             $ui->assign('branch_stock', $branch_stock);
@@ -876,7 +883,7 @@ switch ($action) {
         $item_id = _post('item_id');
         $from_branch = _post('from_branch');
         $to_branch = _post('to_branch');
-        $qty = _post('qty');
+        $qty = (float) _post('qty');
 
         $response = ['status' => 'error', 'message' => 'Unknown error'];
 
@@ -901,17 +908,25 @@ switch ($action) {
         // }
 
         // Check available stock in source branch
-        // $available = ORM::for_table('sys_items_stock')
-        //     ->select_expr("SUM(CASE WHEN type='credit' THEN stock ELSE 0 END) - SUM(CASE WHEN type='debit' THEN stock ELSE 0 END)", 'available')
-        //     ->where('item_id', $item_id)
-        //     ->where('branch_id', $from_branch)
-        //     ->find_one();
+        $available = ORM::for_table('sys_items_stock')
+            ->select_expr("COALESCE(SUM(CASE WHEN type='credit' THEN stock ELSE 0 END),0) - COALESCE(SUM(CASE WHEN type='debit' THEN stock ELSE 0 END),0)", 'available')
+            ->where('item_id', $item_id)
+            ->where('branch_id', $from_branch)
+            ->find_one();
 
-        // $available_stock = $available ? $available->available : 0;
+        $available_stock = $available ? (float) $available->available : 0;
 
-        // if($available_stock < $qty){
-        //     r2(U . 'stock/view/' . $item_id, 'e', "Not enough stock in source branch. Available: $available_stock");
-        // }
+        if($available_stock < 1){
+            $response['message'] = "No stock available in the selected From branch.";
+            echo json_encode($response);
+            exit;
+        }
+
+        if($available_stock < $qty){
+            $response['message'] = "Not enough stock in the selected From branch. Available: {$available_stock}";
+            echo json_encode($response);
+            exit;
+        }
 
         // Generate a transfer reference
         $transfer_ref = 'TRF-' . date('Ymd-His');

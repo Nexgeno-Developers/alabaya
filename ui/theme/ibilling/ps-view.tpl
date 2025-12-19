@@ -275,7 +275,7 @@
 
 <select id="branch_options_template" style="display:none;">
     {foreach $branch_stock as $branch_id => $stock}
-        <option value="{$branch_id}">{get_branch_name($branch_id, alias)} ({$stock})</option>
+        <option value="{$branch_id}" data-available="{$stock}">{get_branch_name($branch_id, alias)} ({$stock})</option>
     {/foreach}
 </select>
 
@@ -304,8 +304,18 @@ $(document).ready(function() {
         var item_id = $(this).data('itemid');
         $('body').modalmanager('loading');
 
-        // Get branch options from hidden select
-        var branchOptions = $('#branch_options_template').html();
+        // Build branch option sets (from: only branches with stock >=1, to: all branches)
+        var branchOptionsFrom = '';
+        var branchOptionsTo = '';
+        $('#branch_options_template option').each(function(){
+            var available = parseFloat($(this).data('available')) || 0;
+            var base = '<option value="'+$(this).val()+'" data-available="'+available+'"';
+            var label = $(this).text();
+            branchOptionsTo += base + '>' + label + '</option>';
+            if(available >= 1){
+                branchOptionsFrom += base + '>' + label + '</option>';
+            }
+        });
 
         setTimeout(function(){
             var formHtml = `
@@ -321,7 +331,7 @@ $(document).ready(function() {
                             <label class="col-sm-3 control-label">From Branch</label>
                             <div class="col-sm-8">
                                 <select name="from_branch" id="from_branch" class="form-control" required>
-                                    <option value="">Select</option>`+branchOptions+`
+                                    <option value="">Select</option>`+branchOptionsFrom+`
                                 </select>
                             </div>
                         </div>
@@ -330,7 +340,7 @@ $(document).ready(function() {
                             <label class="col-sm-3 control-label">To Branch</label>
                             <div class="col-sm-8">
                                 <select name="to_branch" id="to_branch" class="form-control" required>
-                                    <option value="">Select</option>`+branchOptions+`
+                                    <option value="">Select</option>`+branchOptionsTo+`
                                 </select>
                             </div>
                         </div>
@@ -366,8 +376,18 @@ $(document).ready(function() {
         // Validate branches
         var from = $('#from_branch').val();
         var to = $('#to_branch').val();
+        var fromAvailable = parseFloat($('#from_branch option:selected').data('available')) || 0;
+        var qtyVal = parseFloat($('input[name=\"qty\"]').val()) || 0;
         if(from == to){
             alert('From and To Branch cannot be the same!');
+            return false;
+        }
+        if(fromAvailable < 1){
+            alert('Selected From branch has no stock available.');
+            return false;
+        }
+        if(qtyVal > fromAvailable){
+            alert('Quantity cannot exceed available stock ('+fromAvailable+').');
             return false;
         }
 
