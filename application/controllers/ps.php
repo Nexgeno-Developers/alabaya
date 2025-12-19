@@ -107,7 +107,7 @@ switch ($action) {
 
     case 'p-new':
 
-        if(!has_access($user->roleid, 'products_n_services')) {
+        if(!has_access($user->roleid, 'products_n_services') || $user->roleid != 0) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
 
@@ -139,7 +139,9 @@ switch ($action) {
 
 
     case 's-new':
-
+        if(!has_access($user->roleid, 'products_n_services') || $user->roleid != 0) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
         $ui->assign('type','Service');
         $ui->assign('xfooter', Asset::js(array('numeric','jslib/add-ps')));
@@ -159,6 +161,10 @@ switch ($action) {
 
 
     case 'add-post':
+        if($user->roleid != 0){
+            echo 'You do not have permission';
+            break;
+        }
         $name = _post('name');
         $sales_price = Finance::amount_fix(_post('sales_price'));
         $item_number = _post('item_number');
@@ -514,6 +520,10 @@ switch ($action) {
         break;
 
     case 'edit-post':
+        if($user->roleid != 0){
+            echo 'You do not have permission';
+            break;
+        }
         $msg = '';
         $id   = _post('id');
         $name = _post('name');
@@ -576,7 +586,11 @@ switch ($action) {
         break;
 
 
-        case 'edit-stock-post':
+    case 'edit-stock-post':
+        if($user->roleid != 0){
+            echo 'You do not have permission';
+            break;
+        }
         $msg            = '';
         $id             = _post('id');
         $vendor_id      = _post('vendor_id');

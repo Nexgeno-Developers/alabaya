@@ -204,7 +204,9 @@
         <li class="{if $_application_menu eq 'ps'}active{/if}">
             <a href="#"><i class="fa fa-cube"></i> <span class="nav-label">Manage Products</span><span class="fa arrow"></span></a>
             <ul class="nav nav-second-level">
-                <li><a href="{$_url}ps/p-new/">Add Product</a></li>
+                {if $user->roleid eq 0}
+                    <li><a href="{$_url}ps/p-new/">Add Product</a></li>
+                {/if}
                 <li><a href="{$_url}ps/p-list/">List Product</a></li>
                 <!--<li><a href="{$_url}ps/s-list/">{$_L['Services']}</a></li>
                 <li><a href="{$_url}ps/s-new/">{$_L['New Service']}</a></li>-->
@@ -220,7 +222,9 @@
     <li class="{if $_application_menu eq 'manage'}active{/if}">
             <a href="#"><i class="fa fa-cube"></i> <span class="nav-label">Manage Design</span><span class="fa arrow"></span></a>
             <ul class="nav nav-second-level">
-                <li><a href="{$_url}manage/add-design/">Add Design</a></li>
+                {if $user->roleid eq 0}
+                    <li><a href="{$_url}manage/add-design/">Add Design</a></li>
+                {/if}
                 <li><a href="{$_url}manage/list-design/">List Design</a></li>
             </ul>
         </li>

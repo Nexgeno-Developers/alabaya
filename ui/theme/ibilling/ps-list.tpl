@@ -5,10 +5,12 @@
         <div class="ibox">
             <div class="ibox-title">
                 <h5>{$_L['List']} {if $type eq 'Product'} {$_L['Products']} {else} {$_L['Services']} {/if}</h5>
-                <div class="ibox-tools">
-                    <a href="{$_url}ps/p-new" class="btn btn-primary btn-xs">
-                        <i class="fa fa-plus"></i> {$_L['Add Product']}</a>
-                </div>
+                {if $user->roleid eq 0}
+                    <div class="ibox-tools">
+                        <a href="{$_url}ps/p-new" class="btn btn-primary btn-xs">
+                            <i class="fa fa-plus"></i> {$_L['Add Product']}</a>
+                    </div>
+                {/if}
             </div>
             <div class="ibox-content" id="ibox_form">
                 <div class="input-group">
@@ -99,9 +101,11 @@
 
                                 <td class="project-actions">
                                     <a href="{$_url}ps/view/{$ds['id']}" class="btn btn-success btn-xs"><i class="fa fa-bar-chart"></i> Stock History</a>
-                                   <a href="#" class="btn btn-warning btn-xs cedit_stock" id="e{$ds['id']}"><i class="fa fa-plus"></i> Add Stock </a>
-                                    <a href="#" class="btn btn-primary btn-xs cedit" id="e{$ds['id']}"><i class="fa fa-pencil"></i> Edit </a>
-                                    <a href="#" class="btn btn-danger btn-xs cdelete" id="pid{$ds['id']}" data-filter="{$product_type}"><i class="fa fa-trash"></i> Delete </a>
+                                    {if $user->roleid eq 0}
+                                        <a href="#" class="btn btn-warning btn-xs cedit_stock" id="e{$ds['id']}"><i class="fa fa-plus"></i> Add Stock </a>
+                                        <a href="#" class="btn btn-primary btn-xs cedit" id="e{$ds['id']}"><i class="fa fa-pencil"></i> Edit </a>
+                                        <a href="#" class="btn btn-danger btn-xs cdelete" id="pid{$ds['id']}" data-filter="{$product_type}"><i class="fa fa-trash"></i> Delete </a>
+                                    {/if}
                                 </td>                                    
                             </tr>
                             {/foreach}

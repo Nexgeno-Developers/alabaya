@@ -5,10 +5,12 @@
         <div class="ibox">
             <div class="ibox-title">
                 <h5>List Design</h5>
-                <div class="ibox-tools">
-                    <a href="{$_url}manage/add-design" class="btn btn-primary btn-xs">
-                        <i class="fa fa-plus"></i> Add Design</a>
-                </div>
+                {if $user->roleid eq 0}
+                    <div class="ibox-tools">
+                        <a href="{$_url}manage/add-design" class="btn btn-primary btn-xs">
+                            <i class="fa fa-plus"></i> Add Design</a>
+                    </div>
+                {/if}
             </div>
             <div class="ibox-content" id="ibox_form">
                 <div class="project-list mt-md">
@@ -60,8 +62,10 @@
                                     </td>-->
                                     <td class="project-actions">
                                         <a href="{$_url}manage/view/{$ds['id']}" class="btn btn-success btn-xs"><i class="fa fa-bar-chart"></i> History</a>
-                                        <a href="#" class="btn btn-primary btn-xs cedit" id="e{$ds['id']}"><i class="fa fa-pencil"></i> Edit </a>
-                                        <a href="#" class="btn btn-danger btn-xs cdelete" id="pid{$ds['id']}"><i class="fa fa-trash"></i> Delete </a>
+                                        {if $user->roleid eq 0}
+                                            <a href="#" class="btn btn-primary btn-xs cedit" id="e{$ds['id']}"><i class="fa fa-pencil"></i> Edit </a>
+                                            <a href="#" class="btn btn-danger btn-xs cdelete" id="pid{$ds['id']}"><i class="fa fa-trash"></i> Delete </a>
+                                        {/if}
                                     </td>                                    
                                 </tr>
                                 {/foreach}

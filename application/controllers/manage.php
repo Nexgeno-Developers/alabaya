@@ -22,7 +22,7 @@ switch ($action) {
 
     case 'add-design':
         
-        if(!has_access($user->roleid, 'products_n_services')) {
+        if(!has_access($user->roleid, 'products_n_services') || $user->roleid != 0) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
 
@@ -61,6 +61,9 @@ switch ($action) {
 
 
     case 'add-post':
+        if($user->roleid != 0){
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
         $name = trim(_post('name'));
         $sales_price = Finance::amount_fix(_post('sales_price'));
         $description = _post('description');
@@ -219,6 +222,9 @@ switch ($action) {
 
 
     case 'edit-post':
+        if($user->roleid != 0){
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
 
     $id = _post('id');
     $name = _post('name');
