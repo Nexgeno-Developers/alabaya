@@ -639,7 +639,7 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                             ->where('id', $invoice_id2)
                             ->find_one();
                     
-                        if ($invoice) {
+                        if ($invoice2) {
                             $invoicenum = '<a href="' . APP_URL . '/?ng=invoices/view/' . $invoice_id2 . '/" target="_blank">' . $invoice2->invoicenum . '</a>';
                         }
                     }
