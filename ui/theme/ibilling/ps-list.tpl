@@ -2,9 +2,9 @@
 
 <div class="row">
     <div class="col-md-12">
-        <div class="ibox">
+        <div class="ibox float-e-margins">
             <div class="ibox-title">
-                <h5>{$_L['List']} {if $type eq 'Product'} {$_L['Products']} {else} {$_L['Services']} {/if}</h5>
+                <h5>{$_L['List']} {$_L['Products']}</h5>
                 {if $user->roleid eq 0}
                     <div class="ibox-tools">
                         <a href="{$_url}ps/p-new" class="btn btn-primary btn-xs">
@@ -12,126 +12,195 @@
                     </div>
                 {/if}
             </div>
-            <div class="ibox-content" id="ibox_form">
-                <div class="input-group">
-                    <!--<select name="product_type" class="form-control">
-                        <option value="readymade" {if $product_type eq 'readymade'} selected {/if}>Readymade</option>
-                        <option value="customize" {if $product_type eq 'customize'} selected {/if}>Customize</option>
-                    </select>
-                    <span class="input-group-btn">
-                        <button type="button" id="search1" class="btn btn-sm btn-primary"> {$_L['Search']}</button>
-                    </span>-->
-                    <div class="radio-button">
-					<input type="radio" name="product_type" onchange="psearch(this.value);" value="readymade" id="readymade" {if $product_type eq 'readymade'} checked {/if}>
-                    <label for="readymade"> Readymade</label>
-					</div>
-                    
-					<div class="radio-button">
-                    <input type="radio" name="product_type" onchange="psearch(this.value);" value="customize" id="customize" {if $product_type eq 'customize'} checked {/if}>
-                    <label for="customize"> Customize</label>  
-                      </div>					
-                </div>
-                <input type="hidden" id="stype" value="{$type}">
-                <div class="project-list mt-md">
-                    <div id="progressbar">
-                    </div>
 
-                    <div id="application_ajaxrender1">
-                    <table id="" class="display datatable" style="width:100%">
+            <div class="ibox-content">
+                <form id="productFilters" style="margin-bottom:15px;">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="product_type">Product Type</label>
+                                <select name="product_type" id="product_type" class="form-control">
+                                    <option value="all">All</option>
+                                    <option value="readymade" {if $product_type eq 'readymade'}selected{/if}>Readymade</option>
+                                    <option value="customize" {if $product_type eq 'customize'}selected{/if}>Customize</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="product_category">Category</label>
+                                <select name="product_category" id="product_category" class="form-control">
+                                    <option value="">All</option>
+                                    {foreach $categories as $cat}
+                                        <option value="{$cat.product_category}">{str_replace('_', ' ', $cat.product_category)}</option>
+                                    {/foreach}
+                                </select>
+                            </div>
+                        </div>
+                    {*
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="query">Name / Code</label>
+                                <input type="text" name="query" id="query" class="form-control" placeholder="Search name or code">
+                            </div>
+                        </div>
+                    *}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 text-right">
+                            <button id="btnProductFilter" class="btn btn-primary">Filter</button>
+                            <button id="btnProductReset" type="button" class="btn btn-default">Reset</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table id="product-datatable" class="table table-bordered table-hover">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Name</th>
+                                <th>{$_L['Item Code']}</th>
+                                <th>{$_L['Item Name']}</th>
+                                <th>Type</th>
                                 <th>Purchase Price</th>
-                                <th>Sale Price</th>
-                                <th>Stock</th>                                    
-                                <!--<th>Type</th>-->
-                                {if $product_type eq 'customize'}<th>Category</th> {/if}  
+                                <th>{$_L['Price']}</th>
+                                <th>Stock</th>
+                                <th>Category</th>
                                 <th>Image</th>
-                                <th>Desc</th>
+                                <th>{$_L['Description']}</th>
                                 <th>QRCode</th>
-                                <th>Options</th>
+                                <th class="text-right">{$_L['Manage']}</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                            {$x = 1}
-                            {foreach $d as $ds}
-                                <td>{$x++}</td>
-                                <td>{$ds['name']}</td>
-                                <td>{$ds['purchase_price']}</td>
-                                <td>{$ds['sales_price']}</td>
-                                <td>
-                                    {$stock = json_decode(product_stock_info($ds['id']), true)}
-                                    {$stock['current_stock_count']} {$ds['product_stock_type']}
-                                </td>
-                                <!--<td>{$ds['product_type']}</td>-->
-                                {if $product_type eq 'customize'}
-                                <td>          
-                                    {if $ds['product_category'] eq ''}
-                                    -
-                                    {else}
-                                    {str_replace('_', ' ', $ds['product_category'])}
-                                    {/if}                                    
-                                </td>
-                                {/if}
-                                <td>
-                                    {if $ds['product_image'] eq ''}
-                                    -
-                                    {else}
-                                    {$thumb = make_thumb($ds['product_image'], 'storage/thumb', '50')}
-                                    <!--<img data-img="{$ds['product_image']}" src="{$thumb}" width="50px" height="50px" class="img-popup">-->
-                                    <a target="_blank" href="{$ds['product_image']}">View</a>
-                                    {/if}
-                                </td>
-                                <td>
-                                {if $ds['description'] eq ''}
-                                    -
-                                {else}
-                                    {$ds['description']}
-                                {/if}                                     
-                                </td>
-
-                                <td>
-                                   {assign var='imagetext' value=""|cat:"P-"|cat:$ds['id']}
-                                   {assign qrimage qrcode_generate($imagetext)}
-                                   <a target="_blank" href="{$_url}qrcode/fetch&search={basename($qrimage)}">view</a>
-                                   {* <img src="{$qrimage}" width="100px" height="100px"/> *}
-                                </td>
-
-                                <td class="project-actions">
-                                    <a href="{$_url}ps/view/{$ds['id']}" class="btn btn-success btn-xs"><i class="fa fa-bar-chart"></i> Stock History</a>
-                                    {if $user->roleid eq 0}
-                                        <a href="#" class="btn btn-warning btn-xs cedit_stock" id="e{$ds['id']}"><i class="fa fa-plus"></i> Add Stock </a>
-                                        <a href="#" class="btn btn-primary btn-xs cedit" id="e{$ds['id']}"><i class="fa fa-pencil"></i> Edit </a>
-                                        <a href="#" class="btn btn-danger btn-xs cdelete" id="pid{$ds['id']}" data-filter="{$product_type}"><i class="fa fa-trash"></i> Delete </a>
-                                    {/if}
-                                </td>                                    
-                            </tr>
-                            {/foreach}
-                        </tbody>
+                        <tbody></tbody>
                     </table>
-                    </div>
                 </div>
+
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css"> 
-    
+<input type="hidden" id="_lan_are_you_sure" value="{$_L['are_you_sure']}">
+{include file="sections/footer.tpl"}
+
 <script>
-    $(document).ready(function(){
-        $('.datatable').DataTable();
+    var defaultProductType = '{$product_type|escape:"javascript"}';
+</script>
+{literal}
+<script>
+$(function(){
+    var $filters = $('#productFilters');
+    var $modal = $('#ajax-modal');
+    var defaultType = window.defaultProductType || 'readymade';
+
+    $('#product_type').val(defaultType);
+
+    $.fn.serializeObject = function(){
+        var o = {};
+        var a = this.serializeArray();
+        $.each(a, function() {
+            if (o[this.name] !== undefined) {
+                if (!o[this.name].push) {
+                    o[this.name] = [o[this.name]];
+                }
+                o[this.name].push(this.value || '');
+            } else {
+                o[this.name] = this.value || '';
+            }
+        });
+        return o;
+    };
+
+    var table = $('#product-datatable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: base_url + "ps/p-list-datatable",
+            type: 'POST',
+            data: function(d){
+                return $.extend({}, d, $filters.serializeObject());
+            }
+        },
+        dom: 'Bfrtip',
+        buttons: [
+            'pageLength'
+        ],
+        lengthMenu: [
+            [10,25,50,100,-1],
+            [10,25,50,100,'All']
+        ],
+        order: [[0, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: [11] },
+            { className: 'text-right', targets: [4,5] }
+        ],
+        drawCallback: function(){
+            attachRowHandlers();
+        }
     });
 
-    function psearch(val){
-        //alert(val);
-        const url = $('#_url').val();
-        const prodyct_type = val; //$('select[name="product_type"]').val();
-        window.location.href = url + "ps/p-list/&product_type=" + prodyct_type;
-    }
-</script>
+    $('#btnProductFilter').on('click', function(e){
+        e.preventDefault();
+        table.ajax.reload();
+    });
 
-<input type="hidden" id="_lan_are_you_sure" value="{$_L['are_you_sure']}"> {include file="sections/footer.tpl"}
+    $('#btnProductReset').on('click', function(){
+        $filters[0].reset();
+        $('#product_type').val(defaultType || 'readymade');
+        table.ajax.reload();
+    });
+
+    $('#productFilters input').on('keypress', function(e){
+        if (e.which == 13) {
+            e.preventDefault();
+            table.ajax.reload();
+        }
+    });
+
+    function attachRowHandlers(){
+        $('.cedit').off('click').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).data('id');
+            $('body').modalmanager('loading');
+            setTimeout(function(){
+                $modal.load(base_url + 'ps/edit-form/' + id, '', function(){
+                    $modal.modal();
+                });
+            }, 200);
+        });
+
+        $('.cedit_stock').off('click').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).data('id');
+            $('body').modalmanager('loading');
+            setTimeout(function(){
+                $modal.load(base_url + 'ps/edit-form-stock/' + id, '', function(){
+                    $modal.modal();
+                });
+            }, 200);
+        });
+
+        $('.cdelete-product').off('click').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).data('id');
+            var type = $('#product_type').val() || 'all';
+            var csrf = $('#csrf_token').val();
+            bootbox.confirm($("#_lan_are_you_sure").val(), function(result){
+                if(result){
+                    $.post(base_url + 'ps/ajax-delete', {id: id, product_type: type, _token: csrf}, function(res){
+                        if(res.success){
+                            table.ajax.reload(null, false);
+                            toastr.success(res.message);
+                        }else{
+                            toastr.error(res.message || 'Unable to delete');
+                        }
+                    }, 'json');
+                }
+            });
+        });
+    }
+});
+</script>
+{/literal}

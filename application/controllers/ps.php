@@ -483,25 +483,145 @@ switch ($action) {
         break;
 
     case 'p-list':
-        
+
         if(!has_access($user->roleid, 'products_n_services')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
-        
-        //$paginator = Paginator::bootstrap('sys_items','type','Product');
+
         $product_type = (!empty($_GET['product_type'])) ? $_GET['product_type'] : 'readymade';
-        //var_dump($product_type);
-        $d = ORM::for_table('sys_items')->where('type','Product')->where('product_type', $product_type)->order_by_desc('id')->find_many();
-        $ui->assign('d',$d);
-        $ui->assign('product_type',$product_type);
+
+        // Collect distinct product categories for filter dropdown
+        $categories = ORM::for_table('sys_items')
+            ->select('product_category')
+            ->where('type', 'Product')
+            ->where_not_null('product_category')
+            ->where_not_equal('product_category', '')
+            ->group_by('product_category')
+            ->order_by_asc('product_category')
+            ->find_array();
+
+        $ui->assign('product_type', $product_type);
+        $ui->assign('categories', $categories);
         $ui->assign('type','Product');
-        //$ui->assign('paginator',$paginator);
-        $ui->assign('xheader', '
-					<link rel="stylesheet" type="text/css" href="' . $_theme . '/css/modal.css"/>');
-        $ui->assign('xfooter', '
-        <script type="text/javascript" src="' . $_theme . '/lib/modal.js"></script>
-					<script type="text/javascript" src="' . $_theme . '/lib/ps-list.js"></script>');
+
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min', 'modal']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'modal', 'numeric']));
         $ui->display('ps-list.tpl');
+        break;
+
+    case 'p-list-datatable':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            header('Content-Type: application/json');
+            echo json_encode(['data' => [], 'recordsTotal' => 0, 'recordsFiltered' => 0]);
+            break;
+        }
+
+        $request = $_REQUEST;
+
+        // column index -> db column mapping for ordering
+        $columns = [
+            0 => 'i.id',
+            1 => 'i.item_number',
+            2 => 'i.name',
+            3 => 'i.product_type',
+            4 => 'i.purchase_price',
+            5 => 'i.sales_price',
+            6 => 'i.product_stock',
+            7 => 'i.product_category',
+            8 => 'i.product_image',
+            9 => 'i.description',
+            10 => 'i.id'
+        ];
+
+        $length = isset($request['length']) ? (int)$request['length'] : 25;
+        $start  = isset($request['start']) ? max(0, (int)$request['start']) : 0;
+        $order_index = isset($request['order'][0]['column']) ? (int)$request['order'][0]['column'] : 0;
+        $order_col = isset($columns[$order_index]) ? $columns[$order_index] : 'i.id';
+        $order_dir = (isset($request['order'][0]['dir']) && strtolower($request['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+        $totalData = (int) ORM::for_table('sys_items')->where('type', 'Product')->count();
+
+        // base query
+        $base_q = ORM::for_table('sys_items')->table_alias('i')->where('i.type', 'Product');
+
+        $product_type = !empty($request['product_type']) ? $request['product_type'] : 'readymade';
+        if ($product_type !== 'all') {
+            $base_q->where('i.product_type', $product_type);
+        }
+
+        if (!empty($request['product_category'])) {
+            $base_q->where('i.product_category', $request['product_category']);
+        }
+
+        // general search
+        if (!empty($request['search']['value'])) {
+            $s = '%' . $request['search']['value'] . '%';
+            $base_q->where_raw('(i.name LIKE ? OR i.item_number LIKE ? OR i.description LIKE ? OR i.product_category LIKE ?)', [$s, $s, $s, $s]);
+        }
+
+        // specific search (name or code)
+        if (!empty($request['query'])) {
+            $q = '%' . $request['query'] . '%';
+            $base_q->where_raw('(i.name LIKE ? OR i.item_number LIKE ?)', [$q, $q]);
+        }
+
+        $count_q = clone $base_q;
+        $totalFiltered = (int) $count_q->count();
+
+        $data_q = clone $base_q;
+        $data_q->order_by_expr($order_col . ' ' . $order_dir);
+        if ($length != -1) {
+            $data_q->offset($start)->limit($length);
+        }
+
+        $rows = $data_q->find_array();
+
+        $data = [];
+        $serial = $start + 1;
+        foreach ($rows as $r) {
+            $stock_info = json_decode(product_stock_info($r['id']), true);
+            $stock = isset($stock_info['current_stock_count']) ? $stock_info['current_stock_count'] : 0;
+            $stock_label = $stock . ' ' . $r['product_stock_type'];
+
+            $img_link = (!empty($r['product_image'])) ? '<a target="_blank" href="'.$r['product_image'].'">View</a>' : '-';
+
+            $desc = !empty($r['description']) ? htmlspecialchars($r['description'], ENT_QUOTES, 'UTF-8') : '-';
+
+            $qr_image = qrcode_generate('P-' . $r['id']);
+            $qr_link = '<a target="_blank" href="'. U .'qrcode/fetch&search='.basename($qr_image).'">View</a>';
+
+            $actions = '<a href="'. U .'ps/view/'. $r['id'] .'" class="btn btn-success btn-xs"><i class="fa fa-bar-chart"></i> Stock History</a> ';
+            if ($user->roleid == 0) {
+                $actions .= '<a href="#" class="btn btn-warning btn-xs cedit_stock" data-id="'.$r['id'].'"><i class="fa fa-plus"></i> Add Stock</a> ';
+                $actions .= '<a href="#" class="btn btn-primary btn-xs cedit" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i> Edit</a> ';
+                $actions .= '<a href="#" class="btn btn-danger btn-xs cdelete cdelete-product" data-id="'.$r['id'].'" data-filter="'.$r['product_type'].'"><i class="fa fa-trash"></i> Delete</a>';
+            }
+
+            $data[] = [
+                $serial,
+                htmlspecialchars($r['item_number'], ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['name'], ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($r['product_type'], ENT_QUOTES, 'UTF-8'),
+                number_format((float)$r['purchase_price'], 2, '.', ''),
+                number_format((float)$r['sales_price'], 2, '.', ''),
+                $stock_label,
+                !empty($r['product_category']) ? str_replace('_', ' ', $r['product_category']) : '-',
+                $img_link,
+                $desc,
+                $qr_link,
+                $actions
+            ];
+            $serial++;
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'draw' => intval($request['draw'] ?? 0),
+            'recordsTotal' => intval($totalData),
+            'recordsFiltered' => intval($totalFiltered),
+            'data' => $data
+        ]);
+
         break;
 
     case 's-list':
@@ -831,6 +951,42 @@ switch ($action) {
 
     case 'post':
 
+        break;
+
+    case 'ajax-delete':
+        header('Content-Type: application/json; charset=utf-8');
+
+        if($user->roleid != 0){
+            echo json_encode(['success' => false, 'message' => $_L['You do not have permission']]);
+            break;
+        }
+
+        $id = _post('id');
+        if(empty($id)){
+            echo json_encode(['success' => false, 'message' => 'Invalid product id']);
+            break;
+        }
+
+        $item = ORM::for_table('sys_items')->find_one($id);
+        if(!$item || $item->type !== 'Product'){
+            echo json_encode(['success' => false, 'message' => 'Product not found']);
+            break;
+        }
+
+        // remove image if exists
+        if(!empty($item->product_image) && file_exists($item->product_image)){
+            @unlink($item->product_image);
+        }
+
+        $item->delete();
+
+        // clean related stock rows
+        ORM::for_table('sys_items_stock')->where('item_id', $id)->delete_many();
+        ORM::for_table('sys_items_stock')->where('parent_item_id', $id)->delete_many();
+
+        _log('Product Deleted: '.$item->name.' [ID: '.$id.']','Admin',$user['id']);
+
+        echo json_encode(['success' => true, 'message' => 'Product deleted successfully']);
         break;
 
         case 'get-design-subproduct-amount':

@@ -2,7 +2,7 @@
 
 <div class="row">
     <div class="col-md-12">
-        <div class="ibox">
+        <div class="ibox float-e-margins">
             <div class="ibox-title">
                 <h5>List Design</h5>
                 {if $user->roleid eq 0}
@@ -12,86 +12,173 @@
                     </div>
                 {/if}
             </div>
-            <div class="ibox-content" id="ibox_form">
-                <div class="project-list mt-md">
-                    <div id="progressbar">
+            <div class="ibox-content">
+
+                <form id="designFilters" style="margin-bottom:15px;">
+                    <div class="row">
+                        {*
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="design_name">Design Name</label>
+                                <input type="text" name="design_name" id="design_name" class="form-control" placeholder="Search name">
+                            </div>
+                        </div>
+                        *}
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="cloth_id">Cloth</label>
+                                <select name="cloth_id" id="cloth_id" class="form-control">
+                                    <option value="">All</option>
+                                    {foreach $cloths as $cloth}
+                                        <option value="{$cloth.id}">{$cloth.name}</option>
+                                    {/foreach}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="min_price">Min Price</label>
+                                <input type="number" step="0.01" name="min_price" id="min_price" class="form-control" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="max_price">Max Price</label>
+                                <input type="number" step="0.01" name="max_price" id="max_price" class="form-control" placeholder="0.00">
+                            </div>
+                        </div>
                     </div>
 
-                    <div id="application_ajaxrender1">
-                    <div class="table-responsive">
-                        <table id="" class="display datatable" style="width:100%">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Name</th>
-                                    <th>Silai Price</th>    
-                                    <th>Image</th>
-                                    <th>QRCode</th>
-                                    <th>Options</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                {$x = 1}
-                                {foreach $d as $ds}
-                                    <td>{$x++}</td>
-                                    <td>{$ds['name']}</td>
-                                    <td>{$ds['price']}</td>
-                                    <td>
-                                        {$images = json_decode($ds['image'], true)}
-                                        {foreach $images as $img}
-                                        {$thumb = make_thumb($img, 'storage/thumb', '50')}
-                                            <!--<img data-img="{$img}" src="{$thumb}" width="50px" height="50px" class="img-popup">-->
-                                            <a target="_blank" href="{$img}">View</a>
-                                        {/foreach}
-                                    </td>
-
-                                    <td>
-                                        {assign var='imagetext' value=""|cat:"D-"|cat:$ds['id']}
-                                        {assign qrimage qrcode_generate($imagetext)}
-                                        <a target="_blank" href="{$_url}qrcode/fetch&search={basename($qrimage)}">View</a>
-                                        {*<img src="{$qrimage}" width="100px" height="100px"/>*}
-                                    </td>
-
-                                    <!--<td>
-                                    {if $ds['description'] eq ''}
-                                        -
-                                    {else}
-                                        {$ds['description']}
-                                    {/if}                                     
-                                    </td>-->
-                                    <td class="project-actions">
-                                        <a href="{$_url}manage/view/{$ds['id']}" class="btn btn-success btn-xs"><i class="fa fa-bar-chart"></i> History</a>
-                                        {if $user->roleid eq 0}
-                                            <a href="#" class="btn btn-primary btn-xs cedit" id="e{$ds['id']}"><i class="fa fa-pencil"></i> Edit </a>
-                                            <a href="#" class="btn btn-danger btn-xs cdelete" id="pid{$ds['id']}"><i class="fa fa-trash"></i> Delete </a>
-                                        {/if}
-                                    </td>                                    
-                                </tr>
-                                {/foreach}
-                            </tbody>
-                        </table>
+                    <div class="row">
+                        <div class="col-md-12 text-right">
+                            <button id="btnDesignFilter" class="btn btn-primary">Filter</button>
+                            <button id="btnDesignReset" type="button" class="btn btn-default">Reset</button>
+                        </div>
                     </div>
-                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table id="design-datatable" class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Cloth</th>
+                                <th>Silai Price</th>
+                                <th>Image</th>
+                                <th>QRCode</th>
+                                <th class="text-right">{$_L['Manage']}</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
+
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css"> 
-    
+<input type="hidden" id="_lan_are_you_sure" value="{$_L['are_you_sure']}">
+{include file="sections/footer.tpl"}
+
+{literal}
 <script>
-    $(document).ready(function(){
-        $('.datatable').DataTable();
+$(function(){
+    var $filters = $('#designFilters');
+    var $modal = $('#ajax-modal');
+
+    $.fn.serializeObject = function(){
+        var o = {};
+        var a = this.serializeArray();
+        $.each(a, function() {
+            if (o[this.name] !== undefined) {
+                if (!o[this.name].push) {
+                    o[this.name] = [o[this.name]];
+                }
+                o[this.name].push(this.value || '');
+            } else {
+                o[this.name] = this.value || '';
+            }
+        });
+        return o;
+    };
+
+    var table = $('#design-datatable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: base_url + "manage/list-design-datatable",
+            type: 'POST',
+            data: function(d){
+                return $.extend({}, d, $filters.serializeObject());
+            }
+        },
+        dom: 'Bfrtip',
+        buttons: [
+            'pageLength'
+        ],
+        lengthMenu: [
+            [10,25,50,100,-1],
+            [10,25,50,100,'All']
+        ],
+        order: [[0, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: [6] },
+            { className: 'text-right', targets: [3,6] }
+        ],
+        drawCallback: function(){
+            attachRowHandlers();
+        }
     });
 
-    $('#search1').click(function(){
-        const url = $('#_url').val();
-        const prodyct_type = $('select[name="product_type"]').val();
-        window.location.href = url + "ps/p-list/&product_type=" + prodyct_type;
+    $('#btnDesignFilter').on('click', function(e){
+        e.preventDefault();
+        table.ajax.reload();
     });
+
+    $('#btnDesignReset').on('click', function(){
+        $filters[0].reset();
+        table.ajax.reload();
+    });
+
+    $('#designFilters input').on('keypress', function(e){
+        if (e.which == 13) {
+            e.preventDefault();
+            table.ajax.reload();
+        }
+    });
+
+    function attachRowHandlers(){
+        $('.cedit').off('click').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).data('id');
+            $('body').modalmanager('loading');
+            setTimeout(function(){
+                $modal.load(base_url + 'manage/edit-form/' + id, '', function(){
+                    $modal.modal();
+                });
+            }, 200);
+        });
+
+        $('.cdelete-design').off('click').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).data('id');
+            var csrf = $('#csrf_token').val();
+            bootbox.confirm($("#_lan_are_you_sure").val(), function(result){
+                if(result){
+                    $.post(base_url + 'manage/ajax-delete', {id: id, _token: csrf}, function(res){
+                        if(res.success){
+                            table.ajax.reload(null, false);
+                            toastr.success(res.message);
+                        }else{
+                            toastr.error(res.message || 'Unable to delete');
+                        }
+                    }, 'json');
+                }
+            });
+        });
+    }
+});
 </script>
-
-<input type="hidden" id="_lan_are_you_sure" value="{$_L['are_you_sure']}"> {include file="sections/footer.tpl"}
+{/literal}

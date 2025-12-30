@@ -210,14 +210,113 @@ switch ($action) {
         if(!has_access($user->roleid, 'products_n_services')) {
             r2(U."dashboard",'e',$_L['You do not have permission']);
         }
-        $d = ORM::for_table('sys_designs')->order_by_desc('id')->find_many();
-        $ui->assign('d',$d);
-        $ui->assign('xheader', '
-					<link rel="stylesheet" type="text/css" href="' . $_theme . '/css/modal.css"/>');
-        $ui->assign('xfooter', '
-        <script type="text/javascript" src="' . $_theme . '/lib/modal.js"></script>
-					<script type="text/javascript" src="' . $_theme . '/lib/design-list.js"></script>');
+        $cloths = ORM::for_table('sys_cloths')->select('id')->select('name')->order_by_asc('name')->find_array();
+        $ui->assign('cloths', $cloths);
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min', 'modal']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'modal']));
         $ui->display('manage/list-design.tpl');
+        break;
+
+    case 'list-design-datatable':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            header('Content-Type: application/json');
+            echo json_encode(['data' => [], 'recordsTotal' => 0, 'recordsFiltered' => 0]);
+            break;
+        }
+
+        $request = $_REQUEST;
+
+        $columns = [
+            0 => 'd.id',
+            1 => 'd.name',
+            2 => 'c.name',
+            3 => 'd.price',
+            4 => 'd.created_at'
+        ];
+
+        $length = isset($request['length']) ? (int)$request['length'] : 25;
+        $start  = isset($request['start']) ? max(0, (int)$request['start']) : 0;
+        $order_index = isset($request['order'][0]['column']) ? (int)$request['order'][0]['column'] : 0;
+        $order_col = isset($columns[$order_index]) ? $columns[$order_index] : 'd.id';
+        $order_dir = (isset($request['order'][0]['dir']) && strtolower($request['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+        $totalData = (int) ORM::for_table('sys_designs')->count();
+
+        $base_q = ORM::for_table('sys_designs')->table_alias('d')
+            ->select('d.*')
+            ->select('c.name', 'cloth_name')
+            ->left_outer_join('sys_cloths', ['d.cloth_id', '=', 'c.id'], 'c');
+
+        // filters
+        if (!empty($request['cloth_id'])) {
+            $base_q->where('d.cloth_id', $request['cloth_id']);
+        }
+
+        if (!empty($request['min_price'])) {
+            $base_q->where_gte('d.price', Finance::amount_fix($request['min_price']));
+        }
+
+        if (!empty($request['max_price'])) {
+            $base_q->where_lte('d.price', Finance::amount_fix($request['max_price']));
+        }
+
+        if (!empty($request['search']['value'])) {
+            $s = '%' . $request['search']['value'] . '%';
+            $base_q->where_raw('(d.name LIKE ? OR d.description LIKE ? OR c.name LIKE ?)', [$s, $s, $s]);
+        }
+
+        if (!empty($request['design_name'])) {
+            $n = '%' . $request['design_name'] . '%';
+            $base_q->where_like('d.name', $n);
+        }
+
+        $count_q = clone $base_q;
+        $totalFiltered = (int) $count_q->count();
+
+        $data_q = clone $base_q;
+        $data_q->order_by_expr($order_col . ' ' . $order_dir);
+        if ($length != -1) {
+            $data_q->offset($start)->limit($length);
+        }
+
+        $rows = $data_q->find_array();
+
+        $data = [];
+        $serial = $start + 1;
+        foreach ($rows as $r) {
+            $images = json_decode($r['image'], true);
+            $first_img = (is_array($images) && !empty($images[0])) ? $images[0] : '';
+            $img_link = $first_img ? '<a target="_blank" href="'.$first_img.'">View</a>' : '-';
+
+            $qr_image = qrcode_generate('D-' . $r['id']);
+            $qr_link = '<a target="_blank" href="'. U .'qrcode/fetch&search='.basename($qr_image).'">View</a>';
+
+            $actions = '<a href="'. U .'manage/view/'. $r['id'] .'" class="btn btn-success btn-xs"><i class="fa fa-bar-chart"></i> History</a> ';
+            if($user->roleid == 0){
+                $actions .= '<a href="#" class="btn btn-primary btn-xs cedit" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i> Edit</a> ';
+                $actions .= '<a href="#" class="btn btn-danger btn-xs cdelete cdelete-design" data-id="'.$r['id'].'"><i class="fa fa-trash"></i> Delete</a>';
+            }
+
+            $data[] = [
+                $serial,
+                htmlspecialchars($r['name'], ENT_QUOTES, 'UTF-8'),
+                !empty($r['cloth_name']) ? htmlspecialchars($r['cloth_name'], ENT_QUOTES, 'UTF-8') : '-',
+                number_format((float)$r['price'], 2, '.', ''),
+                $img_link,
+                $qr_link,
+                $actions
+            ];
+            $serial++;
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'draw' => intval($request['draw'] ?? 0),
+            'recordsTotal' => intval($totalData),
+            'recordsFiltered' => intval($totalFiltered),
+            'data' => $data
+        ]);
+
         break;
 
 
@@ -418,6 +517,42 @@ switch ($action) {
 
     case 'post':
 
+        break;
+
+    case 'ajax-delete':
+        header('Content-Type: application/json; charset=utf-8');
+
+        if($user->roleid != 0){
+            echo json_encode(['success' => false, 'message' => $_L['You do not have permission']]);
+            break;
+        }
+
+        $id = _post('id');
+        if(empty($id)){
+            echo json_encode(['success' => false, 'message' => 'Invalid design id']);
+            break;
+        }
+
+        $design = ORM::for_table('sys_designs')->find_one($id);
+        if(!$design){
+            echo json_encode(['success' => false, 'message' => 'Design not found']);
+            break;
+        }
+
+        $images = json_decode($design->image, true);
+        if(is_array($images)){
+            foreach($images as $img){
+                if(!empty($img) && file_exists($img)){
+                    @unlink($img);
+                }
+            }
+        }
+
+        $design->delete();
+
+        _log('Design Deleted: '.$design->name.' [ID: '.$id.']','Admin',$user['id']);
+
+        echo json_encode(['success' => true, 'message' => 'Design deleted successfully']);
         break;
 
     default:
