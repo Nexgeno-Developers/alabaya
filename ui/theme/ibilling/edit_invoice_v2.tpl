@@ -222,7 +222,7 @@ input[type=number]::-webkit-outer-spin-button {
 										{/if}
 										<input type="hidden" class="form-control item_id" name="i_id[]" value="{$item['id']}" id="i_id">
 										<input type="hidden" class="form-control item_id" name="s_id[]" value="{$item['itemcode']}" id="s_id">
-                                        <input type="hidden" class="form-control item_id" name="p_id[]" value="{$item['product_id']}" id="p_id">
+                                        <input type="hidden" class="form-control item_id" name="p_id[]" value="{if $item['item_type'] == 'design'}{$item['design_id']}{else}{$item['product_id']}{/if}" id="p_id">
 										
 										
                                     </td>
