@@ -3250,12 +3250,24 @@ function showDiv(elem){
     // 3) Get design_id from invoice items
     $designItem = ORM::for_table('sys_invoiceitems')
         ->select('design_id')
+        ->select('description')
         ->where('invoiceid', $invoiceId)
         ->where('item_type', 'design')
         ->order_by_asc('id')
         ->find_one();
 
     $designId = $designItem ? $designItem->design_id : null;
+
+    // Fallback: older rows may have design_id as 0/null; try to recover from description "(cloth / design) - ..."
+    if (empty($designId) && $designItem && !empty($designItem->description)) {
+        if (preg_match('/\\(.*?\\s\\/\\s(.*?)\\)\\s-/', $designItem->description, $m)) {
+            $designName = trim($m[1]);
+            $designByName = ORM::for_table('sys_designs')->where('name', $designName)->find_one();
+            if ($designByName) {
+                $designId = $designByName->id;
+            }
+        }
+    }
 
     // 👇 IMPORTANT: always init
     $categoryPricing = [];
