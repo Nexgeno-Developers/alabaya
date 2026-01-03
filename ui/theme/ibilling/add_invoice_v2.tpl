@@ -342,6 +342,13 @@ input[type=number]::-webkit-outer-spin-button {
 					<div class="form-group">
 						<label for="advance_amount">Advance Amount</label>
 						<input type="text" pattern="[0-9]+" class="form-control" name="advance_amount" id="advance_amount">
+					</div>
+					<div class="form-group">
+						<label for="advance_method">Advance Method</label>
+						<select class="form-control" name="advance_method" id="advance_method">
+							<option value="Cash">Cash</option>
+							<option value="QR">QR</option>
+						</select>
 					</div>					
 					<div class="form-group">
 						<label for="cid">{$_L['Customer']}</label>

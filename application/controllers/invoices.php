@@ -1283,7 +1283,7 @@ switch ($action) {
                 $account     = $sys_acc['account'];
                 $date        = date('Y-m-d'); 
                 $payerid     = $d['userid'];
-                $pmethod     = 'Advance Payment';
+                $pmethod     = _post('advance_method') ? _post('advance_method') : 'Advance Payment';
                 $ref         = "";
                 $amount      = _post('advance_amount'); //$amount      = $d['subtotal'] - $d['credit'];
                 $cat         = "Advance Payment";
