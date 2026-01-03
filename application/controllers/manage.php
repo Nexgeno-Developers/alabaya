@@ -214,6 +214,7 @@ switch ($action) {
         $ui->assign('cloths', $cloths);
         $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min', 'modal']));
         $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'modal']));
+        $ui->assign('xfooter2', '<script type="text/javascript" src="' . $_theme . '/lib/design-list.js"></script>');
         $ui->display('manage/list-design.tpl');
         break;
 

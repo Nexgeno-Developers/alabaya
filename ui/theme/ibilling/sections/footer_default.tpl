@@ -212,9 +212,8 @@
 <script src="{$_theme}/js/theme.js"></script>
 <script src="{$app_url}ui/lib/dp/dist/datepicker.min.js"></script>
 <script src="{$_theme}/js/custom.js"></script>
-{if isset($xfooter)}
-    {$xfooter}
-{/if}
+{if isset($xfooter)}{$xfooter}{/if}
+{if isset($xfooter2)}{$xfooter2}{/if}
 <script>
     jQuery(document).ready(function() {
         // initiate layout and plugins

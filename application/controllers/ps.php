@@ -506,6 +506,7 @@ switch ($action) {
 
         $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min', 'modal']));
         $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'modal', 'numeric']));
+        $ui->assign('xfooter2', '<script type="text/javascript" src="' . $_theme . '/lib/ps-list.js"></script>');
         $ui->display('ps-list.tpl');
         break;
 

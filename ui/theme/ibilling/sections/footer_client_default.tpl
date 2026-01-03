@@ -66,10 +66,8 @@
 
 <!-- iCheck -->
 <script src="{$_theme}/lib/icheck/icheck.min.js"></script>
-{if isset($xfooter)}
-    {$xfooter}
-    {$xfooter2}
-{/if}
+{if isset($xfooter)}{$xfooter}{/if}
+{if isset($xfooter2)}{$xfooter2}{/if}
 <script>
     jQuery(document).ready(function() {
         // initiate layout and plugins
