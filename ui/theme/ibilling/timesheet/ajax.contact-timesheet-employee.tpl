@@ -29,6 +29,18 @@
                             <input type="date" name="todate" value="{$smarty.now|date_format:'%Y-%m-%d'}" class="form-control">
                         </div>
                         <div class="col-md-3">
+                            <label>Date Filter By</label>
+                            <select name="date_filter_type" class="form-control">
+                                <option value="date" selected>Date</option>
+                                <option value="completed_date">Invoice Completed Date</option>
+                                <option value="paid_date">Paid Date</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Invoice Number</label>
+                            <input type="text" name="invoice_number" placeholder="Search invoice #" class="form-control">
+                        </div>
+                        <div class="col-md-3">
                             <label>Payment Status</label>
                             <select name="payment_status" class="form-control">
                                 <option value="">All</option>
@@ -142,6 +154,8 @@
                 search_param.employee_id= $('input[name="employee_id"]').val();
                 search_param.fromdate   = $('input[name="fromdate"]').val();
                 search_param.todate     = $('input[name="todate"]').val();
+                search_param.date_filter_type = $('select[name="date_filter_type"]').val();
+                search_param.invoice_number   = $('input[name="invoice_number"]').val();
                 search_param.payment_status = $('select[name="payment_status"]').val();  // <-- Ensure it's being sent
                 search_param.salary_type = $('select[name="salary_type"]').val();  // <-- Ensure it's being sent
             },
@@ -245,6 +259,9 @@ function reset_form()
 
     // $("#timesheet-from-body input").val("");
     $("#timesheet-from-body input:not([name='employee_id'])").val("");
+    $("select[name='payment_status']").val("");
+    $("select[name='salary_type']").val("per_piece");
+    $("select[name='date_filter_type']").val("date");
     
     if ($.fn.DataTable.isDataTable('#timesheet-list-table')) {
         $('#timesheet-list-table').DataTable().destroy();

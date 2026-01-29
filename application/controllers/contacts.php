@@ -416,6 +416,9 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 
                 $payment_status = isset($_POST['payment_status']) ? $_POST['payment_status'] : '';
                 $salary_type = isset($_POST['salary_type']) ? $_POST['salary_type'] : '';
+                $invoice_number = isset($_POST['invoice_number']) ? trim($_POST['invoice_number']) : '';
+                $date_filter_type = isset($_POST['date_filter_type']) ? $_POST['date_filter_type'] : 'date';
+                $date_filter_type = in_array($date_filter_type, ['date','completed_date','paid_date']) ? $date_filter_type : 'date';
         
                 // Retrieve the salery_type of the employee from the crm_accounts table
                 // $employee = ORM::for_table('crm_accounts')->find_one($employee_id);
@@ -423,24 +426,37 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                 // var_dump($salery_type);
                 
                 // Initialize the ORM query for counting total records
-                $totalRecordQuery = ORM::for_table('crm_timesheet')->select('id');
+                $totalRecordQuery = ORM::for_table('crm_timesheet')
+                    ->table_alias('t')
+                    ->select('t.id')
+                    ->left_outer_join('invoice_alocation', array('t.invoice_alocation_id', '=', 'invoice_alocation.id'))
+                    ->left_outer_join('sys_invoices', array('invoice_alocation.invoice_id', '=', 'sys_invoices.id'));
                 
                 // Apply filters based on inputs
                 if(!empty($employee_id)) {
-                    $totalRecordQuery->where('employee_id', $employee_id);
+                    $totalRecordQuery->where('t.employee_id', $employee_id);
                 } 
                 if (!empty($fromdate) && !empty($todate)) {
-                    $totalRecordQuery->where_gte('date', $fromdate)->where_lte('date', $todate);
+                    if ($date_filter_type === 'completed_date') {
+                        $totalRecordQuery->where_gte('invoice_alocation.completed_date', $fromdate)->where_lte('invoice_alocation.completed_date', $todate);
+                    } elseif ($date_filter_type === 'paid_date') {
+                        $totalRecordQuery->where_gte('t.paid_date', $fromdate)->where_lte('t.paid_date', $todate);
+                    } else {
+                        $totalRecordQuery->where_gte('t.date', $fromdate)->where_lte('t.date', $todate);
+                    }
                 }
                 if ($payment_status == 'paid') {
-                    $totalRecordQuery->where_not_null('transaction_id');
+                    $totalRecordQuery->where_not_null('t.transaction_id');
                 } elseif ($payment_status == 'unpaid') {
-                    $totalRecordQuery->where_null('transaction_id');
+                    $totalRecordQuery->where_null('t.transaction_id');
                 }
                 if ($salary_type == 'per_piece') {
-                    $totalRecordQuery->where_not_null('invoice_alocation_id');
+                    $totalRecordQuery->where_not_null('t.invoice_alocation_id');
                 } elseif ($salary_type == 'per_hour') {
-                    $totalRecordQuery->where_null('invoice_alocation_id');
+                    $totalRecordQuery->where_null('t.invoice_alocation_id');
+                }
+                if ($invoice_number !== '') {
+                    $totalRecordQuery->where_like('sys_invoices.invoicenum', '%' . $invoice_number . '%');
                 }
 
                 // Count total records without pagination
@@ -492,7 +508,13 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $recordQuery->where('crm_timesheet.employee_id', $employee_id);
                 }
                 if (!empty($fromdate) && !empty($todate)) {
-                    $recordQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
+                    if ($date_filter_type === 'completed_date') {
+                        $recordQuery->where_gte('invoice_alocation.completed_date', $fromdate)->where_lte('invoice_alocation.completed_date', $todate);
+                    } elseif ($date_filter_type === 'paid_date') {
+                        $recordQuery->where_gte('crm_timesheet.paid_date', $fromdate)->where_lte('crm_timesheet.paid_date', $todate);
+                    } else {
+                        $recordQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
+                    }
                 }
                 if ($payment_status == 'paid') {
                     $recordQuery->where_not_null('crm_timesheet.transaction_id');
@@ -503,6 +525,9 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $recordQuery->where_not_null('crm_timesheet.invoice_alocation_id');
                 } elseif ($salary_type == 'per_hour') {
                     $recordQuery->where_null('crm_timesheet.invoice_alocation_id');
+                }
+                if ($invoice_number !== '') {
+                    $recordQuery->where_like('sys_invoices.invoicenum', '%' . $invoice_number . '%');
                 }
 
                 // IMPORTANT: apply ordering to the query BEFORE executing find_many()
@@ -565,7 +590,13 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $paginatedQuery->where('crm_timesheet.employee_id', $employee_id);
                 }
                 if (!empty($fromdate) && !empty($todate)) {
-                    $paginatedQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
+                    if ($date_filter_type === 'completed_date') {
+                        $paginatedQuery->where_gte('invoice_alocation.completed_date', $fromdate)->where_lte('invoice_alocation.completed_date', $todate);
+                    } elseif ($date_filter_type === 'paid_date') {
+                        $paginatedQuery->where_gte('crm_timesheet.paid_date', $fromdate)->where_lte('crm_timesheet.paid_date', $todate);
+                    } else {
+                        $paginatedQuery->where_gte('crm_timesheet.date', $fromdate)->where_lte('crm_timesheet.date', $todate);
+                    }
                 }
                 if ($payment_status == 'paid') {
                     $paginatedQuery->where_not_null('crm_timesheet.transaction_id');
@@ -576,6 +607,9 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     $paginatedQuery->where_not_null('crm_timesheet.invoice_alocation_id');
                 } elseif ($salary_type == 'per_hour') {
                     $paginatedQuery->where_null('crm_timesheet.invoice_alocation_id');
+                }
+                if ($invoice_number !== '') {
+                    $paginatedQuery->where_like('sys_invoices.invoicenum', '%' . $invoice_number . '%');
                 }
 
                 // apply ordering to paginated query

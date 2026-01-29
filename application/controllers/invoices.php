@@ -3405,7 +3405,8 @@ function showDiv(elem){
     $branchId = $user->branch_id; // current logged-in user's branch
 
     // Fetch data from the crm_accounts table
-    $accounts = ORM::for_table('crm_accounts')->where('employee_category_id', $_GET['categoryId'])->where('branch_id', $branchId)->find_many();
+    $accounts = ORM::for_table('crm_accounts')->where('employee_category_id', $_GET['categoryId'])->find_many();
+    // $accounts = ORM::for_table('crm_accounts')->where('employee_category_id', $_GET['categoryId'])->where('branch_id', $branchId)->find_many();
     
     // var_dump($accounts);
     
