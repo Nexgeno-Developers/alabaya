@@ -265,8 +265,28 @@ switch ($action) {
 
         $ui->assign('tr', $tr);
 
-        $employee_id = _get('employee_id');
+        $employee_id = _post('employee_id');
+        if (!$employee_id) {
+            $employee_id = _get('employee_id');
+        }
         $ui->assign('employee_id', $employee_id);
+
+        $prefill_description = _post('description');
+        if ($prefill_description === '') {
+            $prefill_description = _get('description');
+        }
+        $prefill_amount = _post('total_amount');
+        if ($prefill_amount === '') {
+            $prefill_amount = _get('total_amount');
+        }
+        $prefill_timesheet_ids = _post('timesheet_ids');
+        if ($prefill_timesheet_ids === '') {
+            $prefill_timesheet_ids = _get('timesheet_ids');
+        }
+
+        $ui->assign('prefill_description', $prefill_description);
+        $ui->assign('prefill_amount', $prefill_amount);
+        $ui->assign('prefill_timesheet_ids', $prefill_timesheet_ids);
                 
         if($employee_id){
             $employee = ORM::for_table('crm_accounts')->find_one($employee_id);

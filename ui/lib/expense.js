@@ -283,15 +283,16 @@ $(document).ready(function () {
     });
 
     
-    // Fetch GET parameters
-    var description = getUrlParam('description'); 
-    var amount = getUrlParam('total_amount'); 
-    var employeeId = getUrlParam('employee_id'); 
-    var timesheetIds = getUrlParam('timesheet_ids'); 
+    // Prefer POST-provided prefills (hidden inputs), fallback to GET parameters
+    var descriptionPrefill = $('#prefill_description').val();
+    var description = descriptionPrefill || getUrlParam('description');
+    var amount = $('#prefill_amount').val() || getUrlParam('total_amount');
+    var employeeId = $('#prefill_employee_id').val() || getUrlParam('employee_id');
+    var timesheetIds = $('#prefill_timesheet_ids').val() || getUrlParam('timesheet_ids');
 
     // Set values in the form
     if (description) {
-        $('#description').val(decodeURIComponent(description));
+        $('#description').val(descriptionPrefill ? description : decodeURIComponent(description));
     }
     if (amount) {
         $('#amount').val(amount);

@@ -648,11 +648,30 @@ $i = ORM::for_table('sys_invoices')->where('userid',$cid)->find_many();
                     // Prepare Pay Now button data
                     $payNowButton = "";
                     if(!empty($timesheetIdsParam) && $payment_status == 'unpaid'){
+                        $actionUrl = APP_URL . '/?ng=transactions/expense';
+                        $safeTimesheetIds = htmlspecialchars($timesheetIdsParam, ENT_QUOTES, 'UTF-8');
+                        $safeEmployeeId = htmlspecialchars((string)$employeeId, ENT_QUOTES, 'UTF-8');
+                        $safeAmount = htmlspecialchars((string)$earnAmountSumTotal, ENT_QUOTES, 'UTF-8');
+
                         if (!empty($invoiceNums) && $salary_type == 'per_piece') {
-                            $payNowButton = '<a id="pay-now-action" href="' . APP_URL . '/?ng=transactions/expense&description=' . urlencode($invoiceDescription) . '&total_amount=' . $earnAmountSumTotal . '&employee_id=' . $employeeId . '&timesheet_ids=' . urlencode($timesheetIdsParam) . '" target="_blank">Pay Now</a>';
+                            $safeDescription = htmlspecialchars($invoiceDescription, ENT_QUOTES, 'UTF-8');
+                            $payNowButton = '<form method="post" action="' . $actionUrl . '" target="_blank" class="timesheet-pay-form" style="display:inline;">'
+                                . '<input type="hidden" name="description" value="' . $safeDescription . '">'
+                                . '<input type="hidden" name="total_amount" value="' . $safeAmount . '">'
+                                . '<input type="hidden" name="employee_id" value="' . $safeEmployeeId . '">'
+                                . '<input type="hidden" name="timesheet_ids" value="' . $safeTimesheetIds . '">'
+                                . '<button type="submit" class="btn btn-link p-0" id="pay-now-action">Pay Now</button>'
+                                . '</form>';
                         }elseif(!empty($fromdate) && !empty($todate) && $salary_type == 'per_hour'){
                             $description = $fromdate . " To " . $todate . " Salary";
-                            $payNowButton = '<a id="pay-now-action" href="' . APP_URL . '/?ng=transactions/expense&description=' . urlencode($description) . '&total_amount=' . $earnAmountSumTotal . '&employee_id=' . $employeeId . '&timesheet_ids=' . urlencode($timesheetIdsParam) . '" target="_blank">Pay Now</a>';
+                            $safeDescription = htmlspecialchars($description, ENT_QUOTES, 'UTF-8');
+                            $payNowButton = '<form method="post" action="' . $actionUrl . '" target="_blank" class="timesheet-pay-form" style="display:inline;">'
+                                . '<input type="hidden" name="description" value="' . $safeDescription . '">'
+                                . '<input type="hidden" name="total_amount" value="' . $safeAmount . '">'
+                                . '<input type="hidden" name="employee_id" value="' . $safeEmployeeId . '">'
+                                . '<input type="hidden" name="timesheet_ids" value="' . $safeTimesheetIds . '">'
+                                . '<button type="submit" class="btn btn-link p-0" id="pay-now-action">Pay Now</button>'
+                                . '</form>';
                         }
                     }
                     
