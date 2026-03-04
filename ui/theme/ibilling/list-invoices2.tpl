@@ -20,7 +20,7 @@
                             <div class="form-group">
                                 <label for="filter_branch">Branch</label>
                                 <select name="branch_id" id="filter_branch" class="form-control">
-                                    {if $user->roleid eq 0}
+                                    {if $user->roleid eq 0 or $user->user_type eq 'Tailor'}
                                         <option value="">All</option>
                                         {foreach $branches as $branch}
                                             <option value="{$branch.id}" {if $branch.id eq $user->branch_id}selected{/if}>

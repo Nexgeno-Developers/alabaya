@@ -58,6 +58,7 @@
     {*<div class="col-lg-6">*}
     {*</div>*}
 {*</div>*}
+{if $user->user_type neq 'Tailor'}
 <form method="post" class="form-inline" style="margin-bottom:15px;">
     <div class="form-group">
         <label for="branch_id">Branch:</label>
@@ -307,6 +308,7 @@
         </div>
     </div>
     <!-- Row end-->
+{/if}
 <div class="row" id="sort_4">
     <div class="col-md-12">
         <div class="ibox float-e-margins border-radius-16px">
@@ -399,6 +401,7 @@
         </div>
     </div>
 </div>-->
+{if $user->user_type neq 'Tailor'}
     <div class="row" id="sort_3">
         <div class="col-md-6">
             <div class="ibox float-e-margins border-radius-16px">
@@ -447,4 +450,5 @@
             </div>
         </div>
     </div>
+{/if}
 {include file="sections/footer.tpl"}

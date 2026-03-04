@@ -1565,13 +1565,11 @@ $(".cdelete").click(function (e) {
         // Assume $user is current logged-in user object
         $branch_id = $request['branch_id'];
 
-        // Admin: allow any branch (or 'all')
-        if ($user->roleid == 0) {
+        if ($user->roleid == 0 || $user->user_type == 'Tailor') {
             if (!empty($branch_id) && $branch_id != 'all') {
                 $base_q->where('t.company_id', $branch_id);
             }
         } else {
-            // Non-admin: override branch_id to user's branch, ignore request value
             $branch_id = $user->branch_id;
             $base_q->where('t.company_id', $branch_id);
         }
