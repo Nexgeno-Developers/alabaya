@@ -1,6 +1,54 @@
 <?php 
 require_once dirname(__DIR__, 2) . '/system_log.php';
 
+function wati_log($message)
+{
+    $log_file = dirname(__DIR__, 2) . '/logs/error_log.php';
+    $log_directory = dirname($log_file);
+
+    if (!is_dir($log_directory) && !@mkdir($log_directory, 0777, true) && !is_dir($log_directory)) {
+        error_log('Unable to create the WATI log directory: ' . $log_directory);
+        return false;
+    }
+
+    $handle = @fopen($log_file, 'c+');
+    if ($handle === false) {
+        error_log('Unable to open the WATI custom log: ' . $log_file);
+        error_log((string) $message);
+        return false;
+    }
+
+    if (!flock($handle, LOCK_EX)) {
+        fclose($handle);
+        error_log('Unable to lock the WATI custom log: ' . $log_file);
+        error_log((string) $message);
+        return false;
+    }
+
+    $file_stats = fstat($handle);
+    if (empty($file_stats['size'])) {
+        fwrite($handle, "<?php http_response_code(404); exit; __halt_compiler();\n");
+    }
+
+    $ip_address = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'CLI';
+    $clean_message = str_replace(array("\r", "\n"), ' ', trim((string) $message));
+    $log_entry = '[' . date('Y-m-d H:i:s') . '] [WATI] [' . $ip_address . '] ' . $clean_message . PHP_EOL;
+
+    fseek($handle, 0, SEEK_END);
+    $written = fwrite($handle, $log_entry);
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+
+    if ($written === false) {
+        error_log('Unable to write to the WATI custom log: ' . $log_file);
+        error_log((string) $message);
+        return false;
+    }
+
+    return true;
+}
+
 function get_client_ip(){
     if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
         $ip = $_SERVER['HTTP_CLIENT_IP'];
@@ -1295,7 +1343,7 @@ function qrcode_generate($text)
     return $file;
 }
 
-function wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone){
+function wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone){
 
     $curl = curl_init();
     
@@ -1309,8 +1357,8 @@ function wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => 'POST',
       CURLOPT_POSTFIELDS =>'{
-      "template_name": "order_status2",
-      "broadcast_name": "order_status2",
+      "template_name": "order_status4",
+      "broadcast_name": "order_status4",
       "receivers": [
         {
           "whatsappNumber": "' . $phone . '",
@@ -1328,12 +1376,20 @@ function wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $
                         "value": "' . $paymentstatus . '"
                     },
                     {
-                        "name": "order_status_url",
+                        "name": "order_status",
                         "value": "' . $orderstatus . '"
                     },
+      ' .
+                    /*
                     {
-                        "name": "order_status_url_partial_variable",
+                        "name": "order_track_url",
                         "value": "' . $ordertrack_url . '"
+                    },
+                    */
+                    '
+                    {
+                        "name": "order_track_url_suffix",
+                        "value": "' . $ordertrack_url_suffix . '"
                     }
                 ]
         }
@@ -1348,11 +1404,500 @@ function wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $
     ));
     
     $response = curl_exec($curl);
-    
+    $curl_error = curl_error($curl);
+    $http_code = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
     curl_close($curl);
+
+    $response_for_log = $response === false
+        ? ''
+        : trim(preg_replace('/\s+/', ' ', (string) $response));
+    if (strlen($response_for_log) > 1000) {
+        $response_for_log = substr($response_for_log, 0, 1000) . '...';
+    }
+
+    $request_succeeded = $response !== false
+        && $curl_error === ''
+        && $http_code >= 200
+        && $http_code < 300;
+
+    if ($request_succeeded) {
+        $decoded_response = json_decode((string) $response, true);
+        if (is_array($decoded_response)) {
+            if (array_key_exists('result', $decoded_response) && $decoded_response['result'] === false) {
+                $request_succeeded = false;
+            }
+            if (array_key_exists('success', $decoded_response) && $decoded_response['success'] === false) {
+                $request_succeeded = false;
+            }
+            if (!empty($decoded_response['error'])) {
+                $request_succeeded = false;
+            }
+            if (!empty($decoded_response['receivers']) && is_array($decoded_response['receivers'])) {
+                foreach ($decoded_response['receivers'] as $receiver) {
+                    if (
+                        (isset($receiver['isValidWhatsAppNumber']) && $receiver['isValidWhatsAppNumber'] === false)
+                        || !empty($receiver['errors'])
+                    ) {
+                        $request_succeeded = false;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    $log_message = 'WATI template order_status4 notification for invoice ' . $invoicenumber
+        . ' returned HTTP ' . $http_code;
+
+    if ($request_succeeded) {
+        $result_log_message = $log_message
+            . ' and was accepted by WATI.'
+            . ($response_for_log !== '' ? ' Response: ' . $response_for_log : '');
+    } else {
+        $failure_detail = $curl_error !== ''
+            ? ' cURL error: ' . $curl_error
+            : ($response === false ? ' cURL request failed.' : ' WATI rejected the request.');
+
+        $result_log_message = $log_message
+            . ' and failed.'
+            . $failure_detail
+            . ($response_for_log !== '' ? ' Response: ' . $response_for_log : '');
+    }
+
+    wati_log($result_log_message);
     
     return $response;
 
+}
+
+function wati_update_contact_attributes($invoicenum): bool
+{
+    global $config;
+
+    try {
+        $invoicenum = trim((string) $invoicenum);
+
+        if ($invoicenum === '') {
+            wati_log('WATI invoice contact sync skipped: missing invoice number.');
+            return false;
+        }
+
+        $invoice = ORM::for_table('sys_invoices')
+            ->where('invoicenum', $invoicenum)
+            ->order_by_desc('id')
+            ->find_one();
+
+        if (!$invoice) {
+            wati_log('WATI invoice contact sync skipped: invoice not found for ' . $invoicenum . '.');
+            return false;
+        }
+
+        $customer = ORM::for_table('crm_accounts')->find_one($invoice['userid']);
+
+        if (!$customer) {
+            wati_log('WATI invoice contact sync skipped: customer not found for invoice ' . $invoicenum . '.');
+            return false;
+        }
+
+        $phone = preg_replace('/\D+/', '', (string) $customer['phone']);
+        if (strlen($phone) === 10) {
+            $phone = '91' . $phone;
+        }
+
+        if ($phone === '') {
+            wati_log('WATI invoice contact sync skipped: customer phone missing for invoice ' . $invoicenum . '.');
+            return false;
+        }
+
+        $currency_symbol = trim((string) $invoice['currency_symbol']);
+        if ($currency_symbol === '') {
+            $currency_symbol = isset($config['currency_code']) ? trim((string) $config['currency_code']) : '';
+        }
+
+        $format_number = function ($value) {
+            $formatted = number_format(round((float) $value, 2), 2, '.', '');
+            $formatted = rtrim(rtrim($formatted, '0'), '.');
+            return ($formatted === '' || $formatted === '-0') ? '0' : $formatted;
+        };
+
+        $format_money = function ($value) use ($currency_symbol, $format_number) {
+            return $currency_symbol . $format_number($value);
+        };
+
+        $format_date = function ($value) {
+            if (empty($value) || strtotime($value) === false) {
+                return '';
+            }
+
+            return date('d F Y', strtotime($value));
+        };
+
+        $address_parts = array();
+        foreach (array('address', 'city', 'state', 'country') as $field) {
+            $value = trim((string) $customer[$field]);
+            if ($value !== '') {
+                $address_parts[] = $value;
+            }
+        }
+
+        $customer_address = implode(', ', $address_parts);
+        $postcode = trim((string) $customer['zip']);
+        if ($postcode !== '') {
+            $customer_address .= ($customer_address !== '' ? ' - ' : '') . $postcode;
+        }
+
+        $product_lines = array();
+        $items = ORM::for_table('sys_invoiceitems')
+            ->where('invoiceid', $invoice['id'])
+            ->order_by_asc('id')
+            ->find_many();
+
+        foreach ($items as $item) {
+            if ((float) $item['amount'] <= 0) {
+                continue;
+            }
+
+            $product_lines[] = (count($product_lines) + 1) . '. '
+                . trim((string) $item['description'])
+                . ' - Qty: ' . $format_number($item['qty'])
+                . ' - Price: ' . $format_money($item['amount']) . ' each';
+        }
+
+        $measurement_lines = array();
+        $measurements = json_decode((string) $customer['measurements'], true);
+        $measurement_labels = array(
+            'length' => 'Length',
+            'shoulder' => 'Shoulder',
+            'sleeves' => 'Sleeves',
+            'armole' => 'Armhole',
+            'cuff' => 'Cuff',
+            'chest' => 'Chest',
+            'waist' => 'Waist',
+            'hipps' => 'Hips',
+        );
+
+        if (is_array($measurements)) {
+            foreach ($measurement_labels as $key => $label) {
+                if (!array_key_exists($key, $measurements)) {
+                    continue;
+                }
+
+                $value = trim((string) $measurements[$key]);
+                if ($value === '' || (is_numeric($value) && (float) $value == 0)) {
+                    continue;
+                }
+
+                if (is_numeric($value)) {
+                    $value = $format_number($value) . ' inch';
+                }
+
+                $measurement_lines[] = $label . ': ' . $value;
+            }
+        }
+
+        $latest_payment = ORM::for_table('sys_transactions')
+            ->where('iid', $invoice['id'])
+            ->where('type', 'Income')
+            ->order_by_desc('id')
+            ->find_one();
+
+        $payment_date = '';
+        $payment_status = '';
+        if ($latest_payment) {
+            $payment_date = $format_date($latest_payment['date']);
+            $raw_payment_status = trim((string) $latest_payment['status']);
+            $payment_status = strcasecmp($raw_payment_status, 'Cleared') === 0
+                ? 'Success'
+                : ucwords($raw_payment_status);
+        }
+
+        $total_amount = (float) $invoice['subtotal'];
+        $paid_amount = (float) $invoice['credit'];
+        $due_amount = max($total_amount - $paid_amount, 0);
+        $base_url = defined('U') ? U : '';
+        $invoice_url = $base_url . 'client/iview/' . $invoice['id'] . '/token_' . $invoice['vtoken'];
+        $order_track_url_suffix = 'client/iview/' . $invoice['id'] . '/token_' . $invoice['vtoken'];
+        $customer_name = trim((string) $customer['account']);
+        $invoice_number = (string) $invoice['invoicenum'];
+        $invoice_status = ucwords(trim((string) $invoice['status']));
+        $delivery_status = trim((string) $invoice['delivery_status']);
+        $delivery_status = $delivery_status !== ''
+            ? ucwords(str_replace('_', ' ', $delivery_status))
+            : 'Pending';
+
+        $payload = array(
+            'customParams' => array(
+                // array('name' => 'name', 'value' => $customer_name),
+                array('name' => 'customer_name', 'value' => $customer_name),
+                array('name' => 'customer_email', 'value' => trim((string) $customer['email'])),
+                array('name' => 'customer_phone', 'value' => $phone),
+                array('name' => 'customer_address', 'value' => $customer_address),
+                array('name' => 'invoice_number', 'value' => $invoice_number),
+                array('name' => 'invoice_date', 'value' => $format_date($invoice['date'])),
+                array('name' => 'delivery_date', 'value' => $format_date($invoice['duedate'])),
+                array('name' => 'invoice_total_amount', 'value' => $format_money($total_amount)),
+                array('name' => 'invoice_paid_amount', 'value' => $format_money($paid_amount)),
+                array('name' => 'invoice_due_amount', 'value' => $format_money($due_amount)),
+                array('name' => 'invoice_status', 'value' => $invoice_status),
+                array('name' => 'payment_date', 'value' => $payment_date),
+                array('name' => 'payment_status', 'value' => $payment_status),
+                array('name' => 'invoice_url', 'value' => $invoice_url),
+                array('name' => 'products_info', 'value' => implode(' | ', $product_lines)),
+                array('name' => 'measurement_info', 'value' => implode(' | ', $measurement_lines)),
+                array('name' => 'delivery_status', 'value' => $delivery_status),
+                array('name' => 'order_number', 'value' => $invoice_number),
+                array('name' => 'order_payment_status', 'value' => $invoice_status),
+                array('name' => 'order_status', 'value' => $delivery_status),
+                array('name' => 'order_track_url_suffix', 'value' => $order_track_url_suffix),
+            ),
+        );
+
+        $required_wati_attributes = array(
+            'customer_name',
+            'customer_email',
+            'customer_phone',
+            'customer_address',
+            'invoice_number',
+            'invoice_date',
+            'delivery_date',
+            'invoice_total_amount',
+            'invoice_paid_amount',
+            'invoice_due_amount',
+            'invoice_status',
+            'payment_date',
+            'payment_status',
+            'invoice_url',
+            'products_info',
+            'measurement_info',
+        );
+        $seen_wati_attributes = array();
+        $defaulted_wati_attributes = array();
+
+        foreach ($payload['customParams'] as &$custom_param) {
+            $custom_param['value'] = isset($custom_param['value'])
+                ? (string) $custom_param['value']
+                : '';
+
+            if (in_array($custom_param['name'], $required_wati_attributes, true)) {
+                $seen_wati_attributes[] = $custom_param['name'];
+
+                if (trim($custom_param['value']) === '') {
+                    $custom_param['value'] = in_array(
+                        $custom_param['name'],
+                        array('invoice_status', 'payment_status'),
+                        true
+                    ) ? 'Pending' : 'N/A';
+                    $defaulted_wati_attributes[] = $custom_param['name'];
+                }
+            }
+        }
+        unset($custom_param);
+
+        $missing_wati_attributes = array_diff($required_wati_attributes, $seen_wati_attributes);
+        if (!empty($missing_wati_attributes)) {
+            wati_log(
+                'WATI invoice contact sync failed for invoice '
+                . $invoicenum
+                . ': required attributes missing from payload: '
+                . implode(', ', $missing_wati_attributes)
+                . '.'
+            );
+            return false;
+        }
+
+        if (!empty($defaulted_wati_attributes)) {
+            wati_log(
+                'WATI invoice contact sync used default values for invoice '
+                . $invoicenum
+                . ': '
+                . implode(', ', $defaulted_wati_attributes)
+                . '.'
+            );
+        }
+
+        $truncated_custom_params = array();
+        foreach ($payload['customParams'] as &$custom_param) {
+            $attribute_value = (string) $custom_param['value'];
+            $attribute_length = function_exists('mb_strlen')
+                ? mb_strlen($attribute_value, 'UTF-8')
+                : strlen($attribute_value);
+
+            if ($attribute_length > 256) {
+                $custom_param['value'] = function_exists('mb_substr')
+                    ? mb_substr($attribute_value, 0, 256, 'UTF-8')
+                    : substr($attribute_value, 0, 256);
+                $truncated_custom_params[] = $custom_param['name'];
+            }
+        }
+        unset($custom_param);
+
+        if (!empty($truncated_custom_params)) {
+            wati_log(
+                'WATI contact attributes truncated to 256 characters for invoice '
+                . $invoicenum
+                . ': '
+                . implode(', ', $truncated_custom_params)
+                . '.'
+            );
+        }
+
+        $json_payload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json_payload === false) {
+            wati_log('WATI invoice contact sync failed: payload encoding error for invoice ' . $invoicenum . '.');
+            return false;
+        }
+
+        $wati_headers = array(
+            'accept: */*',
+            'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiMTZhZThiZC04NmNiLTQ4YTItOTkwZS0yOGViNTRlN2Q2OGEiLCJ1bmlxdWVfbmFtZSI6ImNvbnRhY3RAYWJheWFkZXNpZ25lci5jb20iLCJuYW1laWQiOiJjb250YWN0QGFiYXlhZGVzaWduZXIuY29tIiwiZW1haWwiOiJjb250YWN0QGFiYXlhZGVzaWduZXIuY29tIiwiYXV0aF90aW1lIjoiMDEvMDkvMjAyNCAwNTo0Njo1MiIsImRiX25hbWUiOiIxMTUxNDYiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.ek5oVVij0bYtUfQFbug2OXbcJNg_WQd-KIQFJMMjt8Q',
+            'Content-Type: application/json-patch+json',
+        );
+
+        $send_wati_request = function ($url, $body) use ($wati_headers) {
+            $curl = curl_init();
+            if ($curl === false) {
+                return array(
+                    'body' => '',
+                    'error' => 'Unable to initialize cURL.',
+                    'http_code' => 0,
+                );
+            }
+
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => $wati_headers,
+            ));
+
+            $response_body = curl_exec($curl);
+            $result = array(
+                'body' => $response_body === false ? '' : (string) $response_body,
+                'error' => curl_error($curl),
+                'http_code' => (int) curl_getinfo($curl, CURLINFO_HTTP_CODE),
+            );
+            curl_close($curl);
+
+            return $result;
+        };
+
+        $request_succeeded = function ($result) {
+            if ($result['error'] !== '' || $result['http_code'] < 200 || $result['http_code'] >= 300) {
+                return false;
+            }
+
+            $decoded_response = json_decode($result['body'], true);
+            if (is_array($decoded_response)) {
+                if (array_key_exists('result', $decoded_response) && $decoded_response['result'] === false) {
+                    return false;
+                }
+                if (array_key_exists('success', $decoded_response) && $decoded_response['success'] === false) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
+        $describe_wati_result = function ($result) {
+            $details = array('HTTP ' . (int) $result['http_code']);
+
+            if ($result['error'] !== '') {
+                $details[] = 'cURL error: ' . $result['error'];
+            }
+
+            $response_body = trim(preg_replace('/\s+/', ' ', (string) $result['body']));
+            if ($response_body !== '') {
+                if (strlen($response_body) > 1000) {
+                    $response_body = substr($response_body, 0, 1000) . '...';
+                }
+                $details[] = 'Response: ' . $response_body;
+            }
+
+            return implode('. ', $details);
+        };
+
+        $wati_contact_url = 'https://live-server-115146.wati.io/api/v1/';
+        $update_result = $send_wati_request(
+            $wati_contact_url . 'updateContactAttributes/' . rawurlencode($phone),
+            $json_payload
+        );
+
+        // updateContactAttributes adds customParams that are not yet present on an existing contact.
+        if ($request_succeeded($update_result)) {
+            wati_log(
+                'WATI invoice contact sync succeeded for invoice '
+                . $invoicenum
+                . ': '
+                . $describe_wati_result($update_result)
+            );
+            return true;
+        }
+
+        $update_response = strtolower($update_result['body']);
+        $contact_missing = $update_result['http_code'] === 404
+            || (
+                strpos($update_response, 'contact') !== false
+                && (
+                    strpos($update_response, 'not found') !== false
+                    || strpos($update_response, 'not exist') !== false
+                    || strpos($update_response, 'doesn\'t exist') !== false
+                )
+            );
+
+        if (!$contact_missing) {
+            $failure_detail = $describe_wati_result($update_result);
+            $failure_message = 'WATI invoice contact sync failed for invoice ' . $invoicenum . ': ' . $failure_detail . '.';
+            wati_log($failure_message);
+            return false;
+        }
+
+        $create_payload = array(
+            'name' => trim((string) $customer['account']),
+            'customParams' => $payload['customParams'],
+        );
+        $json_create_payload = json_encode(
+            $create_payload,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+
+        if ($json_create_payload === false) {
+            wati_log('WATI contact creation failed: payload encoding error for invoice ' . $invoicenum . '.');
+            return false;
+        }
+
+        $create_result = $send_wati_request(
+            $wati_contact_url . 'addContact/' . rawurlencode($phone),
+            $json_create_payload
+        );
+
+        if ($request_succeeded($create_result)) {
+            wati_log(
+                'WATI contact creation succeeded for invoice '
+                . $invoicenum
+                . ': '
+                . $describe_wati_result($create_result)
+            );
+            return true;
+        }
+
+        $failure_detail = $describe_wati_result($create_result);
+        $failure_message = 'WATI contact creation failed for invoice ' . $invoicenum . ': ' . $failure_detail . '.';
+        wati_log($failure_message);
+        return false;
+    } catch (Throwable $exception) {
+        wati_log(
+            'WATI invoice contact sync failed for invoice '
+            . (isset($invoicenum) ? $invoicenum : '')
+            . ': '
+            . $exception->getMessage()
+        );
+        return false;
+    }
 }
 
 function send_email_brevo_api($to, $username, $subject, $txt, $headers) {

@@ -972,6 +972,7 @@ $(".cdelete").click(function (e) {
                     
                     $ii->save();
                 }
+                wati_update_contact_attributes($q['invoicenum']);
                 _msglog('s',$_L['Invoice Created']);
 
                 echo $invoiceid;

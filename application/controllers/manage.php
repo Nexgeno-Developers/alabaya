@@ -218,6 +218,18 @@ switch ($action) {
         $ui->display('manage/list-design.tpl');
         break;
 
+    case 'most-selling-design':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
+        $ui->assign('_title', 'Most Selling Designs'.'- '. $config['CompanyName']);
+        $ui->assign('_st', 'Most Selling Designs');
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min']));
+        $ui->display('manage/most-selling-design.tpl');
+        break;
+
     case 'list-design-datatable':
         if(!has_access($user->roleid, 'products_n_services')) {
             header('Content-Type: application/json');
@@ -232,7 +244,9 @@ switch ($action) {
             1 => 'd.name',
             2 => 'c.name',
             3 => 'd.price',
-            4 => 'd.created_at'
+            4 => 'd.id',
+            5 => 'd.id',
+            6 => 'd.id'
         ];
 
         $length = isset($request['length']) ? (int)$request['length'] : 25;
@@ -315,6 +329,133 @@ switch ($action) {
             'draw' => intval($request['draw'] ?? 0),
             'recordsTotal' => intval($totalData),
             'recordsFiltered' => intval($totalFiltered),
+            'data' => $data
+        ]);
+
+        break;
+
+    case 'most-selling-design-datatable':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            header('Content-Type: application/json');
+            echo json_encode(['data' => [], 'recordsTotal' => 0, 'recordsFiltered' => 0]);
+            break;
+        }
+
+        $request = $_REQUEST;
+        $length = isset($request['length']) ? (int)$request['length'] : 25;
+        $start = isset($request['start']) ? max(0, (int)$request['start']) : 0;
+
+        $columns = [
+            0 => 'design_name',
+            1 => 'design_name',
+            2 => 'total_qty_sold',
+            3 => 'total_sales_amount',
+            4 => 'invoice_count'
+        ];
+        $order_index = isset($request['order'][0]['column']) ? (int)$request['order'][0]['column'] : 2;
+        $order_col = isset($columns[$order_index]) ? $columns[$order_index] : 'total_qty_sold';
+        $order_dir = (isset($request['order'][0]['dir']) && strtolower($request['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+        $valid_date = function($date) {
+            if (!is_string($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                return false;
+            }
+            $parsed = DateTime::createFromFormat('Y-m-d', $date);
+            return $parsed && $parsed->format('Y-m-d') === $date;
+        };
+
+        // In this application payment and fulfilment are separate states.
+        // A completed sale is a non-cancelled/non-draft invoice that has
+        // reached completed or delivered fulfilment.
+        $conditions = [
+            "ii.item_type = 'design'",
+            'ii.design_id IS NOT NULL',
+            'ii.design_id > 0',
+            "inv.status NOT IN ('Cancelled', 'Draft', 'Deleted')",
+            "inv.delivery_status IN ('completed', 'delivered')"
+        ];
+        $params = [];
+
+        // Match invoice-list visibility: regular staff only report on their
+        // assigned branch, while administrators and tailors retain all-branch access.
+        if ($user->roleid != 0 && $user->user_type != 'Tailor') {
+            $conditions[] = 'inv.company_id = ?';
+            $params[] = (int)$user->branch_id;
+        }
+
+        $base_conditions = $conditions;
+        $base_params = $params;
+
+        if (!empty($request['date_from']) && $valid_date($request['date_from'])) {
+            $conditions[] = 'inv.date >= ?';
+            $params[] = $request['date_from'];
+        }
+        if (!empty($request['date_to']) && $valid_date($request['date_to'])) {
+            $conditions[] = 'inv.date <= ?';
+            $params[] = $request['date_to'];
+        }
+        if (!empty($request['search']['value'])) {
+            $search = '%' . $request['search']['value'] . '%';
+            $conditions[] = 'd.name LIKE ?';
+            $params[] = $search;
+        }
+
+        $main_sql = "
+            SELECT
+                d.id AS design_id,
+                d.name AS design_name,
+                SUM(CAST(ii.qty AS DECIMAL(18,4))) AS total_qty_sold,
+                SUM(ii.total) AS total_sales_amount,
+                COUNT(DISTINCT ii.invoiceid) AS invoice_count
+            FROM sys_invoiceitems ii
+            INNER JOIN sys_invoices inv ON inv.id = ii.invoiceid
+            INNER JOIN sys_designs d ON d.id = ii.design_id
+            WHERE " . implode(' AND ', $conditions) . "
+            GROUP BY d.id, d.name
+        ";
+
+        $count_sql = "SELECT COUNT(*) AS total FROM ($main_sql) AS selling_designs";
+        $count_row = ORM::for_table('sys_invoiceitems')->raw_query($count_sql, $params)->find_one();
+        $recordsFiltered = $count_row ? (int)$count_row->total : 0;
+
+        $total_sql = "
+            SELECT COUNT(DISTINCT ii.design_id) AS total
+            FROM sys_invoiceitems ii
+            INNER JOIN sys_invoices inv ON inv.id = ii.invoiceid
+            INNER JOIN sys_designs d ON d.id = ii.design_id
+            WHERE " . implode(' AND ', $base_conditions);
+        $total_row = ORM::for_table('sys_invoiceitems')->raw_query($total_sql, $base_params)->find_one();
+        $recordsTotal = $total_row ? (int)$total_row->total : 0;
+
+        $data_sql = "
+            SELECT *
+            FROM ($main_sql) AS selling_designs
+            ORDER BY $order_col $order_dir
+        ";
+        if ($length != -1) {
+            $data_sql .= ' LIMIT ' . $start . ', ' . max(0, $length);
+        }
+        $rows = ORM::for_table('sys_invoiceitems')->raw_query($data_sql, $params)->find_array();
+
+        $decimal_digits = ($config['currency_decimal_digits'] === 'true') ? 2 : 0;
+        $data = [];
+        $serial = $start + 1;
+        foreach ($rows as $row) {
+            $quantity = rtrim(rtrim(number_format((float)$row['total_qty_sold'], 4, '.', ''), '0'), '.');
+            $data[] = [
+                $serial++,
+                htmlspecialchars($row['design_name'], ENT_QUOTES, 'UTF-8'),
+                $quantity === '' ? '0' : $quantity,
+                number_format((float)$row['total_sales_amount'], $decimal_digits, $config['dec_point'], $config['thousands_sep']),
+                (int)$row['invoice_count']
+            ];
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'draw' => intval($request['draw'] ?? 0),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
             'data' => $data
         ]);
 

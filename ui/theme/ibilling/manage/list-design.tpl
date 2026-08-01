@@ -104,6 +104,34 @@ $(function(){
         return o;
     };
 
+    function serverSideExportAction(buttonType){
+        return function(e, dt, button, config){
+            var context = this;
+            var oldStart = dt.settings()[0]._iDisplayStart;
+
+            dt.one('preXhr', function(e, settings, data){
+                data.start = 0;
+                data.length = -1;
+
+                dt.one('preDraw', function(e, settings){
+                    $.fn.dataTable.ext.buttons[buttonType].action.call(context, e, dt, button, config);
+
+                    dt.one('preXhr', function(e, settings, data){
+                        settings._iDisplayStart = oldStart;
+                        data.start = oldStart;
+                    });
+
+                    setTimeout(function(){
+                        dt.ajax.reload(null, false);
+                    }, 0);
+                    return false;
+                });
+            });
+
+            dt.ajax.reload();
+        };
+    }
+
     var table = $('#design-datatable').DataTable({
         processing: true,
         serverSide: true,
@@ -116,6 +144,27 @@ $(function(){
         },
         dom: 'Bfrtip',
         buttons: [
+            {
+                extend: 'excelHtml5',
+                text: 'Excel',
+                title: 'Design List',
+                action: serverSideExportAction('excelHtml5'),
+                exportOptions: { columns: [0,1,2,3] }
+            },
+            {
+                extend: 'pdfHtml5',
+                text: 'PDF',
+                title: 'Design List',
+                action: serverSideExportAction('pdfHtml5'),
+                exportOptions: { columns: [0,1,2,3] }
+            },
+            {
+                extend: 'print',
+                text: 'Print',
+                title: 'Design List',
+                action: serverSideExportAction('print'),
+                exportOptions: { columns: [0,1,2,3] }
+            },
             'pageLength'
         ],
         lengthMenu: [
@@ -124,7 +173,7 @@ $(function(){
         ],
         order: [[0, 'desc']],
         columnDefs: [
-            { orderable: false, targets: [6] },
+            { orderable: false, targets: [4,5,6] },
             { className: 'text-right', targets: [3,6] }
         ],
         drawCallback: function(){

@@ -208,6 +208,7 @@
                     <li><a href="{$_url}ps/p-new/">Add Product</a></li>
                 {/if}
                 <li><a href="{$_url}ps/p-list/">List Product</a></li>
+                <li><a href="{$_url}ps/most-selling-readymade/">Most Selling Readymade Products</a></li>
                 <!--<li><a href="{$_url}ps/s-list/">{$_L['Services']}</a></li>
                 <li><a href="{$_url}ps/s-new/">{$_L['New Service']}</a></li>-->
 
@@ -226,6 +227,7 @@
                     <li><a href="{$_url}manage/add-design/">Add Design</a></li>
                 {/if}
                 <li><a href="{$_url}manage/list-design/">List Design</a></li>
+                <li><a href="{$_url}manage/most-selling-design/">Most Selling Designs</a></li>
             </ul>
         </li>
         {/if}

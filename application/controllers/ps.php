@@ -500,14 +500,46 @@ switch ($action) {
             ->order_by_asc('product_category')
             ->find_array();
 
+        // Legacy branch rows use an empty status; treat them as active together
+        // with branches explicitly marked Active.
+        $branches = ORM::for_table('sys_accounts')
+            ->select('id')
+            ->select('account')
+            ->select('alias')
+            ->where_raw("(status IS NULL OR status = '' OR status = 'Active')")
+            ->order_by_asc('account')
+            ->find_array();
+
         $ui->assign('product_type', $product_type);
         $ui->assign('categories', $categories);
+        $ui->assign('branches', $branches);
         $ui->assign('type','Product');
 
         $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min', 'modal']));
         $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min', 'modal', 'numeric']));
         $ui->assign('xfooter2', '<script type="text/javascript" src="' . $_theme . '/lib/ps-list.js"></script>');
         $ui->display('ps-list.tpl');
+        break;
+
+    case 'most-selling-readymade':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            r2(U."dashboard",'e',$_L['You do not have permission']);
+        }
+
+        $branches = ORM::for_table('sys_accounts')
+            ->select('id')
+            ->select('account')
+            ->select('alias')
+            ->where_raw("(status IS NULL OR status = '' OR status = 'Active')")
+            ->order_by_asc('account')
+            ->find_array();
+
+        $ui->assign('_title', 'Most Selling Readymade Products'.'- '. $config['CompanyName']);
+        $ui->assign('_st', 'Most Selling Readymade Products');
+        $ui->assign('branches', $branches);
+        $ui->assign('xheader', Asset::css(['datatables.min', 'buttons.dataTables.min']));
+        $ui->assign('xfooter', Asset::js(['datatables.min', 'dataTables.buttons.min', 'buttons.print.min']));
+        $ui->display('most-selling-readymade.tpl');
         break;
 
     case 'p-list-datatable':
@@ -519,7 +551,7 @@ switch ($action) {
 
         $request = $_REQUEST;
 
-        // column index -> db column mapping for ordering
+        // Column index -> database column mapping for ordering.
         $columns = [
             0 => 'i.id',
             1 => 'i.item_number',
@@ -531,7 +563,8 @@ switch ($action) {
             7 => 'i.product_category',
             8 => 'i.product_image',
             9 => 'i.description',
-            10 => 'i.id'
+            10 => 'i.id',
+            11 => 'i.id'
         ];
 
         $length = isset($request['length']) ? (int)$request['length'] : 25;
@@ -542,47 +575,111 @@ switch ($action) {
 
         $totalData = (int) ORM::for_table('sys_items')->where('type', 'Product')->count();
 
-        // base query
-        $base_q = ORM::for_table('sys_items')->table_alias('i')->where('i.type', 'Product');
+        $branch_id = !empty($request['branch_id']) ? (int)$request['branch_id'] : 0;
+        $stock_where = '';
+        $stock_params = [];
+        if ($branch_id > 0) {
+            $stock_where = ' WHERE branch_id = ? ';
+            $stock_params[] = $branch_id;
+        }
 
+        // Aggregate stock once per product/branch. This avoids duplicate products
+        // and replaces the previous per-row stock queries.
+        $stock_sql = "
+            LEFT JOIN (
+                SELECT
+                    item_id,
+                    SUM(
+                        CASE
+                            WHEN type = 'credit' THEN stock
+                            WHEN type = 'debit' THEN -stock
+                            ELSE 0
+                        END
+                    ) AS current_stock
+                FROM sys_items_stock
+                $stock_where
+                GROUP BY item_id
+            ) AS st ON st.item_id = i.id
+        ";
+
+        $where = ["i.type = 'Product'"];
+        $where_params = [];
         $product_type = !empty($request['product_type']) ? $request['product_type'] : 'readymade';
         if ($product_type !== 'all') {
-            $base_q->where('i.product_type', $product_type);
+            $where[] = 'i.product_type = ?';
+            $where_params[] = $product_type;
         }
 
         if (!empty($request['product_category'])) {
-            $base_q->where('i.product_category', $request['product_category']);
+            $where[] = 'i.product_category = ?';
+            $where_params[] = $request['product_category'];
         }
 
-        // general search
+        // A product is available in a branch only when its net stock is positive.
+        if ($branch_id > 0) {
+            $where[] = 'COALESCE(st.current_stock, 0) > 0';
+        }
+
         if (!empty($request['search']['value'])) {
             $s = '%' . $request['search']['value'] . '%';
-            $base_q->where_raw('(i.name LIKE ? OR i.item_number LIKE ? OR i.description LIKE ? OR i.product_category LIKE ?)', [$s, $s, $s, $s]);
+            $where[] = '(i.name LIKE ? OR i.item_number LIKE ? OR i.description LIKE ? OR i.product_category LIKE ?)';
+            array_push($where_params, $s, $s, $s, $s);
         }
 
-        // specific search (name or code)
         if (!empty($request['query'])) {
             $q = '%' . $request['query'] . '%';
-            $base_q->where_raw('(i.name LIKE ? OR i.item_number LIKE ?)', [$q, $q]);
+            $where[] = '(i.name LIKE ? OR i.item_number LIKE ?)';
+            array_push($where_params, $q, $q);
         }
 
-        $count_q = clone $base_q;
-        $totalFiltered = (int) $count_q->count();
+        $where_sql = implode(' AND ', $where);
+        $params = array_merge($stock_params, $where_params);
 
-        $data_q = clone $base_q;
-        $data_q->order_by_expr($order_col . ' ' . $order_dir);
+        $count_sql = "
+            SELECT COUNT(*) AS total
+            FROM sys_items i
+            $stock_sql
+            WHERE $where_sql
+        ";
+        $count_row = ORM::for_table('sys_items')->raw_query($count_sql, $params)->find_one();
+        $totalFiltered = $count_row ? (int)$count_row->total : 0;
+
+        $totals_sql = "
+            SELECT
+                COALESCE(SUM(i.purchase_price), 0) AS purchase_price,
+                COALESCE(SUM(i.sales_price), 0) AS sales_price
+            FROM sys_items i
+            $stock_sql
+            WHERE $where_sql
+        ";
+        $filtered_totals = ORM::for_table('sys_items')->raw_query($totals_sql, $params)->find_one();
+
+        $data_sql = "
+            SELECT i.*, COALESCE(st.current_stock, 0) AS current_stock
+            FROM sys_items i
+            $stock_sql
+            WHERE $where_sql
+            ORDER BY $order_col $order_dir
+        ";
         if ($length != -1) {
-            $data_q->offset($start)->limit($length);
+            $data_sql .= ' LIMIT ' . $start . ', ' . max(0, $length);
         }
-
-        $rows = $data_q->find_array();
+        $rows = ORM::for_table('sys_items')->raw_query($data_sql, $params)->find_array();
 
         $data = [];
         $serial = $start + 1;
+        $page_purchase_total = 0.0;
+        $page_sales_total = 0.0;
+        $decimal_digits = ($config['currency_decimal_digits'] === 'true') ? 2 : 0;
+        $format_money = function($amount) use ($config, $decimal_digits) {
+            return number_format((float)$amount, $decimal_digits, $config['dec_point'], $config['thousands_sep']);
+        };
+
         foreach ($rows as $r) {
-            $stock_info = json_decode(product_stock_info($r['id']), true);
-            $stock = isset($stock_info['current_stock_count']) ? $stock_info['current_stock_count'] : 0;
+            $stock = (float)$r['current_stock'];
             $stock_label = $stock . ' ' . $r['product_stock_type'];
+            $page_purchase_total += (float)$r['purchase_price'];
+            $page_sales_total += (float)$r['sales_price'];
 
             $img_link = (!empty($r['product_image'])) ? '<a target="_blank" href="'.$r['product_image'].'">View</a>' : '-';
 
@@ -603,8 +700,8 @@ switch ($action) {
                 htmlspecialchars($r['item_number'], ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($r['name'], ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($r['product_type'], ENT_QUOTES, 'UTF-8'),
-                number_format((float)$r['purchase_price'], 2, '.', ''),
-                number_format((float)$r['sales_price'], 2, '.', ''),
+                $format_money($r['purchase_price']),
+                $format_money($r['sales_price']),
                 $stock_label,
                 !empty($r['product_category']) ? str_replace('_', ' ', $r['product_category']) : '-',
                 $img_link,
@@ -620,6 +717,153 @@ switch ($action) {
             'draw' => intval($request['draw'] ?? 0),
             'recordsTotal' => intval($totalData),
             'recordsFiltered' => intval($totalFiltered),
+            'data' => $data,
+            'totals' => [
+                'page' => [
+                    'purchase_price' => $format_money($page_purchase_total),
+                    'sales_price' => $format_money($page_sales_total)
+                ],
+                'filtered' => [
+                    'purchase_price' => $format_money($filtered_totals ? $filtered_totals->purchase_price : 0),
+                    'sales_price' => $format_money($filtered_totals ? $filtered_totals->sales_price : 0)
+                ]
+            ]
+        ]);
+
+        break;
+
+    case 'most-selling-readymade-datatable':
+        if(!has_access($user->roleid, 'products_n_services')) {
+            header('Content-Type: application/json');
+            echo json_encode(['data' => [], 'recordsTotal' => 0, 'recordsFiltered' => 0]);
+            break;
+        }
+
+        $request = $_REQUEST;
+        $length = isset($request['length']) ? (int)$request['length'] : 25;
+        $start = isset($request['start']) ? max(0, (int)$request['start']) : 0;
+
+        $columns = [
+            0 => 'product_name',
+            1 => 'product_name',
+            2 => 'variant_name',
+            3 => 'total_qty_sold',
+            4 => 'total_sales_amount',
+            5 => 'invoice_count'
+        ];
+        $order_index = isset($request['order'][0]['column']) ? (int)$request['order'][0]['column'] : 3;
+        $order_col = isset($columns[$order_index]) ? $columns[$order_index] : 'total_qty_sold';
+        $order_dir = (isset($request['order'][0]['dir']) && strtolower($request['order'][0]['dir']) === 'asc') ? 'ASC' : 'DESC';
+
+        $valid_date = function($date) {
+            if (!is_string($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                return false;
+            }
+            $parsed = DateTime::createFromFormat('Y-m-d', $date);
+            return $parsed && $parsed->format('Y-m-d') === $date;
+        };
+
+        $conditions = [
+            "i.type = 'Product'",
+            "i.product_type = 'readymade'",
+            "ii.item_type = 'product'",
+            "ii.product_id IS NOT NULL",
+            "ii.product_id <> ''",
+            "CAST(ii.product_id AS UNSIGNED) > 0",
+            "inv.status NOT IN ('Cancelled', 'Draft', 'Deleted')",
+            "inv.delivery_status IN ('completed', 'delivered')"
+        ];
+        $params = [];
+        $can_view_all_branches = ($user->roleid == 0 || $user->user_type == 'Tailor');
+        if (!$can_view_all_branches) {
+            $conditions[] = 'inv.company_id = ?';
+            $params[] = (int)$user->branch_id;
+        }
+
+        $base_conditions = $conditions;
+        $base_params = $params;
+
+        if (!empty($request['date_from']) && $valid_date($request['date_from'])) {
+            $conditions[] = 'inv.date >= ?';
+            $params[] = $request['date_from'];
+        }
+        if (!empty($request['date_to']) && $valid_date($request['date_to'])) {
+            $conditions[] = 'inv.date <= ?';
+            $params[] = $request['date_to'];
+        }
+        if ($can_view_all_branches && !empty($request['branch_id'])) {
+            $conditions[] = 'inv.company_id = ?';
+            $params[] = (int)$request['branch_id'];
+        }
+        if (!empty($request['search']['value'])) {
+            $search = '%' . $request['search']['value'] . '%';
+            $conditions[] = "(i.name LIKE ? OR i.item_number LIKE ? OR ii.itemcode LIKE ?)";
+            array_push($params, $search, $search, $search);
+        }
+
+        $main_sql = "
+            SELECT
+                i.id AS product_id,
+                i.name AS product_name,
+                COALESCE(NULLIF(ii.itemcode, ''), i.item_number) AS variant_name,
+                SUM(CAST(ii.qty AS DECIMAL(18,4))) AS total_qty_sold,
+                SUM(ii.total) AS total_sales_amount,
+                COUNT(DISTINCT ii.invoiceid) AS invoice_count
+            FROM sys_invoiceitems ii
+            INNER JOIN sys_invoices inv ON inv.id = ii.invoiceid
+            INNER JOIN sys_items i ON i.id = CAST(ii.product_id AS UNSIGNED)
+            WHERE " . implode(' AND ', $conditions) . "
+            GROUP BY i.id, i.name, COALESCE(NULLIF(ii.itemcode, ''), i.item_number)
+        ";
+
+        $count_sql = "SELECT COUNT(*) AS total FROM ($main_sql) AS selling_products";
+        $count_row = ORM::for_table('sys_invoiceitems')->raw_query($count_sql, $params)->find_one();
+        $recordsFiltered = $count_row ? (int)$count_row->total : 0;
+
+        $total_main_sql = "
+            SELECT
+                i.id AS product_id,
+                COALESCE(NULLIF(ii.itemcode, ''), i.item_number) AS variant_name
+            FROM sys_invoiceitems ii
+            INNER JOIN sys_invoices inv ON inv.id = ii.invoiceid
+            INNER JOIN sys_items i ON i.id = CAST(ii.product_id AS UNSIGNED)
+            WHERE " . implode(' AND ', $base_conditions) . "
+            GROUP BY i.id, COALESCE(NULLIF(ii.itemcode, ''), i.item_number)
+        ";
+        $total_sql = "SELECT COUNT(*) AS total FROM ($total_main_sql) AS selling_products";
+        $total_row = ORM::for_table('sys_invoiceitems')->raw_query($total_sql, $base_params)->find_one();
+        $recordsTotal = $total_row ? (int)$total_row->total : 0;
+
+        $data_sql = "
+            SELECT *
+            FROM ($main_sql) AS selling_products
+            ORDER BY $order_col $order_dir
+        ";
+        if ($length != -1) {
+            $data_sql .= ' LIMIT ' . $start . ', ' . max(0, $length);
+        }
+        $rows = ORM::for_table('sys_invoiceitems')->raw_query($data_sql, $params)->find_array();
+
+        $decimal_digits = ($config['currency_decimal_digits'] === 'true') ? 2 : 0;
+        $data = [];
+        $serial = $start + 1;
+        foreach ($rows as $row) {
+            $quantity = rtrim(rtrim(number_format((float)$row['total_qty_sold'], 4, '.', ''), '0'), '.');
+            $data[] = [
+                $serial++,
+                htmlspecialchars($row['product_name'], ENT_QUOTES, 'UTF-8'),
+                !empty($row['variant_name']) ? htmlspecialchars($row['variant_name'], ENT_QUOTES, 'UTF-8') : '-',
+                $quantity === '' ? '0' : $quantity,
+                number_format((float)$row['total_sales_amount'], $decimal_digits, $config['dec_point'], $config['thousands_sep']),
+                (int)$row['invoice_count']
+            ];
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'draw' => intval($request['draw'] ?? 0),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
             'data' => $data
         ]);
 

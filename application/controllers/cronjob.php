@@ -32,10 +32,11 @@ switch ($action) {
                 $paymentstatus = ucwords($invoice->status); // Use the status directly from $invoice
                 $orderstatus = ucwords($invoice->delivery_status);
                 $ordertrack_url = U . "client/iview/{$invoice->id}/token_{$invoice->vtoken}";
+                $ordertrack_url_suffix = "client/iview/{$invoice->id}/token_{$invoice->vtoken}";
                 $phone = $invoice->phone; // Assuming phone number is stored in the invoice record
     
                 // Send Wati notification
-                wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone);
+                wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone);
     
                 // Add 7 days to the current reminder_date
                 $new_reminder_date = date('Y-m-d', strtotime('+7 days', strtotime($invoice->reminder_date)));

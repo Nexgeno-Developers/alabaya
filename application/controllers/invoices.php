@@ -676,6 +676,7 @@ switch ($action) {
 								$d->save(); //save
 						}
 
+            wati_update_contact_attributes($invoicenum);
             Event::trigger('add_invoice_posted');
 
             echo $invoiceid;
@@ -795,6 +796,7 @@ switch ($action) {
 				$tran_inv->save();
 			}
 
+            wati_update_contact_attributes($inv_invoicenum);
             Event::trigger('add_invoice_posted');
 
             echo $invoiceid;
@@ -1338,6 +1340,39 @@ switch ($action) {
                 $d->save();                 
             }                        
                         
+            wati_update_contact_attributes($invoicenum);
+
+            // $wati_invoice = ORM::for_table('sys_invoices')->find_one($invoiceid);
+            // if ($wati_invoice) {
+            //     $wati_customer = ORM::for_table('crm_accounts')->find_one($wati_invoice['userid']);
+            //     $phone = $wati_customer ? trim((string) $wati_customer['phone']) : '';
+
+            //     if ($phone !== '') {
+            //         $ordertrack_url = U . "client/iview/{$wati_invoice['id']}/token_{$wati_invoice['vtoken']}";
+            //         $ordertrack_url_suffix = "client/iview/{$wati_invoice['id']}/token_{$wati_invoice['vtoken']}";
+            //         $name = ucwords((string) $wati_invoice['account']);
+            //         $paymentstatus = trim((string) $wati_invoice['status']);
+            //         $paymentstatus = $paymentstatus !== '' ? ucwords($paymentstatus) : 'Unpaid';
+            //         $orderstatus = trim((string) $wati_invoice['delivery_status']);
+            //         $orderstatus = $orderstatus !== ''
+            //             ? ucwords(str_replace('_', ' ', $orderstatus))
+            //             : 'Pending';
+
+            //         wati_notifiation(
+            //             $name,
+            //             $invoicenumber,
+            //             $paymentstatus,
+            //             $orderstatus,
+            //             $ordertrack_url,
+            //             $ordertrack_url_suffix,
+            //             $phone
+            //         );
+            //     } else {
+            //         system_log('WATI template order_status4 skipped for invoice ' . $invoicenumber . ': customer phone is missing.');
+            //     }
+            // } else {
+            //     system_log('WATI template order_status4 skipped for invoice ' . $invoicenumber . ': invoice could not be reloaded.');
+            // }
 
             Event::trigger('add_invoice_posted');
 
@@ -2142,6 +2177,7 @@ $inv_prefix = '';
 						
 						//update to sys_invoices
             $d = ORM::for_table('sys_invoices')->find_one($iid);
+						$invoice_saved = false;
 						$status = "";
 						if($d['credit']!=0.00){
 							$status = "Partially Paid";
@@ -2179,6 +2215,7 @@ $inv_prefix = '';
                                 'updated_at' => time()
 							));
 							$d->save(); //save
+							$invoice_saved = true;
 							$branch_id = _post('company_branch_id') ? _post('company_branch_id') : 2;
                             $x = ORM::for_table('sys_invoiceitems')->where('invoiceid', $iid)->delete_many();
                             $y = ORM::for_table('sys_items_stock')->where('invoice_id', $iid)->delete_many(); //newly added
@@ -2374,6 +2411,10 @@ $inv_prefix = '';
 						}else{
 							_msglog('e', 'Invoice Not Saved.');
 						}
+            $wati_invoice = ORM::for_table('sys_invoices')->find_one($iid);
+            if ($wati_invoice && $invoice_saved) {
+                wati_update_contact_attributes($wati_invoice['invoicenum']);
+            }
             Event::trigger('add_invoice_posted');
             echo $iid;
 				}else {
@@ -2850,12 +2891,14 @@ $inv_prefix = '';
                     $phone = ($crm_account) ? $crm_account->phone : ''; // Assuming 'phone' is the column name
 					$_url = U;
                     $ordertrack_url = $_url . "client/iview/{$d['id']}/token_{$d['vtoken']}";
+                    $ordertrack_url_suffix = "client/iview/{$d['id']}/token_{$d['vtoken']}";
                     $name = ucwords($d->account);
                     $invoicenumber = $d->invoicenum;
                     $paymentstatus = ucwords($d->status); // Use the status directly from $d
                     $orderstatus = ucwords($d->delivery_status);
 					
-					wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone);
+					wati_update_contact_attributes($invoicenumber);
+					wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone);
         } else {
 					_msglog('e', 'Invoice not found');
         }
@@ -2901,12 +2944,14 @@ $inv_prefix = '';
             
             $_url = U;
             $ordertrack_url = $_url . "client/iview/{$d['id']}/token_{$d['vtoken']}";
+            $ordertrack_url_suffix = "client/iview/{$d['id']}/token_{$d['vtoken']}";
             $name = ucwords($d->account);
             $invoicenumber = $d->invoicenum;
             $paymentstatus = ucwords($d->status); // Use the status directly from $d
             $orderstatus = ucwords($d->delivery_status);
 			
-			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone);
+			wati_update_contact_attributes($invoicenumber);
+			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone);
             
             echo $s->id();
         } 
@@ -2934,12 +2979,14 @@ $inv_prefix = '';
             $phone = ($crm_account) ? $crm_account->phone : ''; // Assuming 'phone' is the column name
             $_url = U;
             $ordertrack_url = $_url . "client/iview/{$d['id']}/token_{$d['vtoken']}";
+            $ordertrack_url_suffix = "client/iview/{$d['id']}/token_{$d['vtoken']}";
             $name = ucwords($d->account);
             $invoicenumber = $d->invoicenum;
             $paymentstatus = ucwords($d->status); // Use the status directly from $d
             $orderstatus = ucwords($d->delivery_status);
 			
-			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone);
+			wati_update_contact_attributes($invoicenumber);
+			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone);
         } else {
             _msglog('e', 'Invoice not found');
         }
@@ -2963,12 +3010,14 @@ $inv_prefix = '';
             $phone = ($crm_account) ? $crm_account->phone : ''; // Assuming 'phone' is the column name
             $_url = U;
             $ordertrack_url = $_url . "client/iview/{$d['id']}/token_{$d['vtoken']}";
+            $ordertrack_url_suffix = "client/iview/{$d['id']}/token_{$d['vtoken']}";
             $name = ucwords($d->account);
             $invoicenumber = $d->invoicenum;
             $paymentstatus = ucwords($d->status); // Use the status directly from $d
             $orderstatus = ucwords($d->delivery_status);
 			
-			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone);
+			wati_update_contact_attributes($invoicenumber);
+			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone);
         } else {
             _msglog('e', 'Invoice not found');
         }
@@ -2993,12 +3042,14 @@ $inv_prefix = '';
             $phone = ($crm_account) ? $crm_account->phone : ''; // Assuming 'phone' is the column name
             $_url = U;
             $ordertrack_url = $_url . "client/iview/{$d['id']}/token_{$d['vtoken']}";
+            $ordertrack_url_suffix = "client/iview/{$d['id']}/token_{$d['vtoken']}";
             $name = ucwords($d->account);
             $invoicenumber = $d->invoicenum;
             $paymentstatus = ucwords($d->status); // Use the status directly from $d
             $orderstatus = ucwords($d->delivery_status);
 			
-			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $phone);
+			wati_update_contact_attributes($invoicenumber);
+			wati_notifiation($name, $invoicenumber, $paymentstatus, $orderstatus, $ordertrack_url, $ordertrack_url_suffix, $phone);
         } else {
             _msglog('e', 'Invoice not found');
         }
@@ -4146,6 +4197,9 @@ function showDiv(elem){
             if ($pr) {
 							$pr->status = $i->status;
 							$pr->save();
+            }
+            if ($i) {
+                wati_update_contact_attributes($i['invoicenum']);
             }
             echo $tid;
         } else {

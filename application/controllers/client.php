@@ -2607,6 +2607,7 @@ if(empty($posted['hash']) && sizeof($posted) > 0) {
             
             $d->credit = $d->credit + $amount;            
             $d->save(); 
+            wati_update_contact_attributes($d['invoicenum']);
             
             //Payment notification to admin
             $admin = ORM::for_table('sys_users')->find_one(11); //11

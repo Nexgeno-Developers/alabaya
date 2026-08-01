@@ -1390,14 +1390,7 @@ case 'set_view_mode':
         Event::trigger('transactions/delete-post/');
         $id = _post('id');
         $iid = get_type_by_id('sys_transactions', 'id', _post('id'), 'iid');
-        $amount = get_type_by_id('sys_transactions', 'id', _post('id'), 'amount');
-				 $d = ORM::for_table('sys_invoices')->find_one($iid);
-				 if(!empty($d)){
-					$d->set(array(
-								'credit'		 			=> $d['credit']-$amount
-							));
-							$d->save(); //save
-				 }
+        $invoice = ORM::for_table('sys_invoices')->find_one($iid);
 				 
         $timesheets = ORM::for_table('crm_timesheet')
             ->where('transaction_id', $id)
@@ -1409,6 +1402,27 @@ case 'set_view_mode':
         }
             
         if(Transaction::delete($id)){
+            if ($invoice) {
+                $remaining_credit = (float) ORM::for_table('sys_transactions')
+                    ->where('iid', $iid)
+                    ->where('type', 'Income')
+                    ->sum('amount');
+                $invoice_total = (float) $invoice['subtotal'];
+
+                if ($remaining_credit >= $invoice_total && $invoice_total > 0) {
+                    $invoice->status = 'Paid';
+                } elseif ($remaining_credit > 0) {
+                    $invoice->status = 'Partially Paid';
+                } else {
+                    $invoice->status = 'Unpaid';
+                }
+
+                $invoice->credit = Finance::amount_fix($remaining_credit);
+                $invoice->save();
+
+                wati_update_contact_attributes($invoice['invoicenum']);
+            }
+
             r2(U . 'transactions/list', 's', $_L['transaction_delete_successful']);
         }
         else{
