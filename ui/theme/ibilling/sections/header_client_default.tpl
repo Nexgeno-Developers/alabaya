@@ -58,9 +58,9 @@
     {/if}
 
     {$_c['header_scripts']}
-<script src="https://alabaya-v2.mbills.in/ui/theme/ibilling/js/jquery-1.10.2.js"></script>
+<script src="https://erp.abayadesigner.com/ui/theme/ibilling/js/jquery-1.10.2.js"></script>
 
-<script src="https://alabaya-v2.mbills.in/ui/theme/ibilling/js/jquery-ui-1.10.4.min.js"></script>
+<script src="https://erp.abayadesigner.com/ui/theme/ibilling/js/jquery-ui-1.10.4.min.js"></script>
 
 </head>
 
