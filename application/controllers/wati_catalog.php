@@ -143,7 +143,7 @@ function wati_catalog_invoices()
     }
 
     if ($limit > 0) {
-        $invoice_query->limit($limit)->offset($offset);
+        $invoice_query->limit($limit)->offset($offset); //
     }
 
     $invoices = $invoice_query->find_array();
