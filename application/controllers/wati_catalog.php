@@ -133,8 +133,14 @@ function wati_catalog_invoices()
             'id', 'userid', 'invoicenum', 'date', 'duedate', 'subtotal',
             'credit', 'currency_symbol', 'vtoken', 'status', 'delivery_status'
         )
-        ->where_in('delivery_status', $statuses)
         ->order_by_desc('id');
+
+    if ($requested_status === 'overdue') {
+        $invoice_query->where_lte('duedate', date('Y-m-d'));
+        $invoice_query->where_in('delivery_status', array('pending', 'processing'));
+    } else {
+        $invoice_query->where_in('delivery_status', $statuses);
+    }
 
     if ($limit > 0) {
         $invoice_query->limit($limit)->offset($offset);
