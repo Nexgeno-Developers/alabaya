@@ -162,7 +162,10 @@ function wati_catalog_invoices()
     }
 
     $items = ORM::for_table('sys_invoiceitems')
-        ->select_many('invoiceid', 'id', 'description', 'qty', 'amount')
+        ->select_many(
+            'invoiceid', 'id', 'description', 'qty', 'amount',
+            'product_id', 'design_id'
+        )
         ->where_in('invoiceid', $invoice_ids)
         ->order_by_asc('id')
         ->find_array();
@@ -175,8 +178,12 @@ function wati_catalog_invoices()
 
         $quantity = (float) $item['qty'];
         $unit_amount = (float) $item['amount'];
+        $product_id = (int) $item['product_id'];
+        $design_id = (int) $item['design_id'];
         $items_by_invoice[$invoice_id][] = array(
             'id' => (int) $item['id'],
+            'product_code' => $product_id > 0 ? 'P-' . $product_id : '',
+            'design_code' => $design_id > 0 ? 'D-' . $design_id : '',
             'description' => trim((string) $item['description']),
             'quantity' => $quantity,
             'unit_amount' => $unit_amount,
@@ -273,7 +280,7 @@ if ($action === 'product') {
         $data[] = array(
             'id' => $item_id,
             'product_code' => 'P-' . $item_id,
-            'design_code' => $design_id > 0 ? 'D-' . $design_id : null,
+            'design_code' => $design_id > 0 ? 'D-' . $design_id : '',
             'name' => (string) $product['name'],
             'price' => (float) $product['sales_price'],
             'branch_wise_qty' => wati_catalog_branch_quantities($branches, $quantities),
