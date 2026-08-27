@@ -83,6 +83,147 @@ function wati_catalog_branch_quantities($branches, $quantities)
     return $result;
 }
 
+function wati_catalog_invoice_number($value)
+{
+    return trim((string) $value);
+}
+
+function wati_catalog_measurements($value)
+{
+    $measurements = json_decode((string) $value, true);
+    return is_array($measurements) ? $measurements : array();
+}
+
+function wati_catalog_invoice_status($value)
+{
+    return ucwords(str_replace('_', ' ', trim((string) $value)));
+}
+
+function wati_catalog_invoices()
+{
+    $allowed_statuses = array('pending', 'processing', 'completed', 'overdue');
+    $requested_status = strtolower(trim(isset($_GET['status']) ? (string) $_GET['status'] : ''));
+    $statuses = $requested_status === ''
+        ? $allowed_statuses
+        : array($requested_status);
+
+    foreach ($statuses as $status) {
+        if (!in_array($status, $allowed_statuses, true)) {
+            wati_catalog_respond(
+                array(
+                    'success' => false,
+                    'message' => 'Status must be pending, processing, completed, or overdue.',
+                ),
+                400
+            );
+        }
+    }
+
+    $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 0;
+    $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
+    if ($limit < 0 || $limit > 500) {
+        wati_catalog_respond(
+            array('success' => false, 'message' => 'Limit must be between 0 and 500.'),
+            400
+        );
+    }
+
+    $invoice_query = ORM::for_table('sys_invoices')
+        ->select_many(
+            'id', 'userid', 'invoicenum', 'date', 'duedate', 'subtotal',
+            'credit', 'currency_symbol', 'vtoken', 'status', 'delivery_status'
+        )
+        ->where_in('delivery_status', $statuses)
+        ->order_by_desc('id');
+
+    if ($limit > 0) {
+        $invoice_query->limit($limit)->offset($offset);
+    }
+
+    $invoices = $invoice_query->find_array();
+    if (count($invoices) === 0) {
+        return array();
+    }
+
+    $invoice_ids = array();
+    $customer_ids = array();
+    foreach ($invoices as $invoice) {
+        $invoice_ids[] = (int) $invoice['id'];
+        $customer_ids[] = (int) $invoice['userid'];
+    }
+
+    $customers = ORM::for_table('crm_accounts')
+        ->select_many('id', 'account', 'email', 'phone', 'measurements')
+        ->where_in('id', array_unique($customer_ids))
+        ->find_array();
+    $customers_by_id = array();
+    foreach ($customers as $customer) {
+        $customers_by_id[(int) $customer['id']] = $customer;
+    }
+
+    $items = ORM::for_table('sys_invoiceitems')
+        ->select_many('invoiceid', 'id', 'description', 'qty', 'amount')
+        ->where_in('invoiceid', $invoice_ids)
+        ->order_by_asc('id')
+        ->find_array();
+    $items_by_invoice = array();
+    foreach ($items as $item) {
+        $invoice_id = (int) $item['invoiceid'];
+        if (!isset($items_by_invoice[$invoice_id])) {
+            $items_by_invoice[$invoice_id] = array();
+        }
+
+        $quantity = (float) $item['qty'];
+        $unit_amount = (float) $item['amount'];
+        $items_by_invoice[$invoice_id][] = array(
+            'id' => (int) $item['id'],
+            'description' => trim((string) $item['description']),
+            'quantity' => $quantity,
+            'unit_amount' => $unit_amount,
+            'line_total' => round($quantity * $unit_amount, 2),
+        );
+    }
+
+    $base_url = defined('U') ? U : '';
+    $data = array();
+    foreach ($invoices as $invoice) {
+        $invoice_id = (int) $invoice['id'];
+        $customer = isset($customers_by_id[(int) $invoice['userid']])
+            ? $customers_by_id[(int) $invoice['userid']]
+            : array();
+        $total = (float) $invoice['subtotal'];
+        $paid = (float) $invoice['credit'];
+        $invoice_path = 'client/iview/' . $invoice_id . '/token_' . $invoice['vtoken'];
+        //$payment_path = 'client/ipay/' . $invoice_id . '/token_' . $invoice['vtoken'];
+
+        $data[] = array(
+            'invoice_number' => wati_catalog_invoice_number($invoice['invoicenum']),
+            'order_status' => wati_catalog_invoice_status($invoice['delivery_status']),
+            'invoice_total_amount' => $total,
+            'invoice_paid_amount' => $paid,
+            'invoice_due_amount' => max(round($total - $paid, 2), 0),
+            'invoice_url' => $base_url . $invoice_path,
+            //'payment_url' => $base_url . $payment_path,
+            'products_info' => isset($items_by_invoice[$invoice_id])
+                ? $items_by_invoice[$invoice_id]
+                : array(),
+            'measurement_info' => wati_catalog_measurements(
+                isset($customer['measurements']) ? $customer['measurements'] : ''
+            ),
+            'invoice_date' => (string) $invoice['date'],
+            'due_date' => (string) $invoice['duedate'],
+            'payment_status' => (string) $invoice['status'],
+            'customer' => array(
+                'name' => isset($customer['account']) ? (string) $customer['account'] : '',
+                'email' => isset($customer['email']) ? (string) $customer['email'] : '',
+                'phone' => isset($customer['phone']) ? (string) $customer['phone'] : '',
+            ),
+        );
+    }
+
+    return $data;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     header('Allow: GET');
     wati_catalog_respond(
@@ -92,10 +233,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 $action = route(1);
-if ($action !== 'product' && $action !== 'design') {
+if ($action !== 'product' && $action !== 'design' && $action !== 'invoice') {
     wati_catalog_respond(
         array('success' => false, 'message' => 'Endpoint not found.'),
         404
+    );
+}
+
+if ($action === 'invoice') {
+    $data = wati_catalog_invoices();
+    wati_catalog_respond(
+        array(
+            'success' => true,
+            'count' => count($data),
+            'data' => $data,
+        )
     );
 }
 
