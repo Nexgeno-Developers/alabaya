@@ -213,12 +213,16 @@ input[type=number]::-webkit-outer-spin-button {
 									<tr class="tr_clone"> 
 										<td class="number">
 										<!--{$item['itemcode']}-->
+										{assign var="line_img" value=invoice_line_image($item)}
+										{if $line_img}
+										<img data-img="{$line_img}" class="img-popup" src="{$line_img}" width="50px" height="50px">
+										{else}
+										-
+										{/if}
 										{if !empty($item['item_img']) }
-										<img data-img="ui/lib/imgs/invoice-contents/{$item['item_img']}" class="img-popup" src="ui/lib/imgs/invoice-contents/{$item['item_img']}" width="50px" height="50px">
 											<input type="hidden" name="pimg[]" value="ui/lib/imgs/invoice-contents/{$item['item_img']}">
 										{else}
 										<input type="hidden" name="pimg[]" value="">
-										-
 										{/if}
 										<input type="hidden" class="form-control item_id" name="i_id[]" value="{$item['id']}" id="i_id">
 										<input type="hidden" class="form-control item_id" name="s_id[]" value="{$item['itemcode']}" id="s_id">

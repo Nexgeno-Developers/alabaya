@@ -1246,6 +1246,53 @@ function compressImage($source, $destination, $quality) {
 }
 
 
+function invoice_line_image($item)
+{
+    static $product_cache = array();
+    static $design_cache = array();
+
+    $type = '';
+    $product_id = '';
+    $design_id = '';
+
+    if (is_array($item)) {
+        $type = isset($item['item_type']) ? $item['item_type'] : '';
+        $product_id = isset($item['product_id']) ? $item['product_id'] : '';
+        $design_id = isset($item['design_id']) ? $item['design_id'] : '';
+    } elseif (is_object($item)) {
+        $type = isset($item['item_type']) ? $item['item_type'] : '';
+        $product_id = isset($item['product_id']) ? $item['product_id'] : '';
+        $design_id = isset($item['design_id']) ? $item['design_id'] : '';
+    }
+
+    $type = strtolower(trim((string) $type));
+
+    if ($type === 'product' && !empty($product_id)) {
+        if (!array_key_exists($product_id, $product_cache)) {
+            $p = ORM::for_table('sys_items')->select('product_image')->find_one($product_id);
+            $product_cache[$product_id] = ($p && !empty($p->product_image)) ? $p->product_image : '';
+        }
+        return $product_cache[$product_id];
+    }
+
+    if ($type === 'design' && !empty($design_id)) {
+        if (!array_key_exists($design_id, $design_cache)) {
+            $design_cache[$design_id] = '';
+            $d = ORM::for_table('sys_designs')->select('image')->find_one($design_id);
+            if ($d && !empty($d->image)) {
+                $imgs = json_decode($d->image, true);
+                if (is_array($imgs) && !empty($imgs[0])) {
+                    $design_cache[$design_id] = $imgs[0];
+                }
+            }
+        }
+        return $design_cache[$design_id];
+    }
+
+    return '';
+}
+
+
 function SMS($phone, $message)
 {
     $ch=curl_init('https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=zjCx80GAyUKUtWdGIEWZRA&senderid=KAAKEC&channel=2&DCS=0&flashsms=0&number='.$phone.'&text='.$message.'&route=1');

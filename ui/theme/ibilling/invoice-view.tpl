@@ -250,8 +250,9 @@
 										{$item['description']}
 									</td>
 									<td class="text-semibold text-dark">
-										{if !empty($item['item_img'])}
-								    		<img data-img="/ui/lib/imgs/invoice-contents/{$item['item_img']}" class="img-popup" width="40px" height="40px" src="/ui/lib/imgs/invoice-contents/{$item['item_img']}">
+										{assign var="line_img" value=invoice_line_image($item)}
+										{if $line_img}
+								    		<img data-img="/{$line_img}" class="img-popup" width="40px" height="40px" src="/{$line_img}">
 										{/if}
 									</td>
 									<td class="text-center">{$item['qty']}</td>

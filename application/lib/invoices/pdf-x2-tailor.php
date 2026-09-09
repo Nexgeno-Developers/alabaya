@@ -284,8 +284,10 @@ The location of this file is here- application/lib/invoices/pdf-x2.php
 											
 					</td>
 					<td align="center" style="border-bottom:1px solid #ccc;">
-						<?php if (!empty($item['item_img'])){ ?>
-							<img width="50px" height="50px" src="/ui/lib/imgs/invoice-contents/<?= $item['item_img']; ?>">
+						<?php
+						$line_img = invoice_line_image($item);
+						if (!empty($line_img)){ ?>
+							<img width="50px" height="50px" src="/<?= $line_img; ?>">
 						<?php } ?>						
 					</td>
 					<!--<td align="center" style="border-bottom:1px solid #ccc;">
