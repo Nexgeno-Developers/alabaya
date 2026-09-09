@@ -20,6 +20,44 @@ $before_30_days = date('Y-m-d', strtotime('today - 30 days'));
 //this month
 $month_n = date('n');
 
+function alabaya_gst_invoices($start = null, $end = null, $userid = null)
+{
+    $sql = "SELECT inv.*,
+                MAX(acc.company) AS account_company,
+                MAX(acc.gst_no) AS account_gst_no,
+                COALESCE(SUM(CASE WHEN tax.taxtype = 'GST' THEN ii.taxamount ELSE 0 END), 0) AS gst_pool,
+                COALESCE(SUM(CASE WHEN tax.taxtype <> 'GST' OR tax.taxtype IS NULL THEN ii.taxamount ELSE 0 END), 0) AS igst_pool
+            FROM sys_invoices inv
+            LEFT JOIN sys_invoiceitems ii ON ii.invoiceid = inv.id
+            LEFT JOIN sys_tax tax ON tax.id = ii.tax_id
+            LEFT JOIN crm_accounts acc ON acc.id = inv.userid";
+    $params = array();
+    $where = array();
+    if ($start !== null && $start !== '' && $end !== null && $end !== '') {
+        $where[] = 'inv.date >= ? AND inv.date <= ?';
+        $params[] = $start;
+        $params[] = $end;
+    }
+    if ($userid !== null && $userid !== '') {
+        $where[] = 'inv.userid = ?';
+        $params[] = $userid;
+    }
+    if (!empty($where)) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $sql .= ' GROUP BY inv.id';
+
+    $invoices = ORM::for_table('sys_invoices')->raw_query($sql, $params)->find_array();
+    foreach ($invoices as &$row) {
+        $row['CGST'] = Finance::amount_fix($row['gst_pool'] / 2);
+        $row['SGST'] = Finance::amount_fix($row['gst_pool'] / 2);
+        $row['IGST'] = Finance::amount_fix($row['igst_pool']);
+    }
+    unset($row);
+
+    return $invoices;
+}
+
 switch ($action) {
     case 'statement':
         if(!has_access($user->roleid, 'reports')) {
@@ -686,24 +724,7 @@ var dchart = c3.generate({
 		case 'gst-reports':
 		
 			Event::trigger('reports/gst-reports/');
-			$invoices = ORM::for_table('sys_invoices')->find_many();		
-
-			foreach($invoices as &$row ){
-					$invItem = ORM::for_table('sys_invoiceitems')->where('invoiceid', $row['id'])->find_many();
-					$sgst = 0.00;
-					$igst = 0.00;
-					foreach($invItem as $inv){
-							$tax = ORM::for_table('sys_tax')->find_one($inv['tax_id']);
-							if($tax['taxtype'] == 'GST'){
-								$sgst = $sgst + $inv['taxamount'];
-							}else{             
-								$igst = $igst + $inv['taxamount'];
-							}
-					}
-					$row['CGST'] = Finance::amount_fix($sgst/2);
-					$row['SGST'] = Finance::amount_fix($sgst/2);
-					$row['IGST'] = Finance::amount_fix($igst);
-            }				//$company = ORM::for_table('sys_accounts')->find_many();	
+			$invoices = alabaya_gst_invoices();
             $ac = ORM::for_table('crm_accounts')->where('gid', 20)->find_many();			
 			//var_dump($invoices[2]);exit;
       $ui->assign('invoices', $invoices);      
@@ -727,30 +748,12 @@ var dchart = c3.generate({
             //$invoices = ORM::for_table('sys_invoices')->where('company_id',$company)->where_gte('date', $start)->where_lte('date', $end)->find_many();
             if(empty($company))
             {
-                $invoices = ORM::for_table('sys_invoices')->where_gte('date', $start)->where_lte('date', $end)->find_many();
+                $invoices = alabaya_gst_invoices($start, $end);
             }
             else
             {
-                $invoices = ORM::for_table('sys_invoices')->where('userid', $company)->where_gte('date', $start)->where_lte('date', $end)->find_many();
+                $invoices = alabaya_gst_invoices($start, $end, $company);
             }
-            		
-					
-			foreach($invoices as &$row ){
-					$invItem = ORM::for_table('sys_invoiceitems')->where('invoiceid', $row['id'])->find_many();
-					$sgst = 0.00;
-					$igst = 0.00;
-					foreach($invItem as $inv){
-							$tax = ORM::for_table('sys_tax')->find_one($inv['tax_id']);
-							if($tax['taxtype'] == 'GST'){
-								$sgst = $sgst + $inv['taxamount'];
-							}else{             
-								$igst = $igst + $inv['taxamount'];
-							}
-					}
-					$row['CGST'] = Finance::amount_fix($sgst/2);
-					$row['SGST'] = Finance::amount_fix($sgst/2);
-					$row['IGST'] = Finance::amount_fix($igst);
-			}
 			//var_dump($invoices[2]);exit;
       $ui->assign('invoices', $invoices); 
 			$ui->assign('<div class="btn-group pull-right" style="padding-right: 10px;">
@@ -914,17 +917,19 @@ var dchart = c3.generate({
             // =============== WHERE for invoices ===================
             // invoices table: need only Paid
             $invWhere  = " inv.status = 'Paid' ";
+            $subWhere  = " inv_f.status = 'Paid' ";
             $invParams = [];
 
             if ($branch_id) {
                 // assuming company_id exists in sys_invoices (same as your previous code)
                 $invWhere   .= " AND inv.company_id = ? ";
+                $subWhere   .= " AND inv_f.company_id = ? ";
                 $invParams[] = $branch_id;
             }
 
             if ($date_from && $date_to) {
-                // assuming created_at_datetime or date field - adapt to your schema
-                $invWhere   .= " AND DATE(inv.created_at_datetime) BETWEEN ? AND ? ";
+                $invWhere   .= " AND inv.created_at_datetime >= ? AND inv.created_at_datetime < DATE_ADD(?, INTERVAL 1 DAY) ";
+                $subWhere   .= " AND inv_f.created_at_datetime >= ? AND inv_f.created_at_datetime < DATE_ADD(?, INTERVAL 1 DAY) ";
                 $invParams[] = $date_from;
                 $invParams[] = $date_to;
             }
@@ -932,6 +937,7 @@ var dchart = c3.generate({
             if ($inv_query !== '') {
                 // allow search by invoice number or by exact invoice id
                 $invWhere   .= " AND (inv.invoicenum LIKE ? OR inv.id = ?) ";
+                $subWhere   .= " AND (inv_f.invoicenum LIKE ? OR inv_f.id = ?) ";
                 $invParams[] = '%' . $inv_query . '%';
                 $invParams[] = ctype_digit($inv_query) ? (int)$inv_query : 0;
             }
@@ -966,7 +972,9 @@ var dchart = c3.generate({
                         ii.invoiceid AS invoice_id,
                         SUM(ii.qty * COALESCE(it.purchase_price,0)) AS cogs
                     FROM sys_invoiceitems ii
+                    INNER JOIN sys_invoices inv_f ON inv_f.id = ii.invoiceid
                     LEFT JOIN sys_items it ON it.id = ii.product_id
+                    WHERE $subWhere
                     GROUP BY ii.invoiceid
                 ) AS cogs_data ON cogs_data.invoice_id = inv.id
                 LEFT JOIN (
@@ -974,15 +982,17 @@ var dchart = c3.generate({
                         ia.invoice_id,
                         SUM(ia.qty * ia.price) AS emp_expense
                     FROM invoice_alocation ia
-                    WHERE ia.status = 1
+                    INNER JOIN sys_invoices inv_f ON inv_f.id = ia.invoice_id
+                    WHERE ia.status = 1 AND $subWhere
                     GROUP BY ia.invoice_id
                 ) AS exp_data ON exp_data.invoice_id = inv.id
                 WHERE $invWhere
             ";
+            $mainParams = array_merge($invParams, $invParams, $invParams);
 
             // count
             $countSQL = "SELECT COUNT(*) AS c FROM ( $mainSQL ) AS t";
-            $cnt = ORM::for_table('sys_invoices')->raw_query($countSQL, $invParams)->find_one();
+            $cnt = ORM::for_table('sys_invoices')->raw_query($countSQL, $mainParams)->find_one();
             $recordsFiltered = $cnt ? (int)$cnt->c : 0;
 
             // ordering map
@@ -1003,7 +1013,7 @@ var dchart = c3.generate({
                 ".($length != -1 ? " LIMIT $start, $length " : "")."
             ";
 
-            $rows = ORM::for_table('sys_invoices')->raw_query($pagedSQL, $invParams)->find_array();
+            $rows = ORM::for_table('sys_invoices')->raw_query($pagedSQL, $mainParams)->find_array();
 
             // totals (for footer)
             $totSQL = "
@@ -1014,7 +1024,7 @@ var dchart = c3.generate({
                     SUM(t.profit)      AS total_profit
                 FROM ( $mainSQL ) AS t
             ";
-            $tot = ORM::for_table('sys_invoices')->raw_query($totSQL, $invParams)->find_one();
+            $tot = ORM::for_table('sys_invoices')->raw_query($totSQL, $mainParams)->find_one();
 
             $total_invoice     = $tot ? (float)$tot->total_invoice     : 0.0;
             $total_cogs        = $tot ? (float)$tot->total_cogs        : 0.0;

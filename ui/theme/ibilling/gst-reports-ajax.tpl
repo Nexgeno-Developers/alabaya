@@ -27,8 +27,8 @@
 								{$gst_total = $gst_total + $inv['taxamt']}
 								<td>{$inv['invoicenum']}</td>
 								<td>{$inv['date']}</td>
-								<td>{get_type_by_id('crm_accounts','id', $inv['userid'], 'company')}</td>
-								<td align="right">{get_type_by_id('crm_accounts','id', $inv['userid'], 'gst_no')}</td>
+								<td>{$inv['account_company']}</td>
+								<td align="right">{$inv['account_gst_no']}</td>
 								<td align="right">{number_format($inv['total'],2,$_c['dec_point'],$_c['thousands_sep'])}</td>
 								<td align="right">{number_format($inv['CGST'],2,$_c['dec_point'],$_c['thousands_sep'])}</td>
 								<td align="right">{number_format($inv['SGST'],2,$_c['dec_point'],$_c['thousands_sep'])}</td>

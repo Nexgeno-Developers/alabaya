@@ -150,7 +150,8 @@ $ui->assign('_topic', 'dashboard');
 $ui->assign('content_inner', '');
 $ui->assign('jsvar', '');
 $ui->assign('tpl_footer', true);
-$ui->assign('_pls', ORM::for_table('sys_pl')->where('status', '1')->find_many());
+$ps = ORM::for_table('sys_pl')->where('status', '1')->order_by_asc('sorder')->find_many();
+$ui->assign('_pls', $ps);
 
 // supports custom sub template from iBilling V 3.0.0
 
@@ -242,7 +243,6 @@ $plugin_ui_header_client_css = array();
 
 //plugin support
 $PluginManager = new Plugins();
-$ps = ORM::for_table('sys_pl')->where('status', '1')->order_by_asc('sorder')->find_many();
 
 foreach ($ps as $p) {
     $PluginManager->loadPlugins($p['c']);

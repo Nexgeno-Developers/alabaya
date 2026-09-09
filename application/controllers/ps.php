@@ -64,12 +64,32 @@ switch ($action) {
         case 'modal-list':
 		
         $customize = ORM::for_table('sys_items')->where('product_type', 'customize')->order_by_asc('name')->find_many();
-        $ui->assign('p_customize', $customize);    
-
         $readymade = ORM::for_table('sys_items')->where('product_type', 'readymade')->order_by_asc('name')->find_many();
-        $ui->assign('p_readymade', $readymade);         
 
-  
+        $stock_rows = ORM::for_table('sys_items_stock')->raw_query(
+            "SELECT item_id,
+                    SUM(CASE WHEN type = 'credit' THEN stock WHEN type = 'debit' THEN -stock ELSE 0 END) AS current_stock
+             FROM sys_items_stock
+             GROUP BY item_id"
+        )->find_array();
+        $stock_map = array();
+        foreach ($stock_rows as $stock_row) {
+            $stock_map[$stock_row['item_id']] = $stock_row['current_stock'];
+        }
+        foreach ($customize as $item) {
+            $raw = isset($stock_map[$item['id']]) ? (float)$stock_map[$item['id']] : 0;
+            $rounded = round($raw, 2);
+            $item['current_stock'] = $rounded;
+        }
+        foreach ($readymade as $item) {
+            $raw = isset($stock_map[$item['id']]) ? (float)$stock_map[$item['id']] : 0;
+            $rounded = round($raw, 2);
+            $item['current_stock'] = $rounded;
+        }
+
+        $ui->assign('p_customize', $customize);
+        $ui->assign('p_readymade', $readymade);
+
         $ui->display('product-modal-list-ps.tpl');
               
           break;

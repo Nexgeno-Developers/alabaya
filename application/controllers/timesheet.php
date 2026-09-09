@@ -223,19 +223,46 @@ switch($action){
     $inserted_data = [];
     $nonInsertedData = [];
 
+    $all_employee_ids = [];
+    foreach ($remarks as $i => $remark) {
+        $employee_ids = $_POST['employee_id_' . $i] ?? [];
+        foreach ($employee_ids as $employee_id) {
+            if ($employee_id !== '' && $employee_id !== null) {
+                $all_employee_ids[] = $employee_id;
+            }
+        }
+    }
+    $all_employee_ids = array_values(array_unique($all_employee_ids));
+    $employees_by_id = [];
+    if (!empty($all_employee_ids)) {
+        $emp_rows = ORM::for_table('crm_accounts')
+            ->select('id')
+            ->select('account')
+            ->select('salery_type')
+            ->select('salery_amt')
+            ->select('branch_id')
+            ->where_id_in($all_employee_ids)
+            ->find_many();
+        foreach ($emp_rows as $emp) {
+            $employees_by_id[$emp->id] = $emp;
+        }
+    }
+
     foreach ($remarks as $i => $remark) {
         $employee_ids = $_POST['employee_id_' . $i] ?? [];
 
         foreach ($employee_ids as $employee_id) {
             
-            // Fetch employee account name using the employee_id
-            $employee_name = ORM::for_table('crm_accounts')->where('id', $employee_id)->find_one()->account ?? 'N/A';
+            $employee = isset($employees_by_id[$employee_id]) ? $employees_by_id[$employee_id] : null;
+            $employee_name = $employee ? ($employee->account ?? 'N/A') : 'N/A';
 
             // Check if entry already exists for the same date
             $checkinDate = date('Y-m-d', strtotime($checkins[$i]));
+            $nextDay = date('Y-m-d', strtotime($checkinDate . ' +1 day'));
             $timesheet = ORM::for_table('crm_timesheet')
                 ->where('employee_id', $employee_id)
-                ->where_raw('DATE(`checkin`) = ?', [$checkinDate])
+                ->where_gte('checkin', $checkinDate)
+                ->where_lt('checkin', $nextDay)
                 ->find_one();
 
             if ($timesheet) {
@@ -257,16 +284,9 @@ switch($action){
                 // Calculate work duration and earnings
                 $hours = (strtotime($insert->checkout) - strtotime($insert->checkin)) / 3600;
 
-                // Fetch salary details
-                $employee = ORM::for_table('crm_accounts')
-                    ->select('salery_type')
-                    ->select('salery_amt')
-                    ->select('branch_id')
-                    ->find_one($employee_id);
-
-                $insert->branch_id = $employee->branch_id ?? null;
-                $insert->amount = $employee->salery_amt ?? 0;
-                $insert->qty = ($employee->salery_type == 'per_hour') ? $hours : 1; // Default 1 for full day
+                $insert->branch_id = $employee ? ($employee->branch_id ?? null) : null;
+                $insert->amount = $employee ? ($employee->salery_amt ?? 0) : 0;
+                $insert->qty = ($employee && $employee->salery_type == 'per_hour') ? $hours : 1; // Default 1 for full day
                 $insert->earn_amount = $insert->qty * $insert->amount;
                 $insert->date = date('Y-m-d', strtotime($checkins[$i]));
                 $insert->created_at = date('Y-m-d H:i:s');

@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alabaya - Performance Audit</title>
+<style>
+:root {
+    --bg:#f4f7fb;
+    --surface:#fff;
+    --text:#172033;
+    --muted:#667085;
+    --border:#e4e7ec;
+    --critical:#b42318;
+    --high:#d92d20;
+    --medium:#f79009;
+    --low:#1570ef;
+    --info:#667085;
+    --success:#039855;
+    --primary:#175cd3;
+}
+* { box-sizing:border-box; }
+body {
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial,Helvetica,sans-serif;
+    line-height:1.55;
+}
+.container {
+    width:min(1180px,calc(100% - 32px));
+    margin:30px auto;
+}
+.header,
+.section {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:24px;
+    margin-bottom:20px;
+}
+.grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:14px;
+}
+.card {
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px;
+}
+.metric {
+    font-size:28px;
+    font-weight:700;
+}
+.small {
+    color:var(--muted);
+    font-size:13px;
+}
+.badge {
+    display:inline-block;
+    color:#fff;
+    padding:5px 10px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:12px;
+}
+.critical { background:var(--critical); }
+.high { background:var(--high); }
+.medium { background:var(--medium); }
+.low { background:var(--low); }
+.informational { background:var(--info); }
+.success { background:var(--success); }
+table {
+    width:100%;
+    border-collapse:collapse;
+}
+th,td {
+    border:1px solid var(--border);
+    padding:10px;
+    text-align:left;
+    vertical-align:top;
+}
+th { background:#f9fafb; }
+.finding {
+    border:1px solid var(--border);
+    border-left:5px solid var(--info);
+    border-radius:10px;
+    padding:18px;
+    margin:18px 0;
+}
+.finding.high { border-left-color:var(--high); }
+.finding.medium { border-left-color:var(--medium); }
+.finding.low { border-left-color:var(--low); }
+.finding.informational { border-left-color:var(--info); }
+pre {
+    background:#101828;
+    color:#f2f4f7;
+    padding:14px;
+    border-radius:8px;
+    overflow:auto;
+    font-size:13px;
+}
+ul { padding-left:20px; }
+@media print {
+    body { background:#fff; }
+    .container { width:100%; margin:0; }
+}
+</style>
+</head>
+<body>
+<main class="container">
+
+<header class="header">
+<h1>Website &amp; Application Performance Audit</h1>
+<p>
+<strong>Project:</strong> Alabaya<br>
+<strong>Target:</strong> http://localhost/alabaya<br>
+<strong>Audit Date:</strong> 2026-09-09 13:16 IST<br>
+<strong>Report:</strong> alabaya-performance-2026-09-09-131600.html
+</p>
+</header>
+
+<section class="section">
+<h2>1. Executive Summary</h2>
+<p>
+Alabaya is an iBilling-based PHP 7.4 invoicing and ERP application (Smarty + Idiorm/ORM, MySQL). Source review found several high-impact query and frontend patterns that will scale poorly as invoices, stock movements, and contacts grow. No production outage was confirmed. The highest-risk issues are N+1 GST reporting, about 88 extra SUM queries on dashboard charts, DATE()-wrapped P&amp;L filters, per-product stock lookups in the invoice item modal, and loading entire timesheet result sets into PHP to compute a total.
+</p>
+<p>
+Invoice list, contact list, and product list DataTables already use server-side pagination with aggregated stock SQL. Those are positive patterns and should be kept. The remaining hotspots are unbounded catalog loads, “Show all” DataTables options, duplicate bootstrap queries, disabled OPcache/gzip on this XAMPP host, and no application query cache.
+</p>
+<div class="grid">
+<div class="card">
+<div class="small">Overall Performance</div>
+<div class="metric">Needs Optimization</div>
+</div>
+<div class="card">
+<div class="small">Critical Issues</div>
+<div class="metric">0</div>
+</div>
+<div class="card">
+<div class="small">High Issues</div>
+<div class="metric">7</div>
+</div>
+<div class="card">
+<div class="small">Optimization Potential</div>
+<div class="metric">High</div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<h2>2. Audit Information</h2>
+<table>
+<tr><th>Project</th><td>Alabaya (iBilling fork / custom ERP for invoicing, stock, timesheets, GST)</td></tr>
+<tr><th>Stack</th><td>PHP 7.4.3 (XAMPP), Apache, MySQL database <code>mbillsin_alabaya</code>, Idiorm ORM, Smarty templates</td></tr>
+<tr><th>Entry point</th><td><code>index.php</code> → <code>application/app.php</code> → <code>application/helpers/ibilling_bootstrap.php</code></td></tr>
+<tr><th>Audit type</th><td>Source-code review of controllers, helpers, templates, PHP/Apache config. Runtime page timings and MySQL EXPLAIN were not captured (authenticated session and live query log were not available).</td></tr>
+<tr><th>Auditor</th><td>Senior Web Application Performance Engineer (Cursor audit)</td></tr>
+<tr><th>Environment</th><td>Local XAMPP. A cPanel <code>php.ini</code> is also present in the project root (production-shaped settings: memory_limit 256M, zlib.output_compression Off).</td></tr>
+</table>
+</section>
+
+<section class="section">
+<h2>3. Scope</h2>
+<p><strong>In scope</strong></p>
+<ul>
+<li>Controllers: dashboard, invoices, reports, contacts, ps (products), transactions, timesheet, cronjob, wati</li>
+<li>Helpers: <code>ibilling_bootstrap.php</code>, <code>ibilling_misc.php</code>, <code>Dashboard.php</code></li>
+<li>Frontend layout: <code>header_default.tpl</code>, <code>footer_default.tpl</code>, DataTables pages, product modal</li>
+<li>Local PHP/Apache configuration (OPcache, deflate, expires)</li>
+</ul>
+<p><strong>Out of scope / not measured</strong></p>
+<ul>
+<li>Authenticated browser waterfalls, LCP/INP/CLS, APM traces</li>
+<li>MySQL table row counts, index dumps, EXPLAIN/ANALYZE</li>
+<li>Production CPU/RAM, PHP-FPM, Redis</li>
+<li>Vendor libraries (mPDF 32k lines, Stripe) except where called from app code</li>
+</ul>
+</section>
+
+<section class="section">
+<h2>4. Methodology</h2>
+<ol>
+<li>Map request bootstrap (session, ORM, config, plugins, Smarty).</li>
+<li>Inspect high-traffic controllers for N+1 loops, unbounded <code>find_many()</code>, DATE() on indexed columns, and duplicate queries.</li>
+<li>Inspect templates for per-row PHP/DB calls and asset loading.</li>
+<li>Inspect DataTables endpoints for LIMIT handling and <code>length = -1</code>.</li>
+<li>Inspect local PHP/Apache settings for OPcache and compression.</li>
+<li>Severity is based on code evidence. Metrics that were not measured are labeled as such. Expected improvements are estimates only.</li>
+</ol>
+</section>
+
+<section class="section">
+<h2>5. Performance Baseline</h2>
+<table>
+<thead>
+<tr><th>Metric</th><th>Current</th><th>Target</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td>Authenticated TTFB / page load</td><td>Not measured (login required)</td><td>&lt; 200 ms TTFB for HTML</td><td>Unknown</td></tr>
+<tr><td>Dashboard chart DB queries (code-derived)</td><td>~88 SUM queries after page load (3 JSON endpoints)</td><td>2–3 grouped queries</td><td>Fail</td></tr>
+<tr><td>GST report query pattern</td><td>1 + N invoices + N×items tax lookups</td><td>1–3 SQL statements</td><td>Fail</td></tr>
+<tr><td>Every-request bootstrap queries</td><td>sys_appconfig (all rows) + sys_pl twice</td><td>1 cached config read</td><td>Fail</td></tr>
+<tr><td>Invoice / contact / product lists</td><td>Server-side DataTables (good)</td><td>Keep</td><td>Pass</td></tr>
+<tr><td>Product list stock calculation</td><td>Aggregated SQL JOIN (good)</td><td>Keep</td><td>Pass</td></tr>
+<tr><td>PHP OPcache (this XAMPP)</td><td>Disabled (settings commented; no zend_extension)</td><td>Enabled</td><td>Fail</td></tr>
+<tr><td>HTTP gzip / expires</td><td>mod_deflate and mod_expires commented out</td><td>Enabled</td><td>Fail</td></tr>
+<tr><td>Idiorm query cache</td><td><code>caching = false</code></td><td>Selective cache where safe</td><td>Fail</td></tr>
+<tr><td>Core Web Vitals</td><td>Not measured</td><td>LCP &lt; 2.5s, INP &lt; 200ms, CLS &lt; 0.1</td><td>Unknown</td></tr>
+</tbody>
+</table>
+<p class="small">Query counts above are derived from source, not from a query log. Do not treat them as production timings.</p>
+</section>
+
+<section class="section">
+<h2>6. Database &amp; Query Summary</h2>
+<div class="grid">
+<div class="card">
+<div class="small">Queries / Request</div>
+<div class="metric">4 + page</div>
+</div>
+<div class="card">
+<div class="small">DB Time</div>
+<div class="metric">Not measured</div>
+</div>
+<div class="card">
+<div class="small">Slow query patterns</div>
+<div class="metric">8</div>
+</div>
+<div class="card">
+<div class="small">Index issues</div>
+<div class="metric">Unconfirmed</div>
+</div>
+</div>
+<p>
+Every request loads all <code>sys_appconfig</code> rows and queries <code>sys_pl</code> twice. Dashboard canvas then runs several SUMs on <code>sys_transactions</code>, a 10-row unpaid invoice follow-up with N+1 phone lookups, and the browser fires three chart APIs (~24 + 2 + 62 SUM queries). GST reports load every invoice and walk items/taxes in PHP. P&amp;L repeats an expensive invoice-items GROUP BY three times and wraps <code>created_at_datetime</code> in <code>DATE()</code>. Timesheet holiday insert uses <code>DATE(checkin)</code>. Contact invoice/transaction tabs and several transaction forms load unbounded row sets.
+</p>
+<p>
+<strong>Positive:</strong> <code>invoices/list-datatable</code>, <code>contacts</code> list JSON, and <code>ps/p-list-datatable</code> paginate in SQL. Product stock on the product list is aggregated once:
+</p>
+<pre>LEFT JOIN (
+  SELECT item_id, SUM(CASE WHEN type='credit' THEN stock WHEN type='debit' THEN -stock ELSE 0 END) AS current_stock
+  FROM sys_items_stock
+  GROUP BY item_id
+) AS st ON st.item_id = i.id</pre>
+<p>Indexes were not dumped. Likely useful keys (verify with EXPLAIN before creating): <code>sys_transactions(type, date)</code>, <code>sys_invoiceitems(invoiceid)</code>, <code>sys_items_stock(item_id, type, branch_id)</code>, <code>sys_invoices(status, company_id, created_at_datetime)</code>, <code>crm_timesheet(employee_id, checkin)</code>.</p>
+</section>
+
+<section class="section">
+<h2>7. Backend Performance</h2>
+<p>
+PHP bootstrap starts a file session, configures Idiorm, loads language files and plugins, then includes the controller. Controllers are large: <code>invoices.php</code> is 4963 lines, <code>contacts.php</code> 2742, <code>transactions.php</code> 1553. Invoice add/edit loads all <code>sys_items</code>, <code>sys_cloths</code>, and <code>sys_designs</code>. Transaction add (<code>transactions/a</code>) loads all <code>crm_accounts</code> for a dropdown. Employee timesheet DataTables first <code>find_many()</code> every matching row to sum earnings, then runs a second paginated query. Cron complete-order notifications call WATI HTTP sequentially with <code>CURLOPT_TIMEOUT = 0</code>. Idiorm caching is off. Smarty has a compile directory but no output cache.
+</p>
+</section>
+
+<section class="section">
+<h2>8. API Performance</h2>
+<p>
+JSON DataTables endpoints exist for invoices, products, transactions, contacts, and P&amp;L. They are the right shape (server-side), but several honor DataTables <code>length = -1</code> (“All”), which skips LIMIT and can return the full table. Dashboard JSON chart endpoints are chatty (many SUMs). Public WATI catalog endpoints send <code>Cache-Control: no-store</code>. Payload sizes and latencies were not measured.
+</p>
+</section>
+
+<section class="section">
+<h2>9. Frontend Performance</h2>
+<p>
+Admin layout loads jQuery 1.10.2 and jQuery UI in <code>&lt;head&gt;</code> without defer/async, plus many CSS files, Line Awesome from a third-party CDN, and 12+ apple-touch icons. The footer always loads DataTables from cdn.datatables.net plus JSZip, even on pages that also load local <code>datatables.min</code>. Dashboard additionally loads full <code>echarts.min.js</code>. The invoice product modal sets DataTables <code>pageLength: 5000</code> and <code>paging: false</code>, and each row calls <code>product_stock_info()</code> (two stock queries + PHP loops). No image lazy-loading was found in theme templates. LCP/INP/CLS were not measured.
+</p>
+</section>
+
+<section class="section">
+<h2>10. Server Performance</h2>
+<p>
+This XAMPP <code>php.ini</code> has OPcache settings commented out and no <code>zend_extension</code> for OPcache. <code>zlib.output_compression=Off</code>. Apache <code>mod_deflate</code> and <code>mod_expires</code> are commented out. PHP <code>memory_limit=2048M</code> and <code>max_execution_time=3600</code> locally (production-shaped project php.ini uses 256M / 30s). CPU, RAM, and MySQL buffer pool were not sampled. Production may differ from this laptop XAMPP stack.
+</p>
+</section>
+
+<section class="section">
+<h2>11. Detailed Findings</h2>
+
+<article class="finding high">
+<h3>N1-001 — GST reports load every invoice with nested item and tax queries</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>N+1 / unbounded query</td></tr>
+<tr><th>Affected Area</th><td><code>application/controllers/reports.php</code> cases <code>gst-reports</code> and <code>gst-reports-ajax</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p><code>gst-reports</code> runs <code>ORM::for_table('sys_invoices')->find_many()</code> with no date filter or LIMIT. For each invoice it loads all <code>sys_invoiceitems</code>, and for each item it <code>find_one</code>s <code>sys_tax</code>. The AJAX variant still loops invoices in the selected date range the same way.</p>
+<h4>Current Behavior</h4>
+<p>Query count grows as invoices × line items. All invoices are held in PHP memory for the initial page.</p>
+<h4>Root Cause</h4>
+<p>GST totals are computed in PHP instead of a joined SQL aggregation. Tax rows are fetched per line instead of once.</p>
+<h4>Recommended Fix</h4>
+<p>One query joining invoices, items, and tax, grouped by invoice. Cache tax types in a map. Paginate or require a date range on the initial page.</p>
+<h4>Example Fix</h4>
+<pre>SELECT inv.id, inv.invoicenum,
+  SUM(CASE WHEN tax.taxtype = 'GST' THEN ii.taxamount ELSE 0 END) AS gst_amount,
+  SUM(CASE WHEN tax.taxtype &lt;&gt; 'GST' THEN ii.taxamount ELSE 0 END) AS igst_amount
+FROM sys_invoices inv
+LEFT JOIN sys_invoiceitems ii ON ii.invoiceid = inv.id
+LEFT JOIN sys_tax tax ON tax.id = ii.tax_id
+WHERE inv.date BETWEEN ? AND ?
+GROUP BY inv.id;</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: from O(invoices × items) queries to 1 query. Large GST pages should drop from multi-second to well under 1s if indexes exist. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Need to match current CGST/SGST split rules exactly.</p>
+<h4>Verification</h4>
+<p>Enable Idiorm logging, open GST reports, compare query count and duration before/after. EXPLAIN the new SQL.</p>
+</article>
+
+<article class="finding high">
+<h3>SQL-001 — Dashboard charts issue ~88 per-day / per-month SUM queries</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>SQL / chatty ORM</td></tr>
+<tr><th>Affected Area</th><td><code>ui/lib/dashboard/dashboard.js</code>, <code>application/autoload/Dashboard.php</code>, <code>dashboard.php</code> canvas + legacy</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>On load, <code>dashboard.js</code> calls <code>dashboard/json_income_vs_exp/</code>, <code>json_d_inc_exp_month/</code>, and <code>json_d_chart_data/</code>. <code>dataLastTwelveMonthsIncExp()</code> loops 12 months × income and expense SUM. <code>dataIncExpD()</code> runs separate SUMs for each calendar day 01–31 for income and expense. Canvas also duplicates <code>SUM(balance)</code> for <code>tbal</code> and <code>net_worth</code>. Legacy dashboard uses <code>filter_by_branch('sys_transactions')</code> dozens of times (68 matches in <code>dashboard.php</code>).</p>
+<h4>Current Behavior</h4>
+<p>After HTML render, the browser triggers ~88 extra aggregate queries against <code>sys_transactions</code>.</p>
+<h4>Root Cause</h4>
+<p>Aggregates are computed in PHP loops instead of <code>GROUP BY YEAR/MONTH</code> or <code>GROUP BY date</code>.</p>
+<h4>Recommended Fix</h4>
+<p>Replace with two SQL statements (or one with conditional SUM). Reuse one <code>SUM(balance)</code> on the page.</p>
+<h4>Example Fix</h4>
+<pre>SELECT DATE(`date`) AS d, type, SUM(cr) AS credit, SUM(dr) AS debit
+FROM sys_transactions
+WHERE `date` BETWEEN ? AND ?
+GROUP BY DATE(`date`), type;</pre>
+<p>If <code>date</code> is already a DATE column, drop <code>DATE()</code> and group by <code>date</code>.</p>
+<h4>Expected Improvement</h4>
+<p>Estimate: 88 queries → 1–2. Chart TTFB should fall sharply on large transaction tables. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Must preserve empty days as 0.00 for the chart.</p>
+<h4>Verification</h4>
+<p>Log queries for one dashboard load. Compare count and total DB time.</p>
+</article>
+
+<article class="finding high">
+<h3>SQL-002 — P&amp;L report repeats a full invoice-item GROUP BY and uses DATE() on a datetime column</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>SQL / sargability</td></tr>
+<tr><th>Affected Area</th><td><code>reports.php</code> case <code>pl-products-dt</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p><code>$mainSQL</code> left-joins a subquery that groups <strong>all</strong> <code>sys_invoiceitems</code> by invoice and another that groups <code>invoice_alocation</code>. That SQL is executed three times (count, page, totals). Date filter is <code>DATE(inv.created_at_datetime) BETWEEN ? AND ?</code>, which prevents a range index on <code>created_at_datetime</code>.</p>
+<h4>Current Behavior</h4>
+<p>Each DataTables draw can scan items and allocations three times.</p>
+<h4>Root Cause</h4>
+<p>Derived-table reuse via string concatenation; function wrapped around the date column.</p>
+<h4>Recommended Fix</h4>
+<p>Use <code>created_at_datetime &gt;= start AND created_at_datetime &lt; start+1 day</code>. Compute count/totals from one pass or a temporary table. Consider persisted COGS/expense on paid invoices.</p>
+<h4>Example Fix</h4>
+<pre>AND inv.created_at_datetime &gt;= ?
+AND inv.created_at_datetime &lt; DATE_ADD(?, INTERVAL 1 DAY)</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: large date ranges should avoid full item scans three times; indexable date range. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Confirm timezone/date-only semantics of <code>created_at_datetime</code>.</p>
+<h4>Verification</h4>
+<p>EXPLAIN before/after. Time a wide date-range draw.</p>
+</article>
+
+<article class="finding high">
+<h3>N1-002 — Invoice product modal loads all products and queries stock twice per row</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>N+1 / frontend dataset</td></tr>
+<tr><th>Affected Area</th><td><code>ps.php</code> <code>modal-list</code>, <code>product-modal-list-ps.tpl</code>, <code>product_stock_info()</code> in <code>ibilling_misc.php</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Modal loads all customize and readymade <code>sys_items</code>. Template calls <code>product_stock_info($ds['id'])</code> per row. That helper loads all credit rows and all debit rows for the item, then sums in PHP. DataTables is configured with <code>pageLength: 5000</code> and <code>paging: false</code>.</p>
+<h4>Current Behavior</h4>
+<p>Opening the product picker on invoice add/edit runs 2N stock queries and renders the full catalog in the DOM.</p>
+<h4>Root Cause</h4>
+<p>Stock is not joined; UI disables paging. (The product <em>list</em> page already solved this with aggregated SQL.)</p>
+<h4>Recommended Fix</h4>
+<p>Reuse the <code>p-list-datatable</code> aggregation. Server-side search. Restore paging (25–50).</p>
+<h4>Example Fix</h4>
+<pre>SELECT i.id, i.name, i.sales_price, COALESCE(st.current_stock,0) AS current_stock
+FROM sys_items i
+LEFT JOIN ( /* same stock SUM as p-list-datatable */ ) st ON st.item_id = i.id
+WHERE i.product_type = ?
+LIMIT 50 OFFSET ?;</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: modal open from 2N+2 queries to 1 paginated query; much smaller HTML. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Users must search instead of seeing every SKU at once.</p>
+<h4>Verification</h4>
+<p>Open invoice add → product modal. Compare query count and HTML size.</p>
+</article>
+
+<article class="finding high">
+<h3>BACKEND-001 — Timesheet DataTables loads every matching row into PHP to compute a total</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>Large dataset / duplicate query</td></tr>
+<tr><th>Affected Area</th><td><code>contacts.php</code> timesheet employee JSON (~lines 540–623)</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>After applying filters, <code>$Records = $recordQuery-&gt;find_many()</code> loads the full result. PHP sums <code>earn_amount</code>. A second query with OFFSET/LIMIT then loads the page.</p>
+<h4>Current Behavior</h4>
+<p>Memory and time grow with timesheet history even when the grid shows 10 rows.</p>
+<h4>Root Cause</h4>
+<p>Totals implemented as “load all then sum” instead of <code>SUM(earn_amount)</code>.</p>
+<h4>Recommended Fix</h4>
+<p>Run <code>COUNT(*)</code> and <code>SUM(earn_amount)</code> on the filtered query; fetch only the page.</p>
+<h4>Example Fix</h4>
+<pre>$totalFiltered = (clone $query)-&gt;count();
+$earnAmountSumTotal = (clone $query)-&gt;sum('crm_timesheet.earn_amount');
+$records = $query-&gt;offset($start)-&gt;limit($rowperpage)-&gt;find_many();</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: large employee histories drop from loading thousands of ORM objects to one page + two aggregates. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Unique invoice-number list for salary description may need a separate limited query or a truncated string.</p>
+<h4>Verification</h4>
+<p>Filter a long date range; compare memory and query count.</p>
+</article>
+
+<article class="finding high">
+<h3>FRONTEND-001 — Global layout loads render-blocking scripts and duplicate DataTables</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>Frontend / critical path</td></tr>
+<tr><th>Affected Area</th><td><code>header_default.tpl</code>, <code>footer_default.tpl</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Head includes jQuery 1.10.2 and jQuery UI before body content. Footer always loads DataTables CSS/JS from cdn.datatables.net, buttons, JSZip, plus local copies on list pages via <code>Asset::js</code>. Line Awesome is loaded from icons8 CDN. Many favicon/apple-touch links. Scripts have no defer/async.</p>
+<h4>Current Behavior</h4>
+<p>Every admin page pays for DataTables and extra CDN RTTs, including pages that do not use a grid. Duplicate DataTables can inflate JS work.</p>
+<h4>Root Cause</h4>
+<p>Assets are global rather than page-scoped. CDN and local bundles overlap.</p>
+<h4>Recommended Fix</h4>
+<p>Move jQuery to the end of body or use defer. Load DataTables only on list pages. Pick one copy (local, versioned). Self-host Line Awesome or drop it if Font Awesome is enough. Reduce icon links to one favicon.</p>
+<h4>Example Fix</h4>
+<pre>{if isset($use_datatables) && $use_datatables}
+  &lt;script src="{$app_url}ui/lib/datatables.min.js"&gt;&lt;/script&gt;
+{/if}</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: fewer bytes and fewer connections on most pages; better FCP/LCP. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Templates that rely on global DataTables must opt in.</p>
+<h4>Verification</h4>
+<p>DevTools network on login, dashboard, invoice list: script count, transfer size, TTFB.</p>
+</article>
+
+<article class="finding high">
+<h3>SERVER-001 — OPcache and HTTP compression/expires are disabled on this host</h3>
+<p><span class="badge high">High</span> <strong>Priority:</strong> P1</p>
+<table>
+<tr><th>Category</th><td>Server / PHP</td></tr>
+<tr><th>Affected Area</th><td>XAMPP <code>php.ini</code>, <code>httpd.conf</code>; project-root cPanel <code>php.ini</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>OPcache keys are commented; no <code>zend_extension</code> for OPcache. <code>zlib.output_compression=Off</code>. Apache <code>deflate_module</code> and <code>expires_module</code> are commented out. Project php.ini also has compression off.</p>
+<h4>Current Behavior</h4>
+<p>PHP recompiles scripts every request. Static assets are uncompressed and uncached by the server config reviewed here.</p>
+<h4>Root Cause</h4>
+<p>Default/dev XAMPP and a production ini without compression.</p>
+<h4>Recommended Fix</h4>
+<p>Enable OPcache in production (<code>opcache.enable=1</code>, adequate memory, <code>validate_timestamps=0</code> after deploy). Enable gzip/brotli and long-cache headers for versioned CSS/JS.</p>
+<h4>Example Fix</h4>
+<pre>zend_extension=opcache
+opcache.enable=1
+opcache.memory_consumption=128
+opcache.max_accelerated_files=10000</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: typical PHP apps see large TTFB gains from OPcache; gzip often cuts text assets 60–80%. Not measured here.</p>
+<h4>Tradeoffs</h4>
+<p>Must restart PHP after deploys if timestamps are not validated. Confirm production host separately from XAMPP.</p>
+<h4>Verification</h4>
+<p><code>php -i | findstr opcache</code>. Repeat a PHP page with and without OPcache.</p>
+</article>
+
+<article class="finding medium">
+<h3>SQL-003 — Timesheet uniqueness check uses DATE(checkin)</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>SQL sargability / N+1 writes</td></tr>
+<tr><th>Affected Area</th><td><code>timesheet.php</code> <code>holiday-timesheet-ajax</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>For each employee × date the code loads the employee name, then <code>where_raw('DATE(`checkin`) = ?')</code>, then loads salary fields again.</p>
+<h4>Current Behavior</h4>
+<p>About 3 queries per employee per holiday row. <code>DATE(checkin)</code> cannot use a plain index on <code>checkin</code>.</p>
+<h4>Root Cause</h4>
+<p>Per-row existence check instead of a range predicate and prefetch.</p>
+<h4>Recommended Fix</h4>
+<p>Use <code>checkin &gt;= day AND checkin &lt; day+1</code>. Prefetch employees with <code>where_in</code>. Optionally add a generated date column + unique key.</p>
+<h4>Example Fix</h4>
+<pre>-&gt;where_gte('checkin', $checkinDate)
+-&gt;where_lt('checkin', date('Y-m-d', strtotime($checkinDate.' +1 day')))</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: indexable lookups; fewer round trips on bulk holiday insert. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Need a matching index <code>(employee_id, checkin)</code>.</p>
+<h4>Verification</h4>
+<p>EXPLAIN the existence query. Time a bulk insert.</p>
+</article>
+
+<article class="finding medium">
+<h3>SQL-004 — Contact tabs load all invoices, transactions, and vendor stock rows</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>Unbounded result set</td></tr>
+<tr><th>Affected Area</th><td><code>contacts.php</code> cases <code>invoices</code>, <code>transactions</code>, <code>balanceSheetVendor</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Contact invoices: <code>sys_invoices-&gt;where('userid',$cid)-&gt;find_many()</code> with no LIMIT. Transactions: all rows for payer/payee. Vendor sheet loads all credit and debit stock plus all income/expense transactions.</p>
+<h4>Current Behavior</h4>
+<p>Heavy customers can return large HTML fragments over AJAX.</p>
+<h4>Root Cause</h4>
+<p>No pagination on related-data tabs.</p>
+<h4>Recommended Fix</h4>
+<p>Limit/paginate (25–50). For balances, use SUM queries, not full row dumps.</p>
+<h4>Example Fix</h4>
+<pre>$i = ORM::for_table('sys_invoices')-&gt;where('userid',$cid)
+  -&gt;order_by_desc('id')-&gt;limit(50)-&gt;find_many();</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: bounded payload for long-lived customers. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Users need paging or “load more”.</p>
+<h4>Verification</h4>
+<p>Open a contact with many invoices; compare HTML size and query time.</p>
+</article>
+
+<article class="finding medium">
+<h3>SQL-005 — Invoice add/edit and transaction forms load entire catalogs</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>Unbounded query</td></tr>
+<tr><th>Affected Area</th><td><code>invoices.php</code> add/edit; <code>transactions.php</code> cases <code>a</code>, manage/deposit-related loads of <code>crm_accounts</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Invoice add: <code>sys_items-&gt;find_many()</code>, all cloths, all designs. Edit repeats products. <code>transactions/a</code> assigns all <code>crm_accounts</code> to the view.</p>
+<h4>Current Behavior</h4>
+<p>Form HTML and PHP memory grow with catalog/customer count. Select2 then has a huge DOM.</p>
+<h4>Root Cause</h4>
+<p>Dropdowns populated server-side instead of AJAX search.</p>
+<h4>Recommended Fix</h4>
+<p>AJAX Select2 endpoints with LIMIT 20 and a search term. Do not assign full item/customer lists.</p>
+<h4>Example Fix</h4>
+<pre>// contacts/search-json
+-&gt;where_like('account', '%'.$q.'%')-&gt;limit(20)-&gt;find_array();</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: add-invoice TTFB and HTML size drop as catalogs grow. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Requires JS search; offline full lists go away.</p>
+<h4>Verification</h4>
+<p>Compare HTML size of invoices/add before/after.</p>
+</article>
+
+<article class="finding medium">
+<h3>SQL-006 — DataTables “All” (length = -1) can dump entire tables</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>Pagination</td></tr>
+<tr><th>Affected Area</th><td><code>list-invoices2.tpl</code>, <code>ps-list.tpl</code>, <code>list-contacts2.tpl</code>, matching <code>*-datatable</code> PHP</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Length menus include <code>-1</code> / “All”. PHP only applies LIMIT when <code>$length != -1</code>.</p>
+<h4>Current Behavior</h4>
+<p>One click can serialize every invoice/product/contact into JSON.</p>
+<h4>Root Cause</h4>
+<p>DataTables convenience option left enabled on large tables.</p>
+<h4>Recommended Fix</h4>
+<p>Remove <code>-1</code>. Cap length at 100–200 server-side.</p>
+<h4>Example Fix</h4>
+<pre>if ($length &lt; 1 || $length &gt; 100) { $length = 25; }
+$data_q-&gt;offset($start)-&gt;limit($length);</pre>
+<h4>Expected Improvement</h4>
+<p>Prevents accidental full-table responses. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Users cannot export “all rows” from the grid; use a dedicated CSV job.</p>
+<h4>Verification</h4>
+<p>Request list-datatable with length=-1; confirm a cap is applied.</p>
+</article>
+
+<article class="finding medium">
+<h3>N1-003 — Dashboard follow-up invoices query phone one row at a time</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>N+1</td></tr>
+<tr><th>Affected Area</th><td><code>dashboard.php</code> canvas (~lines 232–235)</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Up to 10 unpaid invoices; each does <code>crm_accounts-&gt;where('id', $row['userid'])-&gt;find_one()-&gt;phone</code>.</p>
+<h4>Current Behavior</h4>
+<p>10 extra primary-key lookups on every dashboard load.</p>
+<h4>Root Cause</h4>
+<p>Missing JOIN to <code>crm_accounts</code>.</p>
+<h4>Recommended Fix</h4>
+<p>Join customer when selecting follow-ups (same pattern as invoice list-datatable).</p>
+<h4>Example Fix</h4>
+<pre>-&gt;select('c.phone')
+-&gt;join('crm_accounts', array('sys_invoices.userid','=','c.id'), 'c')</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: 11 queries → 1 for this widget. Small but on a hot page.</p>
+<h4>Tradeoffs</h4>
+<p>None significant.</p>
+<h4>Verification</h4>
+<p>Query log on dashboard canvas.</p>
+</article>
+
+<article class="finding medium">
+<h3>CACHE-001 — No query, HTTP, or Smarty output cache; config and plugins queried every request</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>Caching</td></tr>
+<tr><th>Affected Area</th><td><code>ibilling_bootstrap.php</code>, <code>ORM.php</code> config</td></tr>
+</table>
+<h4>Evidence</h4>
+<p><code>sys_appconfig</code> <code>find_many()</code> every request. <code>sys_pl</code> queried at line 153 and again at 245. Idiorm <code>caching = false</code>. WATI endpoints send no-store. Session is default files.</p>
+<h4>Current Behavior</h4>
+<p>Fixed DB tax on every hit, including static-ish config.</p>
+<h4>Root Cause</h4>
+<p>No request or APCu/file cache for config/plugins.</p>
+<h4>Recommended Fix</h4>
+<p>Load plugins once and reuse. Cache <code>$config</code> in APCu or a file; invalidate on settings save. Optional HTTP cache for public WATI catalog with a short TTL.</p>
+<h4>Example Fix</h4>
+<pre>$ps = ORM::for_table('sys_pl')-&gt;where('status','1')-&gt;order_by_asc('sorder')-&gt;find_many();
+$ui-&gt;assign('_pls', $ps);</pre>
+<h4>Expected Improvement</h4>
+<p>Estimate: 2–3 fewer queries on every request. Larger gain if config is cached across requests.</p>
+<h4>Tradeoffs</h4>
+<p>Must invalidate on plugin/settings changes.</p>
+<h4>Verification</h4>
+<p>Query log on login and dashboard.</p>
+</article>
+
+<article class="finding medium">
+<h3>API-001 — Cron WhatsApp notifications are sequential HTTP calls with no timeout</h3>
+<p><span class="badge medium">Medium</span> <strong>Priority:</strong> P2</p>
+<table>
+<tr><th>Category</th><td>External API / cron</td></tr>
+<tr><th>Affected Area</th><td><code>cronjob.php</code> <code>complete_order_notification</code>, <code>wati_notifiation()</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Each matching invoice calls WATI via cURL. <code>CURLOPT_TIMEOUT =&gt; 0</code> (wait forever). Loop is synchronous.</p>
+<h4>Current Behavior</h4>
+<p>A slow or hung WATI API blocks the cron for every remaining invoice.</p>
+<h4>Root Cause</h4>
+<p>Inline HTTP in a foreach with unbounded timeout.</p>
+<h4>Recommended Fix</h4>
+<p>Set a short timeout (5–10s). Continue on failure. Prefer a queue or WATI broadcast batch. Do not log secrets in reports or VCS.</p>
+<h4>Example Fix</h4>
+<pre>CURLOPT_TIMEOUT =&gt; 10,
+CURLOPT_CONNECTTIMEOUT =&gt; 5,</pre>
+<h4>Expected Improvement</h4>
+<p>Prevents unbounded cron runtime. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Some messages may need retry.</p>
+<h4>Verification</h4>
+<p>Run cron with a mock delay; confirm it skips after timeout.</p>
+</article>
+
+<article class="finding low">
+<h3>JS-001 — Dashboard loads full ECharts bundle</h3>
+<p><span class="badge low">Low</span> <strong>Priority:</strong> P3</p>
+<table>
+<tr><th>Category</th><td>JavaScript</td></tr>
+<tr><th>Affected Area</th><td><code>dashboard.php</code> Asset::js <code>chart/echarts.min</code></td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Full ECharts is included on canvas dashboards. File is a large minified vendor bundle.</p>
+<h4>Current Behavior</h4>
+<p>Dashboard JS parse/compile cost is dominated by charts.</p>
+<h4>Root Cause</h4>
+<p>Full library instead of a custom build of used chart types.</p>
+<h4>Recommended Fix</h4>
+<p>Custom ECharts build (line/bar only) or a lighter chart lib if features allow.</p>
+<h4>Example Fix</h4>
+<p>Build ECharts with only <code>line</code>, <code>bar</code>, <code>grid</code>, <code>tooltip</code>, <code>legend</code>.</p>
+<h4>Expected Improvement</h4>
+<p>Estimate: smaller JS, faster INP on dashboard. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Need a rebuild when chart types change.</p>
+<h4>Verification</h4>
+<p>Compare transfer size and main-thread time.</p>
+</article>
+
+<article class="finding low">
+<h3>IMG-001 — Product and UI images are not lazy-loaded</h3>
+<p><span class="badge low">Low</span> <strong>Priority:</strong> P3</p>
+<table>
+<tr><th>Category</th><td>Images</td></tr>
+<tr><th>Affected Area</th><td>Theme templates (product lists/modals)</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>No <code>loading="lazy"</code> (or equivalent) in ibilling templates. Product images render with the table.</p>
+<h4>Current Behavior</h4>
+<p>Off-screen images compete with LCP on list pages.</p>
+<h4>Root Cause</h4>
+<p>Legacy markup.</p>
+<h4>Recommended Fix</h4>
+<p>Add <code>loading="lazy"</code> on non-hero images; constrain dimensions; prefer WebP where quality allows.</p>
+<h4>Example Fix</h4>
+<pre>&lt;img src="{$ds.product_image}" width="80" height="80" loading="lazy" alt=""&gt;</pre>
+<h4>Expected Improvement</h4>
+<p>Fewer early bytes on long tables. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>First screen images should stay eager.</p>
+<h4>Verification</h4>
+<p>Network waterfall on product list.</p>
+</article>
+
+<article class="finding low">
+<h3>SQL-007 — List endpoints select t.* after joining related tables</h3>
+<p><span class="badge low">Low</span> <strong>Priority:</strong> P3</p>
+<table>
+<tr><th>Category</th><td>Query construction</td></tr>
+<tr><th>Affected Area</th><td><code>invoices.php</code> list-datatable, <code>transactions.php</code> list-datatable</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Queries use <code>-&gt;select('t.*')</code> plus join columns. COUNT clones that builder, which can make COUNT more expensive than <code>COUNT(*)</code> on the filtered keys.</p>
+<h4>Current Behavior</h4>
+<p>Extra columns over the wire; count query may be heavier than needed.</p>
+<h4>Root Cause</h4>
+<p>Convenience ORM select-star.</p>
+<h4>Recommended Fix</h4>
+<p>Select only displayed columns. Count with a lean clone (ids only).</p>
+<h4>Example Fix</h4>
+<pre>-&gt;select_many('t.id','t.invoicenum','t.cn','t.subtotal','t.date','t.status', ...)</pre>
+<h4>Expected Improvement</h4>
+<p>Smaller JSON; cheaper COUNT. Depends on row width. Not measured.</p>
+<h4>Tradeoffs</h4>
+<p>Must list columns explicitly when the UI adds fields.</p>
+<h4>Verification</h4>
+<p>Compare response size and EXPLAIN of COUNT.</p>
+</article>
+
+<article class="finding informational">
+<h3>INFO-001 — Several list pages are already server-side and should be treated as the template</h3>
+<p><span class="badge informational">Informational</span> <strong>Priority:</strong> P4</p>
+<table>
+<tr><th>Category</th><td>Positive finding</td></tr>
+<tr><th>Affected Area</th><td>Invoice list, contact list, product list DataTables</td></tr>
+</table>
+<h4>Evidence</h4>
+<p>Invoice list joins customers/users/branches and paginates. Contacts list maps groups/branches in two lookups rather than per row. Product list aggregates stock in SQL.</p>
+<h4>Current Behavior</h4>
+<p>These pages are the healthiest high-traffic patterns in the app.</p>
+<h4>Root Cause</h4>
+<p>N/A — already improved relative to GST/modal/dashboard.</p>
+<h4>Recommended Fix</h4>
+<p>Reuse this pattern for GST, timesheets, statements, and the product modal. Keep <code>get_branch_name()</code> static cache.</p>
+<h4>Example Fix</h4>
+<p>N/A</p>
+<h4>Expected Improvement</h4>
+<p>Avoid regressions while fixing other endpoints.</p>
+<h4>Tradeoffs</h4>
+<p>None.</p>
+<h4>Verification</h4>
+<p>Keep query counts stable when changing list filters.</p>
+</article>
+
+</section>
+
+<section class="section">
+<h2>12. Optimization Roadmap</h2>
+<table>
+<thead>
+<tr><th>Order</th><th>Priority</th><th>Issue</th><th>Action</th><th>Expected Benefit</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>P1</td><td>SQL-001 Dashboard SUMs</td><td>Replace day/month loops with GROUP BY</td><td>~88 queries → 1–2 on chart APIs</td></tr>
+<tr><td>2</td><td>P1</td><td>N1-001 GST N+1</td><td>Single aggregated SQL + date required</td><td>Removes invoice×item query explosion</td></tr>
+<tr><td>3</td><td>P1</td><td>N1-002 Product modal</td><td>Reuse product-list stock SQL + paging</td><td>2N stock queries → 1 page query</td></tr>
+<tr><td>4</td><td>P1</td><td>BACKEND-001 Timesheet totals</td><td>SUM/COUNT in SQL, page in SQL</td><td>Stops loading full histories</td></tr>
+<tr><td>5</td><td>P1</td><td>SQL-002 P&amp;L DATE() + 3× subquery</td><td>Range predicate; one pass for totals</td><td>Indexable dates; less item scanning</td></tr>
+<tr><td>6</td><td>P1</td><td>SERVER-001 OPcache/gzip</td><td>Enable in production (and local if used heavily)</td><td>Lower TTFB and asset weight</td></tr>
+<tr><td>7</td><td>P1</td><td>FRONTEND-001 Assets</td><td>Defer JS; DataTables only where needed</td><td>Faster first paint</td></tr>
+<tr><td>8</td><td>P2</td><td>SQL-006 length=-1</td><td>Cap page size</td><td>No full-table JSON</td></tr>
+<tr><td>9</td><td>P2</td><td>SQL-004/005 unbounded forms</td><td>AJAX select + paginate tabs</td><td>Smaller add/view pages</td></tr>
+<tr><td>10</td><td>P2</td><td>CACHE-001</td><td>Dedupe sys_pl; cache config</td><td>Fewer queries every request</td></tr>
+<tr><td>11</td><td>P2</td><td>API-001 WATI timeout</td><td>Timeout + retry/queue</td><td>Safer cron</td></tr>
+<tr><td>12</td><td>P3</td><td>JS/IMG/SELECT *</td><td>Smaller ECharts, lazy images, explicit columns</td><td>Incremental frontend/SQL wins</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="section">
+<h2>13. Expected Improvements</h2>
+<p>The following are <strong>estimates</strong>, not measured before/after numbers:</p>
+<ul>
+<li>Dashboard chart APIs: on the order of 80+ SUM queries removed per page load if grouped SQL is used.</li>
+<li>GST reports: query count from proportional to invoices×items down to a handful of statements.</li>
+<li>Invoice product modal: 2 queries per product removed; DOM no longer holds the full catalog.</li>
+<li>Timesheet grids: memory bounded by page size instead of full history.</li>
+<li>OPcache + gzip: typically the largest cheap win for PHP TTFB and transfer size on this stack; confirm on the real host.</li>
+</ul>
+<p>Do not publish invented millisecond timings. Re-test after each change (section 14).</p>
+</section>
+
+<section class="section">
+<h2>14. Re-Test Checklist</h2>
+<ul>
+<li>Enable Idiorm logging temporarily (<code>ORM::configure('logging', true)</code>) on a staging copy.</li>
+<li>Record query count and DB time for: dashboard, invoices/list, invoices/add (product modal), GST reports, P&amp;L, contact timesheet JSON, contact invoices tab.</li>
+<li>EXPLAIN the new GST, P&amp;L, dashboard GROUP BY, and stock aggregate queries.</li>
+<li>Confirm DataTables <code>length=-1</code> is rejected.</li>
+<li>After OPcache/gzip: TTFB, transfer size, repeat HTML requests.</li>
+<li>Frontend: script count on dashboard vs invoice list; LCP/INP/CLS if Chrome DevTools is available.</li>
+<li>Compare against this baseline (code-derived query patterns, not production timings).</li>
+</ul>
+</section>
+
+<section class="section">
+<h2>15. Limitations</h2>
+<ul>
+<li>No authenticated browser session, so TTFB, LCP, INP, CLS, and waterfalls were not measured.</li>
+<li>MySQL was not profiled: no table sizes, no SHOW INDEX, no EXPLAIN, no slow query log.</li>
+<li>Query counts are inferred from source (loops and explicit SUM calls), not from a live query log.</li>
+<li>Expected improvements are labeled estimates only.</li>
+<li>Local XAMPP config may not match production cPanel. Treat SERVER-001 as host-specific until production phpinfo is checked.</li>
+<li>mPDF, Stripe, and compiled Smarty templates were not treated as application bottlenecks except where controllers instantiate them.</li>
+</ul>
+</section>
+
+<section class="section">
+<h2>16. Conclusion</h2>
+<p>
+Alabaya already has solid server-side lists for invoices, contacts, and products. The remaining bottlenecks are classic iBilling-era patterns: computing reports in PHP with N+1 queries, building charts with one SUM per day, loading full catalogs into forms, and shipping a heavy global JS/CSS set. None of the reviewed issues were confirmed as a live outage (no Critical). Fixing dashboard aggregates, GST, the product modal, and timesheet totals should yield the largest database-side gains. Enable OPcache and compression on the real web host, then re-measure with a query log and one authenticated DevTools pass.
+</p>
+<p>
+<strong>Finding counts:</strong> Critical 0 · High 7 · Medium 7 · Low 3 · Informational 1
+</p>
+</section>
+
+</main>
+</body>
+</html>

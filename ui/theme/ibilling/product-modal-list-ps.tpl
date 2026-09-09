@@ -90,8 +90,7 @@
                                 <td>{$ds['description']}</td>
                                 <td class="price">{$ds['sales_price']}</td>
                                 <td>
-                                    {$stock = json_decode(product_stock_info($ds['id']), true)}
-                                    {$stock['current_stock_count']} {$ds['product_stock_type']} 
+                                    {$ds['current_stock']} {$ds['product_stock_type']} 
                                 </td>                               
                             </tr>
                             {/foreach} 
@@ -148,8 +147,7 @@
                                 <td>{$ds['description']}</td>
                                 <td class="price">{$ds['sales_price']}</td>
                                 <td>
-                                    {$stock = json_decode(product_stock_info($ds['id']), true)}
-                                    {$stock['current_stock_count']} {$ds['product_stock_type']} 
+                                    {$ds['current_stock']} {$ds['product_stock_type']} 
                                 </td>
                             </tr>
                             {/foreach} 

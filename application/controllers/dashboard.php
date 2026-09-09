@@ -104,15 +104,13 @@ switch($action){
 
 
         $d = ORM::for_table('sys_accounts')->order_by_desc('balance')->limit(5)->find_many();
-        $tbal = ORM::for_table('sys_accounts')->sum('balance');
-        $tbal = number_format($tbal,'2','.','');
-        $ui->assign('d',$d);
-        $ui->assign('tbal',$tbal);
-
         $net_worth = ORM::for_table('sys_accounts')->sum('balance');
         if($net_worth == ''){
             $net_worth = 0;
         }
+        $tbal = number_format($net_worth,'2','.','');
+        $ui->assign('d',$d);
+        $ui->assign('tbal',$tbal);
         $ui->assign('net_worth',$net_worth);
         $goal = $config['networth_goal'];
         $v_goal = number_format($goal,2,$config['dec_point'],$config['thousands_sep']);
@@ -229,10 +227,15 @@ switch($action){
 
         $d = ORM::for_table('sys_transactions')->where('type','Income')->limit(5)->order_by_desc('id')->find_many();        
         $ui->assign('inc',$d);								
-				$followup=ORM::for_table('sys_invoices')->where_not_equal('status','Paid')->limit(10)->order_by_desc('duedate')->find_many();					
-				foreach($followup as $row){				
-				$row['phone']=ORM::for_table('crm_accounts')->where('id', $row['userid'])->find_one()->phone; 		
-				}							
+				$followup=ORM::for_table('sys_invoices')
+                    ->table_alias('inv')
+                    ->select('inv.*')
+                    ->select('c.phone', 'phone')
+                    ->left_outer_join('crm_accounts', array('inv.userid', '=', 'c.id'), 'c')
+                    ->where_not_equal('inv.status','Paid')
+                    ->limit(10)
+                    ->order_by_desc('inv.duedate')
+                    ->find_many();
 				$ui->assign('followup',$followup);    
 				$company = ORM::for_table('sys_accounts')->find_many();		
 				$ui->assign('company',$company);   	
@@ -446,10 +449,15 @@ $account_name = get_type_by_id('sys_accounts', 'id', $company, 'account');
 
         $d = ORM::for_table('sys_transactions')->where('type','Income')->where('account', $account_name)->limit(5)->order_by_desc('id')->find_many();        
         $ui->assign('inc',$d);								
-				$followup=ORM::for_table('sys_invoices')->where_not_equal('status','Paid')->limit(10)->order_by_desc('duedate')->find_many();					
-				foreach($followup as $row){				
-				$row['phone']=ORM::for_table('crm_accounts')->where('id', $row['userid'])->find_one()->phone; 		
-				}							
+				$followup=ORM::for_table('sys_invoices')
+                    ->table_alias('inv')
+                    ->select('inv.*')
+                    ->select('c.phone', 'phone')
+                    ->left_outer_join('crm_accounts', array('inv.userid', '=', 'c.id'), 'c')
+                    ->where_not_equal('inv.status','Paid')
+                    ->limit(10)
+                    ->order_by_desc('inv.duedate')
+                    ->find_many();
 				$ui->assign('followup',$followup);    
 				$company = ORM::for_table('sys_accounts')->find_many();		
 				$ui->assign('company',$company);   	
@@ -583,8 +591,8 @@ echo '
         // ---------------- BRANCH FILTER -----------------
 
         $d = ORM::for_table('sys_accounts')->order_by_desc('balance')->limit(5)->find_many();
-        $tbal = ORM::for_table('sys_accounts')->sum('balance');
-        $tbal = number_format($tbal,'2','.','');
+        $net_worth = ORM::for_table('sys_accounts')->sum('balance');
+        $tbal = number_format($net_worth,'2','.','');
         $ui->assign('d',$d);
         $ui->assign('tbal',$tbal);
         $fdate = date('Y-m-01');
@@ -628,7 +636,6 @@ echo '
         $d = filter_by_branch('sys_transactions', $branch_id)->where('type','Income')->limit(5)->order_by_desc('id')->find_many();
         $ui->assign('inc',$d);
 
-        $net_worth = ORM::for_table('sys_accounts')->sum('balance');
         $ui->assign('net_worth',$net_worth);
         $goal = $config['networth_goal'];
         $v_goal = number_format($goal,2,$config['dec_point'],$config['thousands_sep']);
