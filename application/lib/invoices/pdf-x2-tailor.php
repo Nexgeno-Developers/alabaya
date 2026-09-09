@@ -287,7 +287,7 @@ The location of this file is here- application/lib/invoices/pdf-x2.php
 						<?php
 						$line_img = invoice_line_image($item);
 						if (!empty($line_img)){ ?>
-							<img width="50px" height="50px" src="/<?= $line_img; ?>">
+							<img width="50px" height="50px" src="<?= $line_img; ?>">
 						<?php } ?>						
 					</td>
 					<!--<td align="center" style="border-bottom:1px solid #ccc;">
